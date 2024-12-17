@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: createDistributable
+    name: Build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -20,6 +20,9 @@ jobs:
         with:
           distribution: 'jetbrains'
           java-version: 17
+          cache: 'gradle'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -27,7 +30,7 @@ jobs:
       - name: 📦 createDistributable
         run: ./gradlew createDistributable
 
-      - name: Upload JVM Jar
+      - name: Upload Distributable
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}
