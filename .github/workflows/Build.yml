@@ -30,6 +30,22 @@ jobs:
       - name: 📦 createDistributable
         run: ./gradlew createDistributable
 
+      - name: 📦 createDistributable
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            chmod +x ./gradlew
+            ./gradlew createDistributable
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            ./gradlew.bat createDistributable
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            chmod +x ./gradlew
+            ./gradlew createDistributable
+          else
+            echo "$RUNNER_OS not supported"
+            exit 1
+          fi
+
       - name: Upload Distributable
         uses: actions/upload-artifact@v4
         with:
