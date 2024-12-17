@@ -28,9 +28,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: 📦 createDistributable
-        run: ./gradlew createDistributable
-
-      - name: 📦 createDistributable
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
