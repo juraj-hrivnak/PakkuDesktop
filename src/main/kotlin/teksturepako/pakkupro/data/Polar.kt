@@ -12,13 +12,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import teksturepako.pakku.api.actions.ActionError
 import teksturepako.pakku.api.data.json
-import teksturepako.pakku.api.http.Http
 import teksturepako.pakku.io.createHash
 import teksturepako.pakkupro.data.models.polar.Meta
 import teksturepako.pakkupro.data.models.polar.request.ActivateLicenseKeyReq
 import teksturepako.pakkupro.data.models.polar.request.ValidateLicenseKeyReq
 import teksturepako.pakkupro.data.models.polar.response.ActivateLicenseKey
 import teksturepako.pakkupro.data.models.polar.response.ValidateLicenseKey
+import teksturepako.pakkupro.io.AddressType
+import teksturepako.pakkupro.io.getNetworkAddress
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import com.github.michaelbull.result.fold as resultFold
@@ -82,27 +83,39 @@ object Polar
         }
     }
 
-    private fun generatePcId(): String? = GetNetworkAddress.getAddress("mac")
+    private fun generatePcId(): String? = getNetworkAddress(AddressType.MAC)
         ?.toByteArray()?.let { createHash("sha256", it) }
 
     class ValidationError(message: String) : ActionError(message)
 
     private suspend fun validate(key: String, activationId: String): Result<ValidateLicenseKey, ActionError>
     {
-        val response = json.decodeFromString<ValidateLicenseKey>(
-            Http().requestBody("https://api.polar.sh/v1/users/license-keys/validate") {
-                Json.encodeToString(ValidateLicenseKeyReq(key, ORGANIZATION_ID, activationId))
-            } ?: return Err(ValidationError("Failed to validate license key"))
-        )
+        val pcId = generatePcId() ?: return Err(ValidationError("Failed to generate PC ID for you license key."))
 
-        val pcId = generatePcId() ?: return Err(ActivationError("Failed to generate PC ID for you license activation."))
+        val url = "https://api.polar.sh/v1/users/license-keys/validate"
+        val bodyContent = Json.encodeToString(ValidateLicenseKeyReq(key, ORGANIZATION_ID, activationId))
 
-        if (response.activation?.meta?.pcId != pcId)
-        {
-            return Err(ValidationError("Failed to validate license key. This computer is not valid."))
+        val response = httpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(bodyContent)
         }
 
-        return Ok(response)
+        return when (response.status.value)
+        {
+            200  -> {
+                val jsonValue = json.decodeFromString<ValidateLicenseKey>(response.body())
+
+                if (jsonValue.activation?.meta?.pcId != pcId)
+                {
+                    return Err(ValidationError("Failed to validate license key. This computer is not valid."))
+                }
+
+                return Ok(jsonValue)
+            }
+            404  -> Err(ActivationError("License key not found."))
+            422  -> Err(ActivationError("Failed to validate license key due to a validation error."))
+            else -> Err(ActivationError("Failed to validate license key due to an unknown error."))
+        }
     }
 
     suspend fun isActivated(): Boolean
@@ -149,11 +162,9 @@ object Polar
 
         val licenseKeyData = initData().getOrElse { error -> return Err(error) }
 
-        validate(licenseKeyData.key, licenseKeyData.activationId).resultFold(
-            failure = { error -> return Err(error) },
-            success = {
-                return Ok(licenseKeyData.displayKey)
-            }
+        return validate(licenseKeyData.key, licenseKeyData.activationId).resultFold(
+            failure = { error -> Err(error) },
+            success = { Ok(licenseKeyData.displayKey) }
         )
     }
 }

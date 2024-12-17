@@ -7,7 +7,7 @@ import teksturepako.pakkupro.ui.view.RootView
 
 fun main()
 {
-    // Set Pakku debug mode to `true`
+    // Set Pakku's debug mode to `true`
     debugMode = true
 
     themedApplication {
