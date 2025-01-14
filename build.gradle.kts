@@ -92,7 +92,7 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:243.21565.208")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku-jvm:0.21.0.164-SNAPSHOT")
+    implementation("teksturepako.pakku:pakku-jvm:0.25.0")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
@@ -131,7 +131,7 @@ compose.desktop {
                 "java.naming",
                 "jdk.localedata",
             )
-//
+
 //            includeAllModules = true
 
             macOS {

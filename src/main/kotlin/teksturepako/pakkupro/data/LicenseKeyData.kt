@@ -2,10 +2,15 @@ package teksturepako.pakkupro.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import teksturepako.pakku.api.actions.ActionError
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.jsonEncodeDefaults
-import teksturepako.pakku.io.*
-import kotlin.io.path.*
+import teksturepako.pakku.io.readPathTextOrNull
+import teksturepako.pakku.io.tryOrNull
+import teksturepako.pakku.io.writeToFile
+import kotlin.io.path.Path
+import kotlin.io.path.createDirectory
+import kotlin.io.path.pathString
+import kotlin.io.path.setAttribute
 
 @Serializable
 data class LicenseKeyData(

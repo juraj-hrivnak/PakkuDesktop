@@ -13,7 +13,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
-import teksturepako.pakkupro.ui.component.dropdown.FileDropdown
+import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkupro.ui.component.text.Header
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
@@ -37,7 +37,7 @@ fun PakkuApplicationScope.ModpackView()
     }
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
-        FileDropdown(pickerLauncher)
+        ModpackDropdown(pickerLauncher)
     }
 
     Column(

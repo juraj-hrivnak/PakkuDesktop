@@ -1,6 +1,9 @@
 package teksturepako.pakkupro.data
 
-import com.github.michaelbull.result.*
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.getOrElse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.okhttp.*
@@ -10,7 +13,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import teksturepako.pakku.api.actions.ActionError
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.json
 import teksturepako.pakku.io.createHash
 import teksturepako.pakkupro.data.models.polar.Meta
@@ -56,7 +59,11 @@ object Polar
 
     private const val ORGANIZATION_ID = "bea3ac99-8009-4f70-a4ff-bfad9f6428c1"
 
-    class ActivationError(message: String) : ActionError(message)
+    data class ActivationError(val message: String) : ActionError()
+    {
+        override val rawMessage: String
+            get() = message
+    }
 
     private suspend fun activate(key: String, label: String): Result<ActivateLicenseKey, ActionError>
     {
@@ -86,7 +93,11 @@ object Polar
     private fun generatePcId(): String? = getNetworkAddress(AddressType.MAC)
         ?.toByteArray()?.let { createHash("sha256", it) }
 
-    class ValidationError(message: String) : ActionError(message)
+    data class ValidationError(val message: String) : ActionError()
+    {
+        override val rawMessage: String
+            get() = message
+    }
 
     private suspend fun validate(key: String, activationId: String): Result<ValidateLicenseKey, ActionError>
     {
@@ -127,7 +138,7 @@ object Polar
         )
     }
 
-    suspend fun process(key: String): Result<String, ActionError>
+    suspend fun processLicenseKey(key: String): Result<String, ActionError>
     {
         suspend fun initData(): Result<LicenseKeyData, ActionError>
         {

@@ -18,7 +18,7 @@ import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import kotlin.io.path.Path
 
 @Composable
-fun FileDropdown(
+fun ModpackDropdown(
     pickerLauncher: PickerResultLauncher,
     enabled: Boolean = true,
 )
@@ -34,7 +34,7 @@ fun FileDropdown(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("File")
+                Text("Modpack")
             }
         },
         menuModifier = Modifier
@@ -85,7 +85,6 @@ fun FileDropdown(
             separator()
 
             // -- EXPORT --
-
 
             selectableItem(
                 selected = false,

@@ -32,7 +32,7 @@ fun WelcomeViewDropdown(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("File")
+                Text("Modpack")
             }
         },
         menuModifier = Modifier
