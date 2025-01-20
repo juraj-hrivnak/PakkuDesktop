@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,11 +18,14 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icon.PathIconKey
 import pakkupro.viewmodel.Icons
+import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LeftSideBarView(tabSelected: MutableState<Int>)
+fun LeftSideBar()
 {
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+
     Column(
         Modifier
             .fillMaxHeight()
@@ -32,7 +37,7 @@ fun LeftSideBarView(tabSelected: MutableState<Int>)
     ) {
         Tooltip({ Text("Manage Projects") }) {
             IconButton(
-                onClick = { tabSelected.value = 0 },
+                onClick = { modpackUiState.value = 0 },
                 Modifier.size(30.dp),
                 enabled = tabSelected.value != 0,
             ) {

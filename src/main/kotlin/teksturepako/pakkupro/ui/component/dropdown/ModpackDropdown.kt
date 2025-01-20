@@ -14,6 +14,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
+import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import kotlin.io.path.Path
 
@@ -24,6 +25,7 @@ fun ModpackDropdown(
 )
 {
     val profileData by ProfileViewModel.profileData.collectAsState()
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
     Dropdown(
         Modifier.padding(vertical = 4.dp),
@@ -34,7 +36,7 @@ fun ModpackDropdown(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Modpack")
+                modpackUiState.configFile?.getName()?.let { Text(it) } ?: Text("Modpack")
             }
         },
         menuModifier = Modifier

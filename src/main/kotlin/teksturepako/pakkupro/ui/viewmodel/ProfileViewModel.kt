@@ -89,6 +89,8 @@ object ProfileViewModel
         }
 
         writeToDisk()
+
+        ModpackViewModel.reset()
     }
 
     fun updateTheme(updatedTheme: IntUiThemes)
