@@ -8,7 +8,7 @@ data class ModpackUiState(
     val lockFile: LockFile? = null,
     val configFile: ConfigFile? = null,
 
-    val selectedTab: SelectedTab = SelectedTab.MODPACK,
+    val selectedTab: SelectedTab = SelectedTab.PROJECTS,
 
     val selectedProject: Project? = null,
     val editingProject: Project? = null,

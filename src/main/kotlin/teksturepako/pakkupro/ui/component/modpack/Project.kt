@@ -15,7 +15,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakku.api.projects.ProjectFile
+import teksturepako.pakku.api.data.ConfigFile
+import teksturepako.pakku.api.projects.*
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.component.button.CopyToClipboardButton
 import teksturepako.pakkupro.ui.component.text.GradientHeader
@@ -114,15 +115,26 @@ fun ProjectProperties()
             }
         }
 
-        ProjectTypeSelection()
+        ProjectEnumSelection(
+            label = "Type:",
+            enumEntries = ProjectType.entries,
+            projectRef = Project::type,
+            projectConfigRef = ConfigFile.ProjectConfig::type
+        )
 
-        ProjectSideSelection()
+        NullableProjectEnumSelection(
+            label = "Side:",
+            enumEntries = ProjectSide.entries,
+            projectRef = Project::side,
+            projectConfigRef = ConfigFile.ProjectConfig::side
+        )
 
-//        Redistributable(project, editable)
-//
-//        // -- ALIASES --
-//
-//        Aliases(project, editable)
+        ProjectEnumSelection(
+            label = "Update Strategy:",
+            enumEntries = UpdateStrategy.entries,
+            projectRef = Project::updateStrategy,
+            projectConfigRef = ConfigFile.ProjectConfig::updateStrategy
+        )
     }
 }
 

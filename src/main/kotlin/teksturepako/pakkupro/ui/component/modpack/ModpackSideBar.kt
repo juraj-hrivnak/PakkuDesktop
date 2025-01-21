@@ -35,30 +35,30 @@ fun ModpackSideBar()
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Tooltip({ Text("Manage Projects") }) {
-                IconButton(
-                    onClick = { ModpackViewModel.selectTab(SelectedTab.MODPACK) },
-                    Modifier.size(30.dp),
-                    enabled = modpackUiState.selectedTab != SelectedTab.MODPACK,
-                ) {
-                    Icon(
-                        key = PakkuDesktopIcons.Modpack.manage,
-                        contentDescription = "icon",
-                        tint = if (modpackUiState.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
-                        hints = arrayOf()
-                    )
-                }
-            }
-            Tooltip({ Text("Add Projects") }) {
+            Tooltip({ Text("Projects") }) {
                 IconButton(
                     onClick = { ModpackViewModel.selectTab(SelectedTab.PROJECTS) },
                     Modifier.size(30.dp),
                     enabled = modpackUiState.selectedTab != SelectedTab.PROJECTS,
                 ) {
                     Icon(
-                        key = PakkuDesktopIcons.Modpack.search,
+                        key = PakkuDesktopIcons.Modpack.manage,
                         contentDescription = "icon",
                         tint = if (modpackUiState.selectedTab == SelectedTab.PROJECTS) Color.LightGray else Color.Gray,
+                        hints = arrayOf()
+                    )
+                }
+            }
+            Tooltip({ Text("Modpack") }) {
+                IconButton(
+                    onClick = { ModpackViewModel.selectTab(SelectedTab.MODPACK) },
+                    Modifier.size(30.dp),
+                    enabled = modpackUiState.selectedTab != SelectedTab.MODPACK,
+                ) {
+                    Icon(
+                        key = PakkuDesktopIcons.properties,
+                        contentDescription = "icon",
+                        tint = if (modpackUiState.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
                         hints = arrayOf()
                     )
                 }

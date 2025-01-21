@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -18,6 +19,7 @@ import teksturepako.pakkupro.ui.component.button.ThemeButton
 @Composable
 fun PakkuApplicationScope.MainTitleBar(
     modifier: Modifier,
+    withGradient: Boolean = false,
     content: @Composable RowScope.() -> Unit = { }
 )
 {
@@ -25,6 +27,7 @@ fun PakkuApplicationScope.MainTitleBar(
         Row {
             this@MainTitleBar.decoratedWindowScope.TitleBar(
                 modifier.newFullscreenControls(),
+                gradientStartColor = if (withGradient) Color(16, 77, 69) else Color.Unspecified
             ) {
                 AlignedTitleBarContent(modifier, alignment = Alignment.Start) {
                     Icon(

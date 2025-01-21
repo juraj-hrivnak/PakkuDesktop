@@ -21,6 +21,8 @@ import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkupro.ui.component.modpack.ProjectDisplay
 import teksturepako.pakkupro.ui.component.modpack.ProjectFilter
 import teksturepako.pakkupro.ui.component.modpack.ProjectsList
+import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab
+import teksturepako.pakkupro.ui.view.children.modpackTabs.ProjectsTab
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
@@ -47,7 +49,7 @@ fun PakkuApplicationScope.ModpackView()
         ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
     }
 
-    MainTitleBar(Modifier.height(titleBarHeight)) {
+    MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
         ModpackDropdown(pickerLauncher)
     }
 
@@ -60,61 +62,8 @@ fun PakkuApplicationScope.ModpackView()
 
         when (modpackUiState.selectedTab)
         {
-            SelectedTab.MODPACK  -> ModpackTab()
             SelectedTab.PROJECTS -> ProjectsTab()
-        }
-    }
-}
-
-@Composable
-fun ProjectsTab()
-{
-    val outerSplitState: SplitLayoutState = rememberSplitLayoutState(0.2F)
-
-    Column(Modifier.fillMaxSize()) {
-        HorizontalSplitLayout(
-            state = outerSplitState,
-            first = {
-                FirstPane()
-            },
-            second = {
-                SecondPane()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            firstPaneMinWidth = 200.dp,
-            secondPaneMinWidth = 200.dp,
-            draggableWidth = 16.dp
-        )
-    }
-}
-
-@Composable
-fun ModpackTab()
-{
-
-}
-
-@Composable
-private fun FirstPane() {
-    Column {
-        Row {
-            ProjectDisplay()
-        }
-    }
-}
-
-@Composable
-private fun SecondPane() {
-    Column {
-        Row {
-            HorizontalBar {
-                ProjectFilter()
-            }
-        }
-        Row {
-            ProjectsList(rememberCoroutineScope())
+            SelectedTab.MODPACK  -> ModpackTab()
         }
     }
 }
