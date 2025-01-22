@@ -79,8 +79,6 @@ fun ProjectProperties()
 {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    val project = modpackUiState.selectedProject ?: return
-
     val coroutineScope = rememberCoroutineScope()
 
     Column(

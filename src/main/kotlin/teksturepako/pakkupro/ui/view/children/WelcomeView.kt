@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -13,6 +14,7 @@ import androidx.compose.ui.unit.sp
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.core.FileKitPlatformSettings
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
@@ -31,6 +33,8 @@ fun PakkuApplicationScope.WelcomeView()
 {
     val profileData by ProfileViewModel.profileData.collectAsState()
 
+    val coroutineScope = rememberCoroutineScope()
+
     val titleBarHeight = 40.dp
 
     val pickerLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
@@ -39,7 +43,9 @@ fun PakkuApplicationScope.WelcomeView()
     ) { directory ->
         if (directory?.path == null) return@rememberDirectoryPickerLauncher
 
-        ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+        coroutineScope.launch {
+            ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+        }
     }
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
@@ -98,7 +104,9 @@ fun PakkuApplicationScope.WelcomeView()
                 profileData.recentProfilesFiltered.forEach { (modpack, path) ->
                     OutlinedButton(
                         onClick = {
-                            ProfileViewModel.updateCurrentProfile(Path(path))
+                            coroutineScope.launch {
+                                ProfileViewModel.updateCurrentProfile(Path(path))
+                            }
                         },
                     ) {
                         Text(

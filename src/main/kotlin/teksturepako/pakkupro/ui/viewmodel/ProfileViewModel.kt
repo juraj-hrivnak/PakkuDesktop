@@ -21,7 +21,6 @@ object ProfileViewModel
     init
     {
         loadFromDisk()
-        writeToDisk()
     }
 
     fun loadFromDisk()
@@ -35,7 +34,7 @@ object ProfileViewModel
         }
     }
 
-    fun writeToDisk()
+    suspend fun writeToDisk()
     {
         println("ProfileViewModel written to disk")
 
@@ -59,7 +58,7 @@ object ProfileViewModel
         }
     }
 
-    fun updateCurrentProfile(updatedCurrentProfile: Path?)
+    suspend fun updateCurrentProfile(updatedCurrentProfile: Path?)
     {
         loadFromDisk()
 
@@ -93,7 +92,7 @@ object ProfileViewModel
         ModpackViewModel.reset()
     }
 
-    fun updateTheme(updatedTheme: IntUiThemes)
+    suspend fun updateTheme(updatedTheme: IntUiThemes)
     {
         loadFromDisk()
 

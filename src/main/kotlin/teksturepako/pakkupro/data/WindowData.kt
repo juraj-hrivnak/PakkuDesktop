@@ -5,8 +5,9 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.jsonEncodeDefaults
+import teksturepako.pakku.io.writeToFile
 import java.io.File
 
 @Serializable
@@ -31,10 +32,8 @@ data class WindowData(
         }.getOrNull() ?: WindowData()
     }
 
-    fun write()
-    {
-        val text = _json.encodeToString(Json.serializersModule.serializer(), this)
-        File(FILE_NAME).writeText(text)
-    }
+    suspend fun write(): ActionError? = writeToFile<WindowData>(
+        this, FILE_NAME, format = _json
+    )
 }
 

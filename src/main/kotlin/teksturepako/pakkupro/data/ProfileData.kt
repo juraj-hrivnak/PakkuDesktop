@@ -1,9 +1,9 @@
 package teksturepako.pakkupro.data
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.serializer
-import teksturepako.pakku.api.data.json
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.jsonEncodeDefaults
+import teksturepako.pakku.io.writeToFile
 import teksturepako.pakkupro.ui.application.theme.IntUiThemes
 import java.io.File
 import java.nio.file.Path
@@ -39,9 +39,7 @@ data class ProfileData(
         }
     }
 
-    fun write()
-    {
-        val text = jsonEncodeDefaults.encodeToString(json.serializersModule.serializer(), this)
-        File(FILE_NAME).writeText(text)
-    }
+    suspend fun write(): ActionError? = writeToFile<ProfileData>(
+        this, FILE_NAME, format = jsonEncodeDefaults
+    )
 }

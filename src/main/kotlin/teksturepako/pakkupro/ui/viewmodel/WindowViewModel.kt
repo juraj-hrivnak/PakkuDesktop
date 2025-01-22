@@ -1,6 +1,8 @@
 package teksturepako.pakkupro.ui.viewmodel
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.WindowState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -20,7 +22,6 @@ object WindowViewModel
     init
     {
         loadFromDisk()
-        writeToDisk()
     }
 
     fun loadFromDisk()
@@ -34,7 +35,7 @@ object WindowViewModel
         }
     }
 
-    fun writeToDisk()
+    suspend fun writeToDisk()
     {
         println("WindowViewModel written to disk")
 
@@ -42,7 +43,7 @@ object WindowViewModel
         _windowData.value.write()
     }
 
-    fun updateWindowData(windowState: WindowState)
+    suspend fun updateWindowData(windowState: WindowState)
     {
         loadFromDisk()
 

@@ -4,11 +4,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
@@ -23,6 +25,8 @@ fun WelcomeViewDropdown(
 )
 {
     val profileData by ProfileViewModel.profileData.collectAsState()
+
+    val coroutineScope = rememberCoroutineScope()
 
     Dropdown(
         Modifier.padding(vertical = 4.dp),
@@ -84,7 +88,9 @@ fun WelcomeViewDropdown(
 
                 profileData.recentProfilesFiltered.forEach { (modpack, path) ->
                     selectableItem(false, onClick = {
-                        ProfileViewModel.updateCurrentProfile(Path(path))
+                        coroutineScope.launch {
+                            ProfileViewModel.updateCurrentProfile(Path(path))
+                        }
                     }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
