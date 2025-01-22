@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropEvent
@@ -33,7 +34,7 @@ import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import java.net.URI
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProjectsList(coroutineScope: CoroutineScope)
 {
@@ -126,11 +127,16 @@ fun ProjectsList(coroutineScope: CoroutineScope)
     ) {
         lockFile.getAllProjects().filter(modpackUiState.projectsFilter).map { project ->
             item {
-                Row(Modifier.padding(vertical = 4.dp)) {
-                    Column {
+                Row(
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(Modifier.width(300.dp)) {
                         IconButton(
                             onClick = { ModpackViewModel.selectProject(project) },
-                            Modifier.padding(horizontal = 4.dp).size(30.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp).size(30.dp)
                         ) {
                             Tooltip({ Text("Properties") }) {
                                 Icon(
@@ -141,33 +147,66 @@ fun ProjectsList(coroutineScope: CoroutineScope)
                                 )
                             }
                         }
-                    }
-                    Column(verticalArrangement = Arrangement.SpaceEvenly) {
-                        Row {
+
+                        Column(verticalArrangement = Arrangement.SpaceEvenly) {
                             project.name.values.firstOrNull()?.let {
                                 Text(it, Modifier.padding(4.dp))
                             }
-                        }
-                        Row {
-                            project.getProviders().map { provider ->
-                                val provIcon = when (provider.serialName)
-                                {
-                                    "curseforge" -> PakkuDesktopIcons.Platforms.curseForge
-                                    "github"     -> PakkuDesktopIcons.Platforms.gitHub
-                                    "modrinth"   -> PakkuDesktopIcons.Platforms.modrinth
-                                    else         -> null
-                                }
 
-                                provIcon
-                                    ?.let {
-                                        Icon(it, provider.name, Modifier.padding(4.dp).size(25.dp))
+                            Row {
+                                project.getProviders().map { provider ->
+                                    val provIcon = when (provider.serialName) {
+                                        "curseforge" -> PakkuDesktopIcons.Platforms.curseForge
+                                        "github" -> PakkuDesktopIcons.Platforms.gitHub
+                                        "modrinth" -> PakkuDesktopIcons.Platforms.modrinth
+                                        else -> null
                                     }
-                                    ?: Text(provider.name)
+
+                                    provIcon?.let {
+                                        Icon(it, provider.name, Modifier.padding(4.dp).size(25.dp))
+                                    } ?: Text(provider.name)
+                                }
                             }
                         }
                     }
+
+                    FlowRow {
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            if (!project.redistributable)
+                            {
+                                Icon(
+                                    PakkuDesktopIcons.exclamationTriangle,
+                                    null,
+                                    Modifier.size(25.dp),
+                                    tint = Color.Red
+                                )
+                            }
+                        }
+
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(project.type.name, Modifier.padding(4.dp), color = Color.Gray)
+                        }
+
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            project.side?.name?.let { Text(it, Modifier.padding(4.dp), color = Color.Gray) }
+                        }
+
+
+                    }
                 }
-                Spacer(Modifier.background(JewelTheme.globalColors.borders.disabled).height(1.dp).fillMaxWidth())
+
+                Spacer(
+                    Modifier
+                        .background(JewelTheme.globalColors.borders.disabled)
+                        .height(1.dp)
+                        .fillMaxWidth()
+                )
             }
         }
     }
