@@ -72,11 +72,11 @@ object ModpackViewModel
         }
     }
 
-    fun selectEditingProject(project: Project?)
+    fun editProject(boolean: Boolean)
     {
         _modpackUiState.update { currentState ->
             currentState.copy(
-                editingProject = project
+                editingProject = boolean
             )
         }
     }
@@ -87,7 +87,7 @@ object ModpackViewModel
     {
         val lockFile = _modpackUiState.value.lockFile ?: return
         val configFile = _modpackUiState.value.configFile ?: return
-        val editingProject = _modpackUiState.value.editingProject ?: return
+        val editingProject = _modpackUiState.value.selectedProject ?: return
 
         configFile.setProjectConfig(editingProject, lockFile, builder)
         configFile.write()

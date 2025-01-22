@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component.modpack
+package teksturepako.pakkupro.ui.component.modpack.projectPropSelection
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -29,9 +29,9 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
 
     val coroutineScope = rememberCoroutineScope()
 
-    if (modpackUiState.editingProject != null)
+    if (modpackUiState.editingProject)
     {
-        var buttonState by remember { mutableStateOf(modpackUiState.editingProject?.let { projectRef(it) }) }
+        var buttonState by remember { mutableStateOf(modpackUiState.selectedProject?.let { projectRef(it) }) }
 
         val buttons = enumEntries.map { entry ->
             SegmentedControlButtonData(
@@ -75,13 +75,13 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
                                         projectConfigRef.set(this, null)
                                     }
                                     ModpackViewModel.loadFromDisk()
+                                    buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
                                 }
-                                buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
                             },
-                            modifier = Modifier.padding(horizontal = 4.dp).size(30.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
                         ) {
                             Icon(
-                                PakkuDesktopIcons.remove,
+                                PakkuDesktopIcons.rollback,
                                 "reset",
                                 tint = Color.Gray,
                                 modifier = Modifier.padding(horizontal = 4.dp)
@@ -138,9 +138,9 @@ fun <T : Enum<T>> ProjectEnumSelection(
 
     val coroutineScope = rememberCoroutineScope()
 
-    if (modpackUiState.editingProject != null)
+    if (modpackUiState.editingProject)
     {
-        var buttonState by remember { mutableStateOf(modpackUiState.editingProject?.let { projectRef(it) }) }
+        var buttonState by remember { mutableStateOf(modpackUiState.selectedProject?.let { projectRef(it) }) }
 
         val buttons = enumEntries.map { entry ->
             SegmentedControlButtonData(
@@ -182,13 +182,13 @@ fun <T : Enum<T>> ProjectEnumSelection(
                                         projectConfigRef.set(this, null)
                                     }
                                     ModpackViewModel.loadFromDisk()
+                                    buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
                                 }
-                                buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
                             },
-                            modifier = Modifier.padding(horizontal = 4.dp).size(30.dp)
+                            modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
                         ) {
                             Icon(
-                                PakkuDesktopIcons.remove,
+                                PakkuDesktopIcons.rollback,
                                 "reset",
                                 tint = Color.Gray,
                                 modifier = Modifier.padding(horizontal = 4.dp)

@@ -11,6 +11,7 @@ object PakkuDesktopIcons
     val remove = PathIconKey("icons/remove.svg", this::class.java)
     val properties = PathIconKey("icons/properties.svg", this::class.java)
     val cloudDownload = PathIconKey("icons/cloud-download.svg", this::class.java)
+    val rollback = PathIconKey("icons/rollback.svg", this::class.java)
 
     val darkTheme = PathIconKey("icons/theme/darkTheme.svg", this::class.java)
     val lightTheme = PathIconKey("icons/theme/lightTheme.svg", this::class.java)

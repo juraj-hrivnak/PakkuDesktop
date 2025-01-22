@@ -19,6 +19,10 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.*
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.component.button.CopyToClipboardButton
+import teksturepako.pakkupro.ui.component.modpack.projectPropSelection.NullableProjectEnumSelection
+import teksturepako.pakkupro.ui.component.modpack.projectPropSelection.NullableProjectStringSelection
+import teksturepako.pakkupro.ui.component.modpack.projectPropSelection.ProjectBooleanSelection
+import teksturepako.pakkupro.ui.component.modpack.projectPropSelection.ProjectEnumSelection
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
@@ -30,9 +34,9 @@ fun ProjectDisplay()
 
     val project = modpackUiState.selectedProject ?: return
 
-    LaunchedEffect(project)
+    LaunchedEffect(project.pakkuId)
     {
-        ModpackViewModel.selectEditingProject(null)
+        ModpackViewModel.editProject(false)
     }
 
     val scrollState = rememberScrollState()
@@ -97,13 +101,13 @@ fun ProjectProperties()
             ) {
                 OutlinedButton(
                     onClick = {
-                        if (modpackUiState.editingProject == null)
+                        if (!modpackUiState.editingProject)
                         {
-                            ModpackViewModel.selectEditingProject(project)
+                            ModpackViewModel.editProject(true)
                         }
                         else
                         {
-                            ModpackViewModel.selectEditingProject(null)
+                            ModpackViewModel.editProject(false)
                             coroutineScope.launch {
                                 ModpackViewModel.loadFromDisk()
                             }
@@ -134,6 +138,18 @@ fun ProjectProperties()
             enumEntries = UpdateStrategy.entries,
             projectRef = Project::updateStrategy,
             projectConfigRef = ConfigFile.ProjectConfig::updateStrategy
+        )
+
+        ProjectBooleanSelection(
+            label = "Redistributable:",
+            projectRef = Project::redistributable,
+            projectConfigRef = ConfigFile.ProjectConfig::redistributable
+        )
+
+        NullableProjectStringSelection(
+            label = "Subpath:",
+            projectRef = Project::getSubpath,
+            projectConfigRef = ConfigFile.ProjectConfig::subpath
         )
     }
 }

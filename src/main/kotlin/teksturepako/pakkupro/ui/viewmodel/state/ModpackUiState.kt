@@ -11,7 +11,7 @@ data class ModpackUiState(
     val selectedTab: SelectedTab = SelectedTab.PROJECTS,
 
     val selectedProject: Project? = null,
-    val editingProject: Project? = null,
+    val editingProject: Boolean = false,
 
     val projectsFilter: (Project) -> Boolean = { true },
 )

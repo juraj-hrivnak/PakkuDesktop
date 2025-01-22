@@ -21,6 +21,7 @@ import teksturepako.pakkupro.ui.PakkuDesktopIcons
 @Composable
 fun ContentBox(
     modifier: Modifier = Modifier,
+    color: Color = JewelTheme.globalColors.borders.disabled,
     content: @Composable () -> Unit,
 )
 {
@@ -29,7 +30,7 @@ fun ContentBox(
             .shadow(
                 elevation = JewelTheme.tooltipStyle.metrics.shadowSize,
                 shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
-                ambientColor = JewelTheme.globalColors.borders.disabled,
+                ambientColor = color,
                 spotColor = Color.Transparent,
             )
             .background(
@@ -38,54 +39,11 @@ fun ContentBox(
             )
             .border(
                 width = JewelTheme.tooltipStyle.metrics.borderWidth,
-                color = JewelTheme.globalColors.borders.disabled,
+                color = color,
                 shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
             )
             .padding(JewelTheme.tooltipStyle.metrics.contentPadding),
     ) {
         content()
-    }
-}
-
-@Composable
-fun ContentBoxTextField(
-    state: TextFieldState,
-    modifier: Modifier = Modifier,
-    onEnterPressed: (() -> Unit)? = null,
-    onRemoveClicked: (() -> Unit)? = null,
-    removeButtonEnabled: Boolean = true,
-) {
-    ContentBox {
-        Row(horizontalArrangement = Arrangement.Center) {
-            Column {
-                TextField(
-                    state,
-                    modifier.onKeyEvent { keyEvent ->
-                        if (keyEvent.key != Key.Enter) return@onKeyEvent false
-                        if (keyEvent.type == KeyEventType.KeyUp)
-                        {
-                            if (onEnterPressed == null) return@onKeyEvent false else onEnterPressed()
-                        }
-
-                        true
-                    },
-                )
-            }
-            if (state.text.isNotBlank() && removeButtonEnabled)
-            {
-                Column(modifier.padding(start = 1.dp)) {
-                    IconButton(
-                        onClick = {
-                            if (onRemoveClicked != null)
-                            {
-                                onRemoveClicked()
-                            }
-                        }
-                    ) {
-                        Icon(PakkuDesktopIcons.remove, "remove", Modifier.size(30.dp), tint = Color.Gray)
-                    }
-                }
-            }
-        }
     }
 }
