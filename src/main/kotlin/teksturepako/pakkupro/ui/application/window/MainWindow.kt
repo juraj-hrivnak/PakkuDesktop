@@ -19,6 +19,9 @@ import org.jetbrains.jewel.window.styling.DecoratedWindowStyle
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.appName
 import teksturepako.pakkupro.ui.application.theme.ThemedBox
+import teksturepako.pakkupro.ui.component.dialog.CloseDialog
+import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkupro.ui.viewmodel.WindowViewModel
 import java.awt.Dimension
 import kotlin.system.exitProcess
@@ -27,6 +30,7 @@ import kotlin.system.exitProcess
 fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() -> Unit)
 {
     val windowData by WindowViewModel.windowData.collectAsState()
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
     val windowState = rememberWindowState(
         placement = windowData.placement,
@@ -44,10 +48,22 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
         state = windowState,
         onCloseRequest = {
             runBlocking {
-                WindowViewModel.updateWindowData(windowState)
+                if (modpackUiState.action.first != null)
+                {
+                    ProfileViewModel.updateCloseDialog(forceClose = true) {
+                        WindowViewModel.updateWindowData(windowState)
 
-                exitApplication()
-                exitProcess(0)
+                        exitApplication()
+                        exitProcess(0)
+                    }
+                }
+                else
+                {
+                    WindowViewModel.updateWindowData(windowState)
+
+                    exitApplication()
+                    exitProcess(0)
+                }
             }
         },
         title = appName,
@@ -67,6 +83,8 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
                 }
             )
         }
+
+        CloseDialog()
     }
 
     WindowViewModel.applyInitialWindowPlacement(rememberCoroutineScope())

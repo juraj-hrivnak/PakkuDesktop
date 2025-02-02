@@ -17,13 +17,12 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkupro.data.actionsImpl.exportImpl
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
-import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import kotlin.io.path.Path
 
 @Composable
-fun PakkuApplicationScope.ModpackDropdown(
+fun ModpackDropdown(
     pickerLauncher: PickerResultLauncher,
     enabled: Boolean = true,
 )
@@ -74,9 +73,20 @@ fun PakkuApplicationScope.ModpackDropdown(
                 }
             }
 
+            // -- CLOSE --
+
             selectableItem(false, onClick = {
-                coroutineScope.launch {
-                    ProfileViewModel.updateCurrentProfile(null)
+                if (modpackUiState.action.first != null)
+                {
+                    ProfileViewModel.updateCloseDialog {
+                        ProfileViewModel.updateCurrentProfile(null)
+                    }
+                }
+                else
+                {
+                    coroutineScope.launch {
+                        ProfileViewModel.updateCurrentProfile(null)
+                    }
                 }
             }) {
                 Row {
@@ -99,7 +109,7 @@ fun PakkuApplicationScope.ModpackDropdown(
             selectableItem(
                 selected = false,
                 onClick = {
-                    exportImpl(profileData, modpackUiState)
+                    exportImpl(modpackUiState)
                 },
                 enabled = modpackUiState.action.first == null
             ) {
@@ -170,13 +180,14 @@ fun PakkuApplicationScope.ModpackDropdown(
                     selectableItem(false, onClick = {
                         if (modpackUiState.action.first != null)
                         {
-
+                            ProfileViewModel.updateCloseDialog {
+                                ProfileViewModel.updateCurrentProfile(Path(path))
+                            }
                         }
                         else
                         {
                             coroutineScope.launch {
                                 ProfileViewModel.updateCurrentProfile(Path(path))
-
                             }
                         }
                     }) {

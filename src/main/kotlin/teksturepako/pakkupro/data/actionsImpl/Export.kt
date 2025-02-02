@@ -8,7 +8,6 @@ import teksturepako.pakku.api.actions.export.ExportProfile
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
 import teksturepako.pakku.cli.ui.shortForm
 import teksturepako.pakku.io.toHumanReadableSize
-import teksturepako.pakkupro.data.ProfileData
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import java.nio.file.Path
@@ -22,20 +21,22 @@ data class ExportData(
     val profile: ExportProfile, val path: Path, val duration: Duration
 )
 
-fun exportImpl(profileData: ProfileData, modpackUiState: ModpackUiState)
+fun exportImpl(modpackUiState: ModpackUiState)
 {
     if (modpackUiState.action.first != null) return
 
+    val threadPool = Executors.newSingleThreadExecutor { thread ->
+        Thread(thread, "export-background-thread").apply {
+            // Set to daemon to prevent hanging
+            isDaemon = true
+        }
+    }.asCoroutineDispatcher() + SupervisorJob()
+
+    val coroutineScope = CoroutineScope(threadPool + Dispatchers.IO)
+
     try
     {
-        val threadPool = Executors.newSingleThreadExecutor { thread ->
-            Thread(thread, "export-background-thread").apply {
-                // Set to daemon to prevent hanging
-                isDaemon = true
-            }
-        }.asCoroutineDispatcher() + SupervisorJob()
-
-        val job = CoroutineScope(threadPool + Dispatchers.IO).launch {
+        val job = coroutineScope.launch {
             val lockFile = modpackUiState.lockFile?.copy() ?: return@launch
             val configFile = modpackUiState.configFile?.copy() ?: return@launch
             val platforms = lockFile.getPlatforms().getOrNull() ?: return@launch
@@ -76,10 +77,12 @@ fun exportImpl(profileData: ProfileData, modpackUiState: ModpackUiState)
             ).joinAll()
         }
 
-        ModpackViewModel.updateAction("Exporting", job)
+        ModpackViewModel.runActionWithJob("Exporting", job)
 
         job.invokeOnCompletion { throwable ->
-            ModpackViewModel.updateAction(null, null)
+            coroutineScope.launch {
+                ModpackViewModel.terminateAction()
+            }
 
             throwable?.let { error ->
                 ModpackViewModel.toasterState?.show(
@@ -91,7 +94,8 @@ fun exportImpl(profileData: ProfileData, modpackUiState: ModpackUiState)
         }
     }
     catch (e: Exception) {
-        // Reset state if something goes wrong during setup
-        ModpackViewModel.updateAction(null, null)
+        coroutineScope.launch {
+            ModpackViewModel.terminateAction()
+        }
     }
 }

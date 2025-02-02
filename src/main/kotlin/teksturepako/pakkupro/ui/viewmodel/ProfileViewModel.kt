@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkupro.data.ProfileData
+import teksturepako.pakkupro.data.ProfileData.CloseDialogData
 import teksturepako.pakkupro.ui.application.theme.IntUiThemes
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -103,5 +104,25 @@ object ProfileViewModel
         }
 
         writeToDisk()
+    }
+
+    // -- CLOSE DIALOG --
+
+    fun updateCloseDialog(forceClose: Boolean = false, onClose: suspend () -> Unit)
+    {
+        _profileData.update { currentState ->
+            currentState.copy(
+                closeDialogData = CloseDialogData(onClose, forceClose)
+            )
+        }
+    }
+
+    fun dismissCloseDialog()
+    {
+        _profileData.update { currentState ->
+            currentState.copy(
+                closeDialogData = null
+            )
+        }
     }
 }

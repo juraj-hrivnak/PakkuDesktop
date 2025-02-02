@@ -1,6 +1,7 @@
 package teksturepako.pakkupro.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.jsonEncodeDefaults
 import teksturepako.pakku.io.writeToFile
@@ -14,6 +15,8 @@ data class ProfileData(
     val currentProfile: String? = null,
     val recentProfiles: Map<String, String> = mutableMapOf(),
     val theme: String = "Dark",
+
+    @Transient val closeDialogData: CloseDialogData? = null
 )
 {
     val currentProfilePath: Path?
@@ -26,6 +29,11 @@ data class ProfileData(
 
     val intUiTheme
         get() = IntUiThemes.valueOf(this.theme)
+
+    data class CloseDialogData(
+        val onClose: suspend () -> Unit,
+        val forceClose: Boolean = false
+    )
 
     companion object
     {

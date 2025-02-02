@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.dokar.sonner.ToasterState
 import com.github.michaelbull.result.get
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +59,7 @@ object ModpackViewModel
             ModpackUiState()
         }
         _modpackUiState.value.action.second?.cancel()
+        toasterState?.dismissAll()
     }
 
     fun selectTab(updatedTab: SelectedTab)
@@ -108,25 +110,30 @@ object ModpackViewModel
         }
     }
 
-    fun updateAction(updatedAction: String?, job: Job? = null)
+    fun runActionWithJob(updatedAction: String, job: Job)
     {
-        if (updatedAction != null)
+        _modpackUiState.update { currentState ->
+            currentState.copy(
+                action = updatedAction to job
+            )
+        }
+    }
+
+    suspend fun terminateAction()
+    {
+        if (_modpackUiState.value.action.second != null)
         {
-            _modpackUiState.update { currentState ->
-                currentState.copy(
-                    action = updatedAction to job
-                )
-            }
-            println("ModpackViewModel action updated to '$updatedAction'")
+            _modpackUiState.value.action.second?.cancelAndJoin()
+            println("ModpackViewModel action job cancelled")
         }
         else
         {
-            job?.cancel()
-            _modpackUiState.update { currentState ->
-                currentState.copy(
-                    action = null to null
-                )
-            }
+            println("ModpackViewModel action job was not found")
+        }
+        _modpackUiState.update { currentState ->
+            currentState.copy(
+                action = null to null
+            )
         }
     }
 
