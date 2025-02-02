@@ -41,12 +41,16 @@ fun CloseDialog()
                         modpackUiState.action.first
                             ?.let {
                                 Header(
-                                    headerText = "Do you want to terminate the '$it' action?",
+                                    headerText = "Action '$it' is running.",
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                                Text(
+                                    text = "Do you want to terminate the action?",
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
                             }
                             ?: Header(
-                                headerText = "Do you want to close?",
+                                headerText = "Do you want to close this modpack?",
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
 
