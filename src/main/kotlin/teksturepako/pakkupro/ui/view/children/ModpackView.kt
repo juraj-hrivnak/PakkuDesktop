@@ -56,8 +56,17 @@ fun PakkuApplicationScope.ModpackView()
     ) { directory ->
         if (directory?.path == null) return@rememberDirectoryPickerLauncher
 
-        coroutineScope.launch {
-            ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+        if (modpackUiState.action.first != null)
+        {
+            ProfileViewModel.updateCloseDialog {
+                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+            }
+        }
+        else
+        {
+            coroutineScope.launch {
+                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+            }
         }
     }
 

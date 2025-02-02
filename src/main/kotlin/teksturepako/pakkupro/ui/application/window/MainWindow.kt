@@ -47,18 +47,20 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
     DecoratedWindow(
         state = windowState,
         onCloseRequest = {
-            runBlocking {
-                if (modpackUiState.action.first != null)
-                {
-                    ProfileViewModel.updateCloseDialog(forceClose = true) {
+            if (modpackUiState.action.first != null)
+            {
+                ProfileViewModel.updateCloseDialog(forceClose = true) {
+                    runBlocking {
                         WindowViewModel.updateWindowData(windowState)
 
                         exitApplication()
                         exitProcess(0)
                     }
                 }
-                else
-                {
+            }
+            else
+            {
+                runBlocking {
                     WindowViewModel.updateWindowData(windowState)
 
                     exitApplication()

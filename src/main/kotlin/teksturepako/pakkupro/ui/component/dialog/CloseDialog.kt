@@ -28,7 +28,7 @@ fun CloseDialog()
 
     val coroutineScope = rememberCoroutineScope()
 
-    if (profileData.closeDialogData != null)
+    if (profileData.closeDialog != null)
     {
         Dialog(onDismissRequest = { ProfileViewModel.dismissCloseDialog() }) {
             ContentBox {
@@ -55,11 +55,11 @@ fun CloseDialog()
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    if (profileData.closeDialogData!!.forceClose)
+                                    if (profileData.closeDialog!!.forceClose)
                                     {
                                         // Close and then terminate action
                                         coroutineScope.launch {
-                                            profileData.closeDialogData!!.onClose.invoke()
+                                            profileData.closeDialog!!.onClose.invoke()
                                             ModpackViewModel.terminateAction()
                                         }
                                     }
@@ -70,7 +70,7 @@ fun CloseDialog()
                                             ModpackViewModel.terminateAction()
                                         }
                                         coroutineScope.launch {
-                                            profileData.closeDialogData!!.onClose.invoke()
+                                            profileData.closeDialog!!.onClose.invoke()
                                         }
                                     }
                                 },

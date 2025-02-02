@@ -79,21 +79,13 @@ fun exportImpl(modpackUiState: ModpackUiState)
 
         ModpackViewModel.runActionWithJob("Exporting", job)
 
-        job.invokeOnCompletion { throwable ->
+        job.invokeOnCompletion {
             coroutineScope.launch {
                 ModpackViewModel.terminateAction()
             }
-
-            throwable?.let { error ->
-                ModpackViewModel.toasterState?.show(
-                    "Export failed: ${error.message}",
-                    type = ToastType.Error,
-                    duration = 30.seconds
-                )
-            }
         }
     }
-    catch (e: Exception) {
+    catch (_: Exception) {
         coroutineScope.launch {
             ModpackViewModel.terminateAction()
         }

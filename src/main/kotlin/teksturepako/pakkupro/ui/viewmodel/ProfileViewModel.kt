@@ -112,7 +112,7 @@ object ProfileViewModel
     {
         _profileData.update { currentState ->
             currentState.copy(
-                closeDialogData = CloseDialogData(onClose, forceClose)
+                closeDialog = CloseDialogData(onClose, forceClose)
             )
         }
     }
@@ -121,7 +121,7 @@ object ProfileViewModel
     {
         _profileData.update { currentState ->
             currentState.copy(
-                closeDialogData = null
+                closeDialog = null
             )
         }
     }

@@ -16,7 +16,7 @@ data class ProfileData(
     val recentProfiles: Map<String, String> = mutableMapOf(),
     val theme: String = "Dark",
 
-    @Transient val closeDialogData: CloseDialogData? = null
+    @Transient val closeDialog: CloseDialogData? = null
 )
 {
     val currentProfilePath: Path?
