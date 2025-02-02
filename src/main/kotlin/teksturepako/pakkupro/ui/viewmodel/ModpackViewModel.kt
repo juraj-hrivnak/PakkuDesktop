@@ -1,6 +1,11 @@
 package teksturepako.pakkupro.ui.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.dokar.sonner.ToasterState
 import com.github.michaelbull.result.get
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +57,7 @@ object ModpackViewModel
         _modpackUiState.update {
             ModpackUiState()
         }
+        _modpackUiState.value.action.second?.cancel()
     }
 
     fun selectTab(updatedTab: SelectedTab)
@@ -101,4 +107,30 @@ object ModpackViewModel
             )
         }
     }
+
+    fun updateAction(updatedAction: String?, job: Job? = null)
+    {
+        if (updatedAction != null)
+        {
+            _modpackUiState.update { currentState ->
+                currentState.copy(
+                    action = updatedAction to job
+                )
+            }
+            println("ModpackViewModel action updated to '$updatedAction'")
+        }
+        else
+        {
+            job?.cancel()
+            _modpackUiState.update { currentState ->
+                currentState.copy(
+                    action = null to null
+                )
+            }
+        }
+    }
+
+    // -- TOASTER --
+
+    var toasterState: ToasterState? by mutableStateOf(null)
 }

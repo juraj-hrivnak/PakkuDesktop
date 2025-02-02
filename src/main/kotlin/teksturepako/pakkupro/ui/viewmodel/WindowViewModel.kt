@@ -82,4 +82,5 @@ object WindowViewModel
             _windowScopeInitialized = true
         }
     }
+
 }

@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
@@ -59,7 +59,9 @@ fun ProjectBooleanSelection(
             Row(
                 verticalAlignment = Alignment.Top // Center align vertically
             ) {
-                Column {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Row {
                         ContentBox(Modifier.padding(2.dp)) {
                             Text(label)
@@ -81,7 +83,7 @@ fun ProjectBooleanSelection(
                             Icon(
                                 PakkuDesktopIcons.rollback,
                                 "reset",
-                                tint = Color.Gray,
+                                tint = JewelTheme.contentColor,
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
                         }

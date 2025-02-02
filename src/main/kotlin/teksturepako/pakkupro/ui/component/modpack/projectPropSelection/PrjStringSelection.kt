@@ -13,6 +13,7 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
@@ -64,7 +65,9 @@ fun NullableProjectStringSelection(
             Row(
                 verticalAlignment = Alignment.Top
             ) {
-                Column {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Row {
                         ContentBox(Modifier.padding(2.dp)) {
                             Text(label)
@@ -86,7 +89,7 @@ fun NullableProjectStringSelection(
                             Icon(
                                 PakkuDesktopIcons.rollback,
                                 "reset",
-                                tint = Color.Gray,
+                                tint = JewelTheme.contentColor,
                                 modifier = Modifier.padding(horizontal = 4.dp)
                             )
                         }

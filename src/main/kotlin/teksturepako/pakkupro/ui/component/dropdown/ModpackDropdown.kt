@@ -15,13 +15,15 @@ import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import teksturepako.pakkupro.data.actionsImpl.exportImpl
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
+import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import kotlin.io.path.Path
 
 @Composable
-fun ModpackDropdown(
+fun PakkuApplicationScope.ModpackDropdown(
     pickerLauncher: PickerResultLauncher,
     enabled: Boolean = true,
 )
@@ -97,7 +99,9 @@ fun ModpackDropdown(
             selectableItem(
                 selected = false,
                 onClick = {
+                    exportImpl(profileData, modpackUiState)
                 },
+                enabled = modpackUiState.action.first == null
             ) {
                 Row {
                     Column(Modifier.fillMaxWidth(0.2f)) {
@@ -164,8 +168,16 @@ fun ModpackDropdown(
 
                 profileData.recentProfilesFiltered.forEach { (modpack, path) ->
                     selectableItem(false, onClick = {
-                        coroutineScope.launch {
-                            ProfileViewModel.updateCurrentProfile(Path(path))
+                        if (modpackUiState.action.first != null)
+                        {
+
+                        }
+                        else
+                        {
+                            coroutineScope.launch {
+                                ProfileViewModel.updateCurrentProfile(Path(path))
+
+                            }
                         }
                     }) {
                         Row {

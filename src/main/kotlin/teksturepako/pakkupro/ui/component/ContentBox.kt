@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 
@@ -16,6 +17,7 @@ import org.jetbrains.jewel.ui.theme.tooltipStyle
 fun ContentBox(
     modifier: Modifier = Modifier,
     color: Color = JewelTheme.globalColors.borders.disabled,
+    shape: Shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
     content: @Composable () -> Unit,
 )
 {
@@ -23,18 +25,18 @@ fun ContentBox(
         modifier
             .shadow(
                 elevation = JewelTheme.tooltipStyle.metrics.shadowSize,
-                shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+                shape = shape,
                 ambientColor = color,
                 spotColor = Color.Transparent,
             )
             .background(
                 color = JewelTheme.globalColors.panelBackground,
-                shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+                shape = shape,
             )
             .border(
                 width = JewelTheme.tooltipStyle.metrics.borderWidth,
                 color = color,
-                shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+                shape = shape,
             )
             .padding(JewelTheme.tooltipStyle.metrics.contentPadding),
     ) {

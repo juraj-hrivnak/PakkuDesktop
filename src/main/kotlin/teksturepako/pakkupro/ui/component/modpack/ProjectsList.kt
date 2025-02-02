@@ -133,7 +133,10 @@ fun ProjectsList(coroutineScope: CoroutineScope)
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(Modifier.width(300.dp)) {
+                    Row(
+                        Modifier.width(300.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
                         IconButton(
                             onClick = { ModpackViewModel.selectProject(project) },
                             modifier = Modifier.padding(horizontal = 4.dp).size(30.dp)
