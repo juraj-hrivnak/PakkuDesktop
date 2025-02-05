@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakkupro.data.actions.RevealFileAction
+import teksturepako.pakkupro.io.RevealFileAction
 import teksturepako.pakkupro.data.actionsImpl.ExportData
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
