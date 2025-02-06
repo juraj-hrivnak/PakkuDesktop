@@ -139,7 +139,10 @@ fun ProjectsList(coroutineScope: CoroutineScope)
                     ) {
                         IconButton(
                             onClick = { ModpackViewModel.selectProject(project) },
-                            modifier = Modifier.padding(horizontal = 4.dp).size(30.dp)
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .size(30.dp),
+                            enabled = modpackUiState.selectedProject != project
                         ) {
                             Tooltip({ Text("Properties") }) {
                                 Icon(
@@ -180,10 +183,8 @@ fun ProjectsList(coroutineScope: CoroutineScope)
                             if (!project.redistributable)
                             {
                                 Icon(
-                                    PakkuDesktopIcons.exclamationTriangle,
-                                    null,
-                                    Modifier.size(25.dp),
-                                    tint = Color.Red
+                                    PakkuDesktopIcons.exclamationTriangle, null,
+                                    Modifier.size(25.dp), tint = Color.Red
                                 )
                             }
                         }
@@ -199,8 +200,6 @@ fun ProjectsList(coroutineScope: CoroutineScope)
                         ) {
                             project.side?.name?.let { Text(it, Modifier.padding(4.dp), color = Color.Gray) }
                         }
-
-
                     }
                 }
 

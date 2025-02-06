@@ -12,20 +12,22 @@ import kotlin.io.path.Path
 
 @Serializable
 data class ProfileData(
-    val currentProfile: String? = null,
-    val recentProfiles: Map<String, String> = mutableMapOf(),
+    val currentProfile: Profile? = null,
+    val recentProfiles: List<Profile> = listOf(),
     val theme: String = "Dark",
 
     @Transient val closeDialog: CloseDialogData? = null
 )
 {
     val currentProfilePath: Path?
-        get() = currentProfile?.let { Path(it) }
+        get() = currentProfile?.let { Path(it.path) }
 
-    val recentProfilesFiltered: Map<String, String>
-        get() = recentProfiles.filterNot {
-            it.value == currentProfile.toString()
-        }
+    val recentProfilesFiltered: List<Profile>
+        get() = recentProfiles
+            .filterNot { recentProfiles ->
+                recentProfiles.path == currentProfile?.path
+            }
+            .sortedByDescending { it.lastOpened }
 
     val intUiTheme
         get() = IntUiThemes.valueOf(this.theme)

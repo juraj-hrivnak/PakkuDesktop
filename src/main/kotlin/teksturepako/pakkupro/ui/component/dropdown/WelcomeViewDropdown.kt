@@ -46,9 +46,12 @@ fun WelcomeViewDropdown(
 
             // -- OPEN --
 
-            selectableItem(false, onClick = {
-                pickerLauncher.launch()
-            }) {
+            selectableItem(
+                false,
+                onClick = {
+                    pickerLauncher.launch()
+                }
+            ) {
                 Row {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
@@ -86,17 +89,17 @@ fun WelcomeViewDropdown(
                     }
                 }
 
-                profileData.recentProfilesFiltered.forEach { (modpack, path) ->
+                profileData.recentProfilesFiltered.map { profile ->
                     selectableItem(false, onClick = {
                         coroutineScope.launch {
-                            ProfileViewModel.updateCurrentProfile(Path(path))
+                            ProfileViewModel.updateCurrentProfile(Path(profile.path))
                         }
                     }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
                             Column {
                                 Text(
-                                    modpack,
+                                    profile.name,
                                     color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
                                 )
                             }

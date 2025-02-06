@@ -176,18 +176,18 @@ fun ModpackDropdown(
                     }
                 }
 
-                profileData.recentProfilesFiltered.forEach { (modpack, path) ->
+                profileData.recentProfilesFiltered.map { profile ->
                     selectableItem(false, onClick = {
                         if (modpackUiState.action.first != null)
                         {
                             ProfileViewModel.updateCloseDialog {
-                                ProfileViewModel.updateCurrentProfile(Path(path))
+                                ProfileViewModel.updateCurrentProfile(Path(profile.path))
                             }
                         }
                         else
                         {
                             coroutineScope.launch {
-                                ProfileViewModel.updateCurrentProfile(Path(path))
+                                ProfileViewModel.updateCurrentProfile(Path(profile.path))
                             }
                         }
                     }) {
@@ -195,7 +195,7 @@ fun ModpackDropdown(
                             Column(Modifier.fillMaxWidth(0.2f)) {}
                             Column {
                                 Text(
-                                    modpack,
+                                    profile.name,
                                     color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
                                 )
                             }
