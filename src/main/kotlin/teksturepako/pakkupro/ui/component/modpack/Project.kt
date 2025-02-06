@@ -15,6 +15,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.*
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
@@ -28,49 +29,60 @@ import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ProjectDisplay()
-{
+fun ProjectDisplay() {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
     val project = modpackUiState.selectedProject ?: return
 
-    LaunchedEffect(project.pakkuId)
-    {
+    LaunchedEffect(project.pakkuId) {
         ModpackViewModel.editProject(false)
     }
 
     val scrollState = rememberScrollState()
 
-    Column(
-        Modifier.verticalScroll(scrollState)
+    Box(
+        Modifier.fillMaxSize()
     ) {
-        project.name.values.firstOrNull()?.let { projectName ->
-            FlowRow(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                SelectionContainer {
-                    GradientHeader(projectName)
-                }
-                CopyToClipboardButton(
-                    projectName,
-                    Modifier
-                        .size(25.dp)
-                        .padding(4.dp),
-                )
-            }
-        }
-        project.files.forEach { projectFile ->
-            ProjectFileName(projectFile)
-        }
-        Spacer(
+        Column(
             Modifier
-                .padding(top = 16.dp)
-                .background(JewelTheme.globalColors.borders.normal)
-                .height(1.dp)
                 .fillMaxWidth()
+                .verticalScroll(scrollState)
+        ) {
+            project.name.values.firstOrNull()?.let { projectName ->
+                FlowRow(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    SelectionContainer {
+                        GradientHeader(projectName)
+                    }
+                    CopyToClipboardButton(
+                        projectName,
+                        Modifier
+                            .size(25.dp)
+                            .padding(4.dp),
+                    )
+                }
+            }
+            project.files.forEach { projectFile ->
+                ProjectFileName(projectFile)
+            }
+            Spacer(
+                Modifier
+                    .padding(top = 16.dp)
+                    .background(JewelTheme.globalColors.borders.normal)
+                    .height(1.dp)
+                    .fillMaxWidth()
+            )
+            ProjectProperties()
+        }
+
+        VerticalScrollbar(
+            scrollState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight(),
         )
-        ProjectProperties()
     }
 }
 
