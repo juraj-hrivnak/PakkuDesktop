@@ -18,60 +18,54 @@ import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ModpackTab()
-{
+fun ModpackTab() {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    Column {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.5F)
-                .padding(PakkuDesktopConstants.commonPaddingSize),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            FlowColumn(
-                verticalArrangement = Arrangement.Center,
-            ) {
-                GradientHeader(modpackUiState.configFile?.getName() ?: "Modpack")
-                modpackUiState.configFile?.getVersion()?.let { Text(it) }
-                modpackUiState.configFile?.getAuthor()?.let { Text(it) }
-                modpackUiState.configFile?.getDescription()?.let { Text(it) }
-            }
-        }
-
-        val scrollState = rememberScrollState()
-
-        Row(
-            Modifier
-                .padding(PakkuDesktopConstants.commonPaddingSize)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Header("Recent Modpacks")
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(PakkuDesktopConstants.commonPaddingSize)
-                .verticalScroll(scrollState),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.Top
-        ) {
-            FlowRow(
-                Modifier
+            Box(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 60.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    .weight(0.4f)
+                    .padding(PakkuDesktopConstants.commonPaddingSize),
+                contentAlignment = Alignment.Center
             ) {
+                FlowColumn(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    GradientHeader(
+                        modpackUiState.configFile?.getName() ?: "Modpack",
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    modpackUiState.configFile?.getVersion()?.let { version ->
+                        Text(
+                            text = version,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                    modpackUiState.configFile?.getAuthor()?.let { author ->
+                        Text(
+                            text = author,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                    modpackUiState.configFile?.getDescription()?.let { description ->
+                        Text(
+                            text = description,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
             }
         }
-
-        VerticalScrollbar(scrollState = scrollState)
     }
 }

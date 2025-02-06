@@ -24,6 +24,7 @@ import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.component.text.Header
+import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import kotlin.io.path.Path
 
@@ -56,7 +57,7 @@ fun PakkuApplicationScope.WelcomeView()
     Column(
         Modifier
             .fillMaxSize()
-            .offset(y = titleBarHeight),
+            .subtractTopHeight(titleBarHeight)
     ) {
         Row(
             Modifier

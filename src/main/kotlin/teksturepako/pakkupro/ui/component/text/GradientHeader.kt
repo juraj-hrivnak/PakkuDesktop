@@ -1,6 +1,7 @@
 package teksturepako.pakkupro.ui.component.text
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -9,7 +10,7 @@ import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.ui.PakkuDesktopConstants
 
 @Composable
-fun GradientHeader(headerText: String)
+fun GradientHeader(headerText: String, modifier: Modifier = Modifier)
 {
     val gradientColors = listOf(Color(27, 204, 234), Color(81, 203, 255))
 
@@ -21,6 +22,7 @@ fun GradientHeader(headerText: String)
             brush = Brush.linearGradient(
                 colors = gradientColors
             )
-        )
+        ),
+        modifier = modifier
     )
 }

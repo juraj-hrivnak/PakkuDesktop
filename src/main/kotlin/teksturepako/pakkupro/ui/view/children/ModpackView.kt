@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dokar.sonner.Toaster
@@ -21,11 +22,12 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.io.RevealFileAction
-import teksturepako.pakkupro.data.actionsImpl.ExportData
+import teksturepako.pakkupro.actions.ExportData
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
+import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ProjectsTab
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
@@ -133,7 +135,7 @@ fun PakkuApplicationScope.ModpackView()
     Row(
         Modifier
             .fillMaxSize()
-            .offset(y = titleBarHeight),
+            .subtractTopHeight(titleBarHeight)
     ) {
         ModpackSideBar()
 

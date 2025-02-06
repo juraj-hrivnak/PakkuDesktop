@@ -12,6 +12,7 @@ import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.FadeIn
 import teksturepako.pakkupro.ui.component.license.LicenseKeyField
 import teksturepako.pakkupro.ui.component.text.GradientHeader
+import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -28,7 +29,7 @@ fun PakkuApplicationScope.ActivationView()
     Column(
         Modifier
             .fillMaxSize()
-            .offset(y = titleBarHeight),
+            .subtractTopHeight(titleBarHeight)
     ) {
         Row(
             Modifier

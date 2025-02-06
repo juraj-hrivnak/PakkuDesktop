@@ -15,7 +15,7 @@ import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import teksturepako.pakkupro.data.actionsImpl.exportImpl
+import teksturepako.pakkupro.actions.exportImpl
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
