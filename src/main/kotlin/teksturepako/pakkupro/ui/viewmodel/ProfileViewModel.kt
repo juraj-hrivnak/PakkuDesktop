@@ -8,11 +8,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import teksturepako.pakku.api.data.ConfigFile
+import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkupro.data.Profile
 import teksturepako.pakkupro.data.ProfileData
 import teksturepako.pakkupro.data.ProfileData.CloseDialogData
 import teksturepako.pakkupro.ui.application.theme.IntUiThemes
+import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -23,19 +25,19 @@ object ProfileViewModel
     private var _profileData = MutableStateFlow(ProfileData())
     val profileData: StateFlow<ProfileData> = _profileData.asStateFlow()
 
-    init
+    suspend fun loadFromDisk()
     {
-        loadFromDisk()
-    }
-
-    fun loadFromDisk()
-    {
-        val profileDataState = ProfileData.readOrNew()
+        val updatedProfileData = ProfileData.readOrNew()
 
         println("ProfileViewModel loaded from disk")
 
-        _profileData.update {
-            profileDataState
+        _profileData.update { currentState ->
+            currentState.copy(
+                currentProfile = updatedProfileData.currentProfile,
+                recentProfiles = updatedProfileData.recentProfiles,
+                theme = updatedProfileData.theme,
+                closeDialog = currentState.closeDialog
+            )
         }
     }
 
@@ -51,8 +53,11 @@ object ProfileViewModel
         val modpackName = ConfigFile.readToResultFrom(Path("$path/${ConfigFile.FILE_NAME}"))
             .get()?.getName() ?: path.fileName.pathString
 
-        if (path.pathString !in _profileData.value.recentProfiles.map { it.path })
+        if (path.absolutePathString() !in _profileData.value.recentProfiles.map { it.path })
         {
+            // Don't add the profile to recent profiles if it doesn't have a lock file.
+            if (LockFile.readToResultFrom(path.absolutePathString() + File.separator + LockFile.FILE_NAME).isFailure) return@runBlocking
+
             _profileData.update { currentState ->
                 currentState.copy(
                     recentProfiles = currentState.recentProfiles.plus(
@@ -118,7 +123,7 @@ object ProfileViewModel
             }
 
             // Update Pakku's working path
-            workingPath = updatedCurrentProfile.toString()
+            workingPath = updatedCurrentProfile.absolutePathString()
         }
 
         writeToDisk()

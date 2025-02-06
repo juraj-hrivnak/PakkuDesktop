@@ -77,6 +77,7 @@ fun CloseDialog()
                                             profileData.closeDialog!!.onClose.invoke()
                                         }
                                     }
+                                    ProfileViewModel.dismissCloseDialog()
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             ) {

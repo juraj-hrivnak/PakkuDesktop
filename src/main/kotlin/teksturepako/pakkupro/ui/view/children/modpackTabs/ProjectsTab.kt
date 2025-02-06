@@ -5,16 +5,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
 import teksturepako.pakkupro.ui.component.HorizontalBar
-import teksturepako.pakkupro.ui.component.modpack.ProjectDisplay
-import teksturepako.pakkupro.ui.component.modpack.ProjectFilter
-import teksturepako.pakkupro.ui.component.modpack.ProjectsList
+import teksturepako.pakkupro.ui.component.modpack.project.ProjectDisplay
+import teksturepako.pakkupro.ui.component.modpack.project.ProjectFilter
+import teksturepako.pakkupro.ui.component.modpack.project.ProjectsList
 
 @Composable
 fun ProjectsTab()
@@ -39,7 +38,7 @@ fun ProjectsTab()
                         }
                     }
                     Row {
-                        ProjectsList(rememberCoroutineScope())
+                        ProjectsList()
                     }
                 }
             },

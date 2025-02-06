@@ -24,7 +24,7 @@ object ModpackViewModel
 
     suspend fun loadFromDisk()
     {
-        val lockFile = LockFile.readToResult().getOrNull() ?: return
+        val lockFile = LockFile.readToResult()
 
         _modpackUiState.update { currentState ->
             currentState.copy(
@@ -32,9 +32,10 @@ object ModpackViewModel
             )
         }
 
-        if (_modpackUiState.value.selectedProject != null)
+        // Update selected project reference when updating lock file
+        if (_modpackUiState.value.selectedProject != null && lockFile.isSuccess)
         {
-            val updatedProject = lockFile.getAllProjects().find { project ->
+            val updatedProject = lockFile.getOrNull()?.getAllProjects()?.find { project ->
                 project isAlmostTheSameAs _modpackUiState.value.selectedProject!!
             }
             selectProject(updatedProject)
@@ -42,7 +43,7 @@ object ModpackViewModel
 
         println("ModpackViewModel (LockFile) loaded from disk")
 
-        val configFile = ConfigFile.readToResult().get() ?: return
+        val configFile = ConfigFile.readToResult()
 
         _modpackUiState.update { currentState ->
             currentState.copy(
@@ -93,8 +94,8 @@ object ModpackViewModel
         builder: ConfigFile.ProjectConfig.(slug: String) -> Unit
     )
     {
-        val lockFile = _modpackUiState.value.lockFile ?: return
-        val configFile = _modpackUiState.value.configFile ?: return
+        val lockFile = _modpackUiState.value.lockFile?.getOrNull() ?: return
+        val configFile = _modpackUiState.value.configFile?.get() ?: return
         val editingProject = _modpackUiState.value.selectedProject ?: return
 
         configFile.setProjectConfig(editingProject, lockFile, builder)
@@ -124,7 +125,7 @@ object ModpackViewModel
         if (_modpackUiState.value.action.second != null)
         {
             _modpackUiState.value.action.second?.cancelAndJoin()
-            println("ModpackViewModel action job cancelled")
+            println("ModpackViewModel action job '${_modpackUiState.value.action.first}' cancelled")
         }
         else
         {

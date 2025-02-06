@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component.modpack
+package teksturepako.pakkupro.ui.component.modpack.project
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -36,11 +36,11 @@ import java.net.URI
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
-fun ProjectsList(coroutineScope: CoroutineScope)
+fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
 {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    val lockFile = modpackUiState.lockFile ?: return
+    val lockFile = modpackUiState.lockFile?.getOrNull() ?: return
 
     val scrollState = rememberLazyListState()
 

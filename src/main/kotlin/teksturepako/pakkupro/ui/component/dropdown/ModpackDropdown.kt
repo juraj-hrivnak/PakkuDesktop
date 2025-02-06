@@ -41,7 +41,7 @@ fun ModpackDropdown(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                modpackUiState.configFile?.getName()?.let { Text(it) } ?: Text("Modpack")
+                profileData.currentProfile?.name?.let { Text(it) } ?: Text("Modpack")
             }
         },
         menuModifier = Modifier

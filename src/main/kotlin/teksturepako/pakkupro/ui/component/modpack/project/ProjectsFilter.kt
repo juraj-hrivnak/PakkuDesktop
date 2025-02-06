@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component.modpack
+package teksturepako.pakkupro.ui.component.modpack.project
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height

@@ -88,6 +88,8 @@ dependencies {
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-swing
     runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
 
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+
     // IntelliJ Icons: https://mvnrepository.com/artifact/com.jetbrains.intellij.platform/icons
     implementation("com.jetbrains.intellij.platform:icons:243.21565.208")
 

@@ -2,14 +2,10 @@ package teksturepako.pakkupro.ui.view.children
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dokar.sonner.Toaster
@@ -21,11 +17,12 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakkupro.io.RevealFileAction
 import teksturepako.pakkupro.actions.ExportData
+import teksturepako.pakkupro.io.RevealFileAction
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
+import teksturepako.pakkupro.ui.component.modpack.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab
@@ -44,9 +41,12 @@ fun PakkuApplicationScope.ModpackView()
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
     val profileData by ProfileViewModel.profileData.collectAsState()
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+
     val coroutineScope = rememberCoroutineScope()
 
-    coroutineScope.launch {
+    LaunchedEffect(lifecycleState, profileData.currentProfile) {
         ModpackViewModel.loadFromDisk()
     }
 
@@ -132,17 +132,31 @@ fun PakkuApplicationScope.ModpackView()
         }
     }
 
-    Row(
-        Modifier
-            .fillMaxSize()
-            .subtractTopHeight(titleBarHeight)
-    ) {
-        ModpackSideBar()
-
-        when (modpackUiState.selectedTab)
-        {
-            SelectedTab.PROJECTS -> ProjectsTab()
-            SelectedTab.MODPACK  -> ModpackTab()
+    if (modpackUiState.lockFile?.isFailure == true)
+    {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .subtractTopHeight(titleBarHeight)
+        ) {
+            CreateModpackDialog()
         }
     }
+    else
+    {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .subtractTopHeight(titleBarHeight)
+        ) {
+            ModpackSideBar()
+
+            when (modpackUiState.selectedTab)
+            {
+                SelectedTab.PROJECTS -> ProjectsTab()
+                SelectedTab.MODPACK  -> ModpackTab()
+            }
+        }
+    }
+
 }

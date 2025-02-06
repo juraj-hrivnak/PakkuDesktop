@@ -17,11 +17,9 @@ object LicenseKeyViewModel
     var error by mutableStateOf<ActionError?>(null)
         private set
 
-    fun checkActivation(coroutineScope: CoroutineScope)
+    suspend fun checkActivation()
     {
-        coroutineScope.launch {
-            isActivated = Polar.isActivated()
-        }
+        isActivated = Polar.isActivated()
     }
 
     fun process(licenseKeyText: String, coroutineScope: CoroutineScope)

@@ -1,7 +1,11 @@
 package teksturepako.pakkupro.actions
 
 import com.dokar.sonner.ToastType
-import kotlinx.coroutines.*
+import com.github.michaelbull.result.get
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.IOExportingError
 import teksturepako.pakku.api.actions.export.ExportProfile
@@ -26,8 +30,8 @@ fun exportImpl(modpackUiState: ModpackUiState)
 
     runAction("Exporting") {
         launch {
-            val lockFile = modpackUiState.lockFile?.copy() ?: return@launch
-            val configFile = modpackUiState.configFile?.copy() ?: return@launch
+            val lockFile = modpackUiState.lockFile?.getOrNull()?.copy() ?: return@launch
+            val configFile = modpackUiState.configFile?.get()?.copy() ?: return@launch
             val platforms = lockFile.getPlatforms().getOrNull() ?: return@launch
 
             exportDefaultProfiles(

@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component.modpack.projectPropSelection
+package teksturepako.pakkupro.ui.component.modpack.project.projectPropSelection
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.input.delete
