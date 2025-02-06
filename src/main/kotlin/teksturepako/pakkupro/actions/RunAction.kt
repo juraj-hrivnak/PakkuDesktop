@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.data.actionsImpl
+package teksturepako.pakkupro.actions
 
 import kotlinx.coroutines.*
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
