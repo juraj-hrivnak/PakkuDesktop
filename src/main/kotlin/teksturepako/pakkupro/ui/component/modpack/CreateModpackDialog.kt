@@ -26,7 +26,9 @@ fun CreateModpackDialog()
 
     val coroutineScope = rememberCoroutineScope()
 
-    Dialog(onDismissRequest = { ProfileViewModel.dismissCloseDialog() }) {
+    Dialog(
+        onDismissRequest = { ProfileViewModel.dismissCloseDialog() },
+    ) {
         ContentBox {
             Row(
                 Modifier.padding(PakkuDesktopConstants.commonPaddingSize),

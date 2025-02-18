@@ -1,7 +1,7 @@
 package teksturepako.pakkupro.actions
 
 import com.dokar.sonner.ToastType
-import com.github.michaelbull.result.get
+import com.github.michaelbull.result.getOrElse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -30,9 +30,32 @@ fun exportImpl(modpackUiState: ModpackUiState)
 
     runAction("Exporting") {
         launch {
-            val lockFile = modpackUiState.lockFile?.getOrNull()?.copy() ?: return@launch
-            val configFile = modpackUiState.configFile?.get()?.copy() ?: return@launch
-            val platforms = lockFile.getPlatforms().getOrNull() ?: return@launch
+            val lockFile = modpackUiState.lockFile?.getOrElse {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasterState?.show(
+                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
+                    )
+                }
+                return@launch
+            } ?: return@launch
+
+            val configFile = modpackUiState.configFile?.getOrElse {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasterState?.show(
+                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
+                    )
+                }
+                return@launch
+            } ?: return@launch
+
+            val platforms = lockFile.getPlatforms().getOrElse {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasterState?.show(
+                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
+                    )
+                }
+                return@launch
+            }
 
             exportDefaultProfiles(
                 onError = { profile: ExportProfile, error: ActionError ->

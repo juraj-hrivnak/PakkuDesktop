@@ -19,7 +19,8 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun CopyToClipboardButton(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    useSimpleTooltip: Boolean = false
 )
 {
     val clipboardManager = LocalClipboardManager.current
@@ -32,7 +33,16 @@ fun CopyToClipboardButton(
         },
         modifier
     ) {
-        Tooltip({ Text("Copy \"$text\" to clipboard") }) {
+        Tooltip({
+            if (useSimpleTooltip)
+            {
+                Text("Copy to clipboard")
+            }
+            else
+            {
+                Text("Copy \"$text\" to clipboard")
+            }
+        }) {
             Icon(
                 key = PakkuDesktopIcons.clone,
                 contentDescription = "copy",
@@ -59,7 +69,7 @@ fun CopyToClipboardButton(
         ) {
             passiveItem {
                 Text(
-                    "\"$text\" copied to clipboard",
+                    if (useSimpleTooltip) "copied to clipboard" else "\"$text\" copied to clipboard",
                     Modifier.padding(horizontal = 10.dp)
                 )
             }

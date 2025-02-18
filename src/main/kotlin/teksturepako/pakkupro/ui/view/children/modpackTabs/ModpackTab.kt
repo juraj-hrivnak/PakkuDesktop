@@ -1,15 +1,15 @@
 package teksturepako.pakkupro.ui.view.children.modpackTabs
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.ui.PakkuDesktopConstants
+import teksturepako.pakkupro.ui.component.HoverablePanel
+import teksturepako.pakkupro.ui.component.Switch
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
@@ -18,7 +18,7 @@ import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 fun ModpackTab() {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    Box(
+    HoverablePanel(
         modifier = Modifier.fillMaxSize()
     ) {
         Column(
@@ -39,6 +39,13 @@ fun ModpackTab() {
                     GradientHeader(
                         modpackUiState.configFile?.get()?.getName() ?: "Modpack",
                         modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    var isChecked by remember { mutableStateOf(false) }
+
+                    Switch(
+                        checked = isChecked,
+                        onCheckedChange = { isChecked = it }
                     )
 
                     modpackUiState.configFile?.get()?.getVersion()?.let { version ->

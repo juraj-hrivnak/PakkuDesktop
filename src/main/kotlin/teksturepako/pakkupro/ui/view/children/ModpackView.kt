@@ -8,8 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dokar.sonner.ToastWidthPolicy
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
+import com.github.michaelbull.result.getError
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.core.FileKitPlatformSettings
@@ -17,10 +19,12 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkupro.actions.ExportData
 import teksturepako.pakkupro.io.RevealFileAction
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
+import teksturepako.pakkupro.ui.component.Error
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkupro.ui.component.modpack.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
@@ -47,6 +51,7 @@ fun PakkuApplicationScope.ModpackView()
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(lifecycleState, profileData.currentProfile) {
+        ProfileViewModel.loadFromDisk()
         ModpackViewModel.loadFromDisk()
     }
 
@@ -87,59 +92,61 @@ fun PakkuApplicationScope.ModpackView()
         }
     }
 
-    Row(
-        Modifier
-            .fillMaxSize()
-            .offset(y = titleBarHeight)
-    ) {
-        ModpackViewModel.toasterState?.let {
-            Toaster(
-                state = it,
-                alignment = Alignment.BottomEnd,
-                darkTheme = profileData.intUiTheme.isDark(),
-                expanded = true,
-                richColors = true,
-                showCloseButton = true,
-                maxVisibleToasts = 6,
-                messageSlot = { toast ->
-                    if (toast.message is ExportData)
-                    {
-                        val toastData = toast.message as ExportData
+    ModpackViewModel.toasterState?.let {
+        Toaster(
+            state = it,
+            alignment = Alignment.BottomEnd,
+            darkTheme = profileData.intUiTheme.isDark(),
+            expanded = true,
+            richColors = true,
+            showCloseButton = true,
+            maxVisibleToasts = 6,
+            widthPolicy = { ToastWidthPolicy(max = 400.dp) },
+            messageSlot = { toast ->
+                if (toast.message is ExportData)
+                {
+                    val toastData = toast.message as ExportData
 
-                        Column {
-                            Row {
-                                Text("[${toastData.profile.name} profile]", fontWeight = FontWeight.Bold)
-                                Text(" exported to:")
-                            }
-                            Row {
-                                Text(
-                                    toastData.path.pathString,
-                                    Modifier.clickable {
-                                        RevealFileAction.openFile(toastData.path)
-                                    },
-                                    style = JewelTheme.editorTextStyle,
-                                )
-                            }
+                    Column {
+                        Row {
+                            Text("[${toastData.profile.name} profile]", fontWeight = FontWeight.Bold)
+                            Text(" exported to:")
+                        }
+                        Row {
+                            Text(
+                                toastData.path.pathString,
+                                Modifier.clickable {
+                                    RevealFileAction.openFile(toastData.path)
+                                },
+                                style = JewelTheme.editorTextStyle,
+                            )
                         }
                     }
-                    else
-                    {
-                        Text(toast.message.toString())
-                    }
-                },
-                background = { SolidColor(JewelTheme.globalColors.panelBackground) },
-            )
-        }
+                }
+                else
+                {
+                    Text(toast.message.toString())
+                }
+            },
+            background = { SolidColor(JewelTheme.globalColors.panelBackground) },
+        )
     }
 
-    if (modpackUiState.lockFile?.isFailure == true)
+    if (modpackUiState.lockFile?.isErr == true)
     {
         Row(
             Modifier
                 .fillMaxSize()
                 .subtractTopHeight(titleBarHeight)
         ) {
-            CreateModpackDialog()
+            if (modpackUiState.lockFile!!.getError() is FileNotFound)
+            {
+                CreateModpackDialog()
+            }
+            else
+            {
+                modpackUiState.lockFile!!.getError()?.let { Error(it) }
+            }
         }
     }
     else

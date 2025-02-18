@@ -55,7 +55,8 @@ fun CloseDialog()
                             )
 
                         FlowRow(
-                            verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.Center,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {

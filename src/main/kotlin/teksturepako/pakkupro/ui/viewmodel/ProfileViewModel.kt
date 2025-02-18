@@ -1,6 +1,8 @@
 package teksturepako.pakkupro.ui.viewmodel
 
 import com.github.michaelbull.result.get
+import io.klogging.Klogger
+import io.klogging.logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +16,6 @@ import teksturepako.pakkupro.data.Profile
 import teksturepako.pakkupro.data.ProfileData
 import teksturepako.pakkupro.data.ProfileData.CloseDialogData
 import teksturepako.pakkupro.ui.application.theme.IntUiThemes
-import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -22,6 +23,8 @@ import kotlin.io.path.pathString
 
 object ProfileViewModel
 {
+    private val logger: Klogger = logger(this::class)
+
     private var _profileData = MutableStateFlow(ProfileData())
     val profileData: StateFlow<ProfileData> = _profileData.asStateFlow()
 
@@ -29,7 +32,7 @@ object ProfileViewModel
     {
         val updatedProfileData = ProfileData.readOrNew()
 
-        println("ProfileViewModel loaded from disk")
+        logger.info { "loaded from disk" }
 
         _profileData.update { currentState ->
             currentState.copy(
@@ -39,11 +42,16 @@ object ProfileViewModel
                 closeDialog = currentState.closeDialog
             )
         }
+
+        _profileData.value.currentProfile?.path?.let {
+            workingPath = it
+            logger.info { "workingPath set to [$workingPath]" }
+        }
     }
 
     suspend fun writeToDisk()
     {
-        println("ProfileViewModel written to disk")
+        logger.info { "written to disk" }
 
         // Write to disk
         _profileData.value.write()
@@ -56,7 +64,7 @@ object ProfileViewModel
         if (path.absolutePathString() !in _profileData.value.recentProfiles.map { it.path })
         {
             // Don't add the profile to recent profiles if it doesn't have a lock file.
-            if (LockFile.readToResultFrom(path.absolutePathString() + File.separator + LockFile.FILE_NAME).isFailure) return@runBlocking
+            if (LockFile.readToResultFrom(Path(path.pathString, LockFile.FILE_NAME)).isErr) return@runBlocking
 
             _profileData.update { currentState ->
                 currentState.copy(
@@ -106,6 +114,7 @@ object ProfileViewModel
 
             // Update Pakku's working path
             workingPath = "."
+            logger.info { "workingPath set to [$workingPath]" }
         }
         else
         {
@@ -124,6 +133,7 @@ object ProfileViewModel
 
             // Update Pakku's working path
             workingPath = updatedCurrentProfile.absolutePathString()
+            logger.info { "workingPath set to [$workingPath]" }
         }
 
         writeToDisk()

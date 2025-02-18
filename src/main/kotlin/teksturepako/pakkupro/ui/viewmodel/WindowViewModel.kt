@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.WindowState
+import io.klogging.Klogger
+import io.klogging.logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,19 +18,16 @@ import teksturepako.pakkupro.data.WindowData
 
 object WindowViewModel
 {
+    private val logger: Klogger = logger(this::class)
+
     private val _windowData = MutableStateFlow(WindowData())
     val windowData: StateFlow<WindowData> = _windowData.asStateFlow()
 
-    init
-    {
-        loadFromDisk()
-    }
-
-    fun loadFromDisk()
+    suspend fun loadFromDisk()
     {
         val windowDataState = WindowData.readOrNew()
 
-        println("WindowViewModel loaded from disk")
+        logger.info { "WindowViewModel loaded from disk" }
 
         _windowData.update {
             windowDataState
@@ -37,7 +36,7 @@ object WindowViewModel
 
     suspend fun writeToDisk()
     {
-        println("WindowViewModel written to disk")
+        logger.info { "WindowViewModel written to disk" }
 
         // Write to disk
         _windowData.value.write()

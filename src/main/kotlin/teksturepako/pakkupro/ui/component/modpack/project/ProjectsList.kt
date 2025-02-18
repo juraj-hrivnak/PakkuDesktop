@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.github.michaelbull.result.get
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -40,7 +41,7 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
 {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    val lockFile = modpackUiState.lockFile?.getOrNull() ?: return
+    val lockFile = modpackUiState.lockFile?.get() ?: return
 
     val scrollState = rememberLazyListState()
 

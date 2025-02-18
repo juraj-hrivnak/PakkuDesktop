@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
@@ -24,6 +25,8 @@ import teksturepako.pakkupro.ui.PakkuDesktopConstants
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.ContentBox
+import teksturepako.pakkupro.ui.component.FadeIn
+import teksturepako.pakkupro.ui.component.HoverablePanel
 import teksturepako.pakkupro.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.component.text.Header
@@ -62,7 +65,7 @@ fun PakkuApplicationScope.WelcomeView() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.5F)
+                .fillMaxHeight(0.45F)
                 .padding(PakkuDesktopConstants.commonPaddingSize),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
@@ -71,76 +74,81 @@ fun PakkuApplicationScope.WelcomeView() {
         }
 
         // Modpacks Box
-        ContentBox(
+        Box(
             Modifier
-                .padding(16.dp)
-                .weight(0.8f)
+                .fillMaxSize()
+                .weight(1f)
+                .padding(bottom = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            val scrollState = rememberScrollState()
-
-            Column(
-                Modifier
-                    .padding(4.dp)
-            ) {
-                // Header and Open button
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            FadeIn {
+                ContentBox(
+                    Modifier.fillMaxSize(0.9F).padding(20.dp)
                 ) {
-                    Header("Modpacks")
-                    OutlinedButton(
-                        onClick = { pickerLauncher.launch() }
-                    ) {
-                        Text("Open")
-                    }
-                }
+                    val scrollState = rememberScrollState()
 
-                Spacer(
-                    Modifier
-                        .padding(vertical = 16.dp)
-                        .background(JewelTheme.globalColors.borders.disabled)
-                        .height(1.dp)
-                        .fillMaxWidth()
-                )
-
-                Box(
-                    Modifier.fillMaxSize()
-                ) {
-                    FlowRow(
-                        Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(scrollState)
-                            .padding(end = 12.dp), // Space for scrollbar
-                        horizontalArrangement = Arrangement.Center,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        profileData.recentProfilesFiltered.map { profile ->
-                            OutlinedButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        ProfileViewModel.updateCurrentProfile(Path(profile.path))
-                                    }
-                                },
-                                modifier = Modifier.padding(8.dp)
-                            ) {
-                                Text(
-                                    profile.name,
-                                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                    fontSize = 16.sp
-                                )
+                    Column {
+                        // Header and Open button
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Header("Modpacks", Modifier.padding(horizontal = 24.dp))
+                            OutlinedButton(onClick = { pickerLauncher.launch() }) {
+                                Text("Open")
                             }
                         }
-                    }
 
-                    VerticalScrollbar(
-                        scrollState,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .fillMaxHeight()
-                    )
+                        Spacer(
+                            Modifier.padding(vertical = 16.dp).background(JewelTheme.globalColors.borders.disabled)
+                                .height(1.dp).fillMaxWidth()
+                        )
+
+                        Box(
+                            Modifier.fillMaxSize()
+                        ) {
+                            FlowRow(
+                                Modifier.fillMaxWidth().verticalScroll(scrollState)
+                                    .padding(end = 12.dp), // Space for scrollbar
+                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                profileData.recentProfilesFiltered.mapIndexed { i, profile ->
+                                    HoverablePanel(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                ProfileViewModel.updateCurrentProfile(Path(profile.path))
+                                            }
+                                        }
+                                    ) {
+                                        FlowColumn(
+                                            Modifier.padding(16.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            Text(
+                                                profile.name,
+                                                Modifier.padding(horizontal = 24.dp),
+                                                fontSize = 18.sp
+                                            )
+                                            Text(
+                                                profile.path,
+                                                Modifier.padding(horizontal = 24.dp),
+                                                fontSize = 16.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+
+                                    }
+                                }
+                            }
+
+                            VerticalScrollbar(
+                                scrollState, modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                            )
+                        }
+                    }
                 }
             }
         }

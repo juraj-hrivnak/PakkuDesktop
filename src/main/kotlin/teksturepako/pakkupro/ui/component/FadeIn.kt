@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.runtime.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
@@ -16,6 +17,8 @@ fun FadeIn(
     content: @Composable () -> Unit
 )
 {
+    val coroutineScope = rememberCoroutineScope()
+
     var isVisible by remember { mutableStateOf(false) }
 
     AnimatedVisibility(
@@ -26,7 +29,7 @@ fun FadeIn(
     }
 
     if (!isVisible) {
-        LaunchedEffect(Unit) {
+        coroutineScope.launch {
             if (delay != null) delay(duration.inWholeMilliseconds)
             isVisible = true
         }

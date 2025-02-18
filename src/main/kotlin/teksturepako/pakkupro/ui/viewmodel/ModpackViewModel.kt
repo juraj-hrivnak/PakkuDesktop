@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dokar.sonner.ToasterState
 import com.github.michaelbull.result.get
+import io.klogging.Klogger
+import io.klogging.logger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,12 +16,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
+import java.io.File
 
 object ModpackViewModel
 {
+    private val logger: Klogger = logger(this::class)
+
     private val _modpackUiState = MutableStateFlow(ModpackUiState())
     val modpackUiState: StateFlow<ModpackUiState> = _modpackUiState.asStateFlow()
 
@@ -33,15 +40,17 @@ object ModpackViewModel
         }
 
         // Update selected project reference when updating lock file
-        if (_modpackUiState.value.selectedProject != null && lockFile.isSuccess)
+        if (_modpackUiState.value.selectedProject != null && lockFile.isOk)
         {
-            val updatedProject = lockFile.getOrNull()?.getAllProjects()?.find { project ->
+            val updatedProject = lockFile.get()?.getAllProjects()?.find { project ->
                 project isAlmostTheSameAs _modpackUiState.value.selectedProject!!
             }
             selectProject(updatedProject)
         }
 
-        println("ModpackViewModel (LockFile) loaded from disk")
+        logger.info {
+            "LockFile [$workingPath${File.separator}${LockFile.FILE_NAME}] loaded from disk"
+        }
 
         val configFile = ConfigFile.readToResult()
 
@@ -51,7 +60,9 @@ object ModpackViewModel
             )
         }
 
-        println("ModpackViewModel (ConfigFile) loaded from disk")
+        logger.info {
+            "ConfigFile [$workingPath${File.separator}${ConfigFile.FILE_NAME}] loaded from disk"
+        }
     }
 
     fun reset()
@@ -94,7 +105,7 @@ object ModpackViewModel
         builder: ConfigFile.ProjectConfig.(slug: String) -> Unit
     )
     {
-        val lockFile = _modpackUiState.value.lockFile?.getOrNull() ?: return
+        val lockFile = _modpackUiState.value.lockFile?.get() ?: return
         val configFile = _modpackUiState.value.configFile?.get() ?: return
         val editingProject = _modpackUiState.value.selectedProject ?: return
 
@@ -124,13 +135,21 @@ object ModpackViewModel
     {
         if (_modpackUiState.value.action.second != null)
         {
-            _modpackUiState.value.action.second?.cancelAndJoin()
-            println("ModpackViewModel action job '${_modpackUiState.value.action.first}' cancelled")
+            try
+            {
+                _modpackUiState.value.action.second?.cancelAndJoin()
+            }
+            catch (_: CancellationException)
+            {
+            }
+
+            logger.info { "action job '${_modpackUiState.value.action.first}' cancelled" }
         }
         else
         {
-            println("ModpackViewModel action job was not found")
+            logger.info { "action job was not found" }
         }
+
         _modpackUiState.update { currentState ->
             currentState.copy(
                 action = null to null

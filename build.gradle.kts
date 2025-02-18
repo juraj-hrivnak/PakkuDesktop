@@ -94,7 +94,7 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:243.21565.208")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku-jvm:0.26.0.213-SNAPSHOT")
+    implementation("teksturepako.pakku:pakku-jvm:0.26.0.214-SNAPSHOT")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
@@ -105,6 +105,9 @@ dependencies {
 
     // Popups
     implementation("io.github.dokar3:sonner:0.3.8")
+
+    // Logging
+    implementation("io.klogging:klogging-jvm:0.8.0")
 }
 
 compose.desktop {

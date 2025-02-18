@@ -3,12 +3,14 @@ package teksturepako.pakkupro.data
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
+import com.github.michaelbull.result.get
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.jsonEncodeDefaults
+import teksturepako.pakku.io.decodeToResult
 import teksturepako.pakku.io.writeToFile
-import java.io.File
+import kotlin.io.path.Path
 
 @Serializable
 data class WindowData(
@@ -27,13 +29,10 @@ data class WindowData(
 
         const val FILE_NAME = "window-data.json"
 
-        fun readOrNew(): WindowData = runCatching {
-            _json.decodeFromString<WindowData>(File(FILE_NAME).readText())
-        }.getOrNull() ?: WindowData()
+        suspend fun readOrNew(): WindowData =
+            decodeToResult<WindowData>(Path(FILE_NAME), format = _json).get() ?: WindowData()
     }
 
-    suspend fun write(): ActionError? = writeToFile<WindowData>(
-        this, FILE_NAME, format = _json
-    )
+    suspend fun write(): ActionError? = writeToFile<WindowData>(this, FILE_NAME, format = _json)
 }
 

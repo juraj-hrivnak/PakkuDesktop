@@ -1,10 +1,7 @@
 package teksturepako.pakkupro.ui.application.window
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -31,6 +28,11 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
 {
     val windowData by WindowViewModel.windowData.collectAsState()
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+
+    LaunchedEffect(Unit)
+    {
+        WindowViewModel.loadFromDisk()
+    }
 
     val windowState = rememberWindowState(
         placement = windowData.placement,
