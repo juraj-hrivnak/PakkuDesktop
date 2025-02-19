@@ -2,9 +2,7 @@ package teksturepako.pakkupro.ui.component
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -162,6 +160,7 @@ fun SonnerToastHost(
     spacing: Dp = 4.dp
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -170,7 +169,9 @@ fun SonnerToastHost(
         Column(
             verticalArrangement = Arrangement.spacedBy(spacing),
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier
+                .padding(8.dp)
+                .verticalScroll(scrollState)
         ) {
             toasts.value.forEachIndexed { index, toast ->
                 key(toast.id) {
