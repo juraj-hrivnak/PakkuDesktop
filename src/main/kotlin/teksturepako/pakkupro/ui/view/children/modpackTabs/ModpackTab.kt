@@ -8,14 +8,20 @@ import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.ui.PakkuDesktopConstants
-import teksturepako.pakkupro.ui.component.HoverablePanel
-import teksturepako.pakkupro.ui.component.Switch
+import teksturepako.pakkupro.ui.component.*
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
+@Composable
+fun ModpackTab()
+{
+    ToastExample()
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ModpackTab() {
+fun PanelExample()
+{
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
     HoverablePanel(
@@ -71,5 +77,70 @@ fun ModpackTab() {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ToastExample() {
+    // State for managing toasts
+    val toasts = remember { mutableStateOf(listOf<ToastData>()) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Content with buttons to trigger different toasts
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Basic notification
+            HoverablePanel(
+                onClick = {
+                    toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text("Hello, juraj-hrivnak!")
+                        }
+                    }
+                }
+            ) {
+                Text(
+                    modifier = Modifier.padding(16.dp),
+                    text = "Show Welcome Toast"
+                )
+            }
+
+            // Custom content toast
+            HoverablePanel(
+                onClick = {
+                    toasts.showToast {
+                        Box(
+                            modifier = Modifier.padding(16.dp).width(300.dp)
+                        ) {
+                            Column {
+                                Text("Custom Notification")
+                                Spacer(Modifier.height(8.dp))
+                                Text("This is a multi-line toast with custom content!")
+                                Spacer(Modifier.height(8.dp))
+                                Switch(checked = true, onCheckedChange = { })
+                            }
+                        }
+                    }
+                }
+            ) {
+                Text(
+                    modifier = Modifier.padding(16.dp),
+                    text = "Show Custom Toast"
+                )
+            }
+        }
+
+        // Toast host that displays all notifications
+        SonnerToastHost(
+            toasts,
+            alignment = Alignment.TopCenter,
+            spacing = 8.dp
+        )
     }
 }

@@ -34,8 +34,8 @@ fun main()
     }
 
     CoroutineScope(Dispatchers.IO).launch {
-        ProfileViewModel.loadFromDisk()
         LicenseKeyViewModel.checkActivation()
+        ProfileViewModel.loadFromDisk()
     }
 
     themedApplication {

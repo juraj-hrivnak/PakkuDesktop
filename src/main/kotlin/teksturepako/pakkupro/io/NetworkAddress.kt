@@ -1,6 +1,8 @@
 package teksturepako.pakkupro.io
 
-import java.net.*
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.NetworkInterface
 
 internal enum class AddressType { IP, MAC }
 

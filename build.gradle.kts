@@ -97,14 +97,11 @@ dependencies {
     implementation("teksturepako.pakku:pakku-jvm:0.26.0.214-SNAPSHOT")
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     // File Kit
     implementation("io.github.vinceglb:filekit-core:0.8.7")
     implementation("io.github.vinceglb:filekit-compose:0.8.7")
-
-    // Popups
-    implementation("io.github.dokar3:sonner:0.3.8")
 
     // Logging
     implementation("io.klogging:klogging-jvm:0.8.0")
@@ -115,8 +112,10 @@ compose.desktop {
         mainClass = "teksturepako.pakkupro.MainKt"
 
         buildTypes.release.proguard {
+            isEnabled.set(false)
             configurationFiles.from(project.file("compose-desktop.pro"))
-            obfuscate.set(true)
+            obfuscate.set(false)
+            optimize.set(false)
         }
 
         nativeDistributions {

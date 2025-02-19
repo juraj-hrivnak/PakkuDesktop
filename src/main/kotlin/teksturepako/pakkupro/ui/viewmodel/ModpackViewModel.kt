@@ -1,15 +1,9 @@
 package teksturepako.pakkupro.ui.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import com.dokar.sonner.ToasterState
 import com.github.michaelbull.result.get
 import io.klogging.Klogger
 import io.klogging.logger
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,8 +23,14 @@ object ModpackViewModel
     private val _modpackUiState = MutableStateFlow(ModpackUiState())
     val modpackUiState: StateFlow<ModpackUiState> = _modpackUiState.asStateFlow()
 
-    suspend fun loadFromDisk()
-    {
+    suspend fun loadFromDisk() = coroutineScope {
+        launch {
+            ProfileViewModel.profileData.value.currentProfile?.path?.let {
+                workingPath = it
+                logger.info { "workingPath set to [$workingPath]" }
+            }
+        }.join()
+
         val lockFile = LockFile.readToResult()
 
         _modpackUiState.update { currentState ->
@@ -71,7 +71,6 @@ object ModpackViewModel
             ModpackUiState()
         }
         _modpackUiState.value.action.second?.cancel()
-        toasterState?.dismissAll()
     }
 
     fun selectTab(updatedTab: SelectedTab)
@@ -158,6 +157,4 @@ object ModpackViewModel
     }
 
     // -- TOASTER --
-
-    var toasterState: ToasterState? by mutableStateOf(null)
 }

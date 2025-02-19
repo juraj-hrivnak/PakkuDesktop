@@ -11,7 +11,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
-import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkupro.data.Profile
 import teksturepako.pakkupro.data.ProfileData
 import teksturepako.pakkupro.data.ProfileData.CloseDialogData
@@ -41,11 +40,6 @@ object ProfileViewModel
                 theme = updatedProfileData.theme,
                 closeDialog = currentState.closeDialog
             )
-        }
-
-        _profileData.value.currentProfile?.path?.let {
-            workingPath = it
-            logger.info { "workingPath set to [$workingPath]" }
         }
     }
 
@@ -111,10 +105,6 @@ object ProfileViewModel
                     currentProfile = null
                 )
             }
-
-            // Update Pakku's working path
-            workingPath = "."
-            logger.info { "workingPath set to [$workingPath]" }
         }
         else
         {
@@ -130,10 +120,6 @@ object ProfileViewModel
                     )
                 )
             }
-
-            // Update Pakku's working path
-            workingPath = updatedCurrentProfile.absolutePathString()
-            logger.info { "workingPath set to [$workingPath]" }
         }
 
         writeToDisk()

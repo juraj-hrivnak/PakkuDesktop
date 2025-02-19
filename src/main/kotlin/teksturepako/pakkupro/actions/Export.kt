@@ -1,6 +1,5 @@
 package teksturepako.pakkupro.actions
 
-import com.dokar.sonner.ToastType
 import com.github.michaelbull.result.getOrElse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
@@ -12,17 +11,11 @@ import teksturepako.pakku.api.actions.export.ExportProfile
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
 import teksturepako.pakku.cli.ui.shortForm
 import teksturepako.pakku.io.toHumanReadableSize
-import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import java.nio.file.Path
 import kotlin.io.path.fileSize
 import kotlin.io.path.pathString
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-
-data class ExportData(
-    val profile: ExportProfile, val path: Path, val duration: Duration
-)
 
 fun exportImpl(modpackUiState: ModpackUiState)
 {
@@ -32,27 +25,21 @@ fun exportImpl(modpackUiState: ModpackUiState)
         launch {
             val lockFile = modpackUiState.lockFile?.getOrElse {
                 withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasterState?.show(
-                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
-                    )
+
                 }
                 return@launch
             } ?: return@launch
 
             val configFile = modpackUiState.configFile?.getOrElse {
                 withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasterState?.show(
-                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
-                    )
+
                 }
                 return@launch
             } ?: return@launch
 
             val platforms = lockFile.getPlatforms().getOrElse {
                 withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasterState?.show(
-                        it.rawMessage, type = ToastType.Error, duration = 30.seconds
-                    )
+
                 }
                 return@launch
             }
@@ -63,9 +50,7 @@ fun exportImpl(modpackUiState: ModpackUiState)
                     {
                         val message = "[${profile.name} profile] ${error.rawMessage}"
                         withContext(Dispatchers.Main) {
-                            ModpackViewModel.toasterState?.show(
-                                message, type = ToastType.Error, duration = 30.seconds
-                            )
+
                         }
                         println(message)
                     }
@@ -78,9 +63,7 @@ fun exportImpl(modpackUiState: ModpackUiState)
                         "[${profile.name} profile] exported to '$filePath' " + "($fileSize) in ${duration.shortForm()}"
 
                     withContext(Dispatchers.Main) {
-                        ModpackViewModel.toasterState?.show(
-                            ExportData(profile, path, duration), type = ToastType.Success, duration = 30.seconds
-                        )
+
                     }
                     println(message)
                 },
