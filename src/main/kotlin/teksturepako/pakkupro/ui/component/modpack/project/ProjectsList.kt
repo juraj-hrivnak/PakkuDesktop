@@ -21,6 +21,7 @@ import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.DragData
 import androidx.compose.ui.draganddrop.dragData
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -32,32 +33,30 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakku.io.readPathBytesOrNull
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
+import teksturepako.pakkupro.ui.component.ProjectCard
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import java.net.URI
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
-{
+fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
     val lockFile = modpackUiState.lockFile?.get() ?: return
-
     val scrollState = rememberLazyListState()
+
+    // For shift+click functionality
+    var lastClickedIndex by remember { mutableStateOf<Int?>(null) }
+    var shiftPressed by remember { mutableStateOf(false) }
 
     /** How much space you want to remove from the start and the end of the Icon */
     val offsetDp = 10.dp
-
     val density = LocalDensity.current
-
     /** Offset in pixels */
     val offsetPx = remember(offsetDp) { density.run { offsetDp.roundToPx() } }
 
     var showTargetBorder by remember { mutableStateOf(false) }
     val dragAndDropTarget = remember {
-        object: DragAndDropTarget
-        {
-            // Highlights the border of a potential drop target
+        object : DragAndDropTarget {
             override fun onStarted(event: DragAndDropEvent) {
                 showTargetBorder = true
             }
@@ -67,8 +66,6 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
             }
 
             override fun onDrop(event: DragAndDropEvent): Boolean {
-                // Prints the type of action into system output every time
-                // a drag-and-drop operation is concluded.
                 println("Action at the target: ${event.action}")
 
                 if (event.dragData() !is DragData.FilesList) return false
@@ -109,24 +106,32 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
             .background(JewelTheme.globalColors.panelBackground)
             .then(
                 if (showTargetBorder)
-                    Modifier
-                        .border(
-                            width = 3.dp,
-                            color = JewelTheme.globalColors.outlines.focused,
-                            shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
-                        )
-                else
-                    Modifier
+                    Modifier.border(
+                        width = 3.dp,
+                        color = JewelTheme.globalColors.outlines.focused,
+                        shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+                    )
+                else Modifier
             )
             .dragAndDropTarget(
-                // With "true" as the value of shouldStartDragAndDrop,
-                // drag-and-drop operations are enabled unconditionally.
                 shouldStartDragAndDrop = { true },
                 target = dragAndDropTarget
-            ),
+            )
+            .onKeyEvent { event ->
+                when (event.type) {
+                    KeyEventType.KeyDown -> shiftPressed = event.isShiftPressed
+                    KeyEventType.KeyUp -> if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight)
+                    {
+                        shiftPressed = false
+                    }
+                }
+                true
+            },
         scrollState
     ) {
-        lockFile.getAllProjects().filter(modpackUiState.projectsFilter).map { project ->
+        val filteredProjects = lockFile.getAllProjects().filter(modpackUiState.projectsFilter)
+
+        filteredProjects.mapIndexed { index, project ->
             item {
                 Row(
                     modifier = Modifier
@@ -135,7 +140,6 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        Modifier.width(300.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         IconButton(
@@ -155,67 +159,45 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
                             }
                         }
 
-                        Column(verticalArrangement = Arrangement.SpaceEvenly) {
-                            project.name.values.firstOrNull()?.let {
-                                Text(it, Modifier.padding(4.dp))
-                            }
+                        Checkbox(
+                            checked = ModpackViewModel.SelectedProjects.isSelected(project),
+                            onCheckedChange = { checked ->
+                                if (shiftPressed && lastClickedIndex != null)
+                                {
+                                    val startIdx = minOf(lastClickedIndex!!, index)
+                                    val endIdx = maxOf(lastClickedIndex!!, index)
+                                    val projectsInRange = filteredProjects.slice(startIdx..endIdx)
 
-                            Row {
-                                project.getProviders().map { provider ->
-                                    val provIcon = when (provider.serialName) {
-                                        "curseforge" -> PakkuDesktopIcons.Platforms.curseForge
-                                        "github" -> PakkuDesktopIcons.Platforms.gitHub
-                                        "modrinth" -> PakkuDesktopIcons.Platforms.modrinth
-                                        else -> null
+                                    if (checked)
+                                    {
+                                        ModpackViewModel.SelectedProjects.select(projectsInRange)
                                     }
-
-                                    provIcon?.let {
-                                        Icon(it, provider.name, Modifier.padding(4.dp).size(25.dp))
-                                    } ?: Text(provider.name)
+                                    else
+                                    {
+                                        ModpackViewModel.SelectedProjects.deselect { p ->
+                                            projectsInRange.any { it.pakkuId == p.pakkuId }
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    }
+                                else
+                                {
+                                    ModpackViewModel.SelectedProjects.toggle(project)
+                                    lastClickedIndex = index
+                                }
+                            },
+                            enabled = true,
+                            modifier = Modifier.padding(4.dp)
+                        )
 
-                    FlowRow {
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            if (!project.redistributable)
-                            {
-                                Icon(
-                                    PakkuDesktopIcons.exclamationTriangle, null,
-                                    Modifier.size(25.dp), tint = Color.Red
-                                )
-                            }
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Text(project.type.name, Modifier.padding(4.dp), color = Color.Gray)
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            project.side?.name?.let { Text(it, Modifier.padding(4.dp), color = Color.Gray) }
-                        }
+                        ProjectCard(project)
                     }
                 }
-
-                Spacer(
-                    Modifier
-                        .background(JewelTheme.globalColors.borders.disabled)
-                        .height(1.dp)
-                        .fillMaxWidth()
-                )
             }
         }
     }
 
     VerticalScrollbar(
         modifier = Modifier.fillMaxHeight(),
-        scrollState = scrollState,
+        scrollState = scrollState
     )
 }

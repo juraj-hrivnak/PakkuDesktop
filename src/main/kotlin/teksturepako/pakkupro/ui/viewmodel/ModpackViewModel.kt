@@ -1,17 +1,22 @@
 package teksturepako.pakkupro.ui.viewmodel
 
+import androidx.compose.runtime.mutableStateOf
 import com.github.michaelbull.result.get
 import io.klogging.Klogger
 import io.klogging.logger
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkupro.ui.component.ToastData
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
 import java.io.File
@@ -71,6 +76,7 @@ object ModpackViewModel
             ModpackUiState()
         }
         _modpackUiState.value.action.second?.cancel()
+        toasts.value = emptyList()
     }
 
     fun selectTab(updatedTab: SelectedTab)
@@ -112,6 +118,123 @@ object ModpackViewModel
         configFile.write()
     }
 
+
+    object SelectedProjects
+    {
+        fun select(pakkuId: String)
+        {
+            val predicate: (Project) -> Boolean = { project -> project.pakkuId == pakkuId }
+            _modpackUiState.update { currentState ->
+                currentState.copy(
+                    selectedProjectsMap = mapOf(pakkuId to predicate)
+                )
+            }
+        }
+
+        fun select(predicate: (Project) -> Boolean)
+        {
+            _modpackUiState.update { currentState ->
+                val projects = currentState.lockFile?.get()?.getAllProjects() ?: return@update currentState
+
+                val newSelections = projects
+                    .filter(predicate)
+                    .associate { project ->
+                        project.pakkuId!! to { p: Project -> p.pakkuId == project.pakkuId }
+                    }
+
+                currentState.copy(
+                    selectedProjectsMap = currentState.selectedProjectsMap + newSelections
+                )
+            }
+        }
+
+        fun deselect(predicate: (Project) -> Boolean)
+        {
+            _modpackUiState.update { currentState ->
+                val projects = currentState.lockFile?.get()?.getAllProjects() ?: return@update currentState
+
+                val keysToRemove = projects
+                    .filter(predicate)
+                    .map { it.pakkuId }
+                    .toSet()
+
+                currentState.copy(
+                    selectedProjectsMap = currentState.selectedProjectsMap.filterKeys { it !in keysToRemove }
+                )
+            }
+        }
+
+        fun toggle(project: Project) {
+            _modpackUiState.update { currentState ->
+                if (isSelected(project)) {
+                    currentState.copy(
+                        selectedProjectsMap = currentState.selectedProjectsMap - project.pakkuId!!
+                    )
+                } else {
+                    currentState.copy(
+                        selectedProjectsMap = currentState.selectedProjectsMap +
+                                (project.pakkuId!! to { p: Project -> p.pakkuId == project.pakkuId })
+                    )
+                }
+            }
+        }
+
+        fun select(projects: List<Project>)
+        {
+            _modpackUiState.update { currentState ->
+                val newSelections = projects.associate { project ->
+                    project.pakkuId!! to { p: Project -> p.pakkuId == project.pakkuId }
+                }
+
+                currentState.copy(
+                    selectedProjectsMap = currentState.selectedProjectsMap + newSelections
+                )
+            }
+        }
+
+        fun selectRange(startProject: Project, endProject: Project) {
+            _modpackUiState.update { currentState ->
+                val projects = currentState.lockFile?.get()?.getAllProjects() ?: return@update currentState
+
+                val startIndex = projects.indexOf(startProject)
+                val endIndex = projects.indexOf(endProject)
+
+                if (startIndex == -1 || endIndex == -1) return@update currentState
+
+                val start = minOf(startIndex, endIndex)
+                val end = maxOf(startIndex, endIndex)
+
+                val projectsInRange = projects.slice(start..end)
+                val newSelections = projectsInRange.associate { project ->
+                    project.pakkuId!! to { p: Project -> p.pakkuId == project.pakkuId }
+                }
+
+                currentState.copy(
+                    selectedProjectsMap = currentState.selectedProjectsMap + newSelections
+                )
+            }
+        }
+
+
+        fun clear()
+        {
+            _modpackUiState.update { currentState ->
+                currentState.copy(
+                    selectedProjectsMap = emptyMap()
+                )
+            }
+        }
+
+        fun isSelected(project: Project): Boolean =
+            _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
+
+        fun getSelectedProjects(): List<Project> = _modpackUiState.value.lockFile?.get()?.getAllProjects()
+            ?.filter { project ->
+                _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
+            }
+            ?: emptyList()
+    }
+
     fun updateFilter(updatedFilter: (Project) -> Boolean)
     {
         _modpackUiState.update { currentState ->
@@ -130,15 +253,14 @@ object ModpackViewModel
         }
     }
 
-    suspend fun terminateAction()
-    {
+    suspend fun terminateAction() = coroutineScope {
+
         if (_modpackUiState.value.action.second != null)
         {
             try
             {
                 _modpackUiState.value.action.second?.cancelAndJoin()
-            }
-            catch (_: CancellationException)
+            } catch (_: Exception)
             {
             }
 
@@ -157,4 +279,6 @@ object ModpackViewModel
     }
 
     // -- TOASTER --
+
+    val toasts = mutableStateOf(listOf<ToastData>())
 }

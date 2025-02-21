@@ -16,6 +16,8 @@ data class ModpackUiState(
     val selectedProject: Project? = null,
     val editingProject: Boolean = false,
 
+    val selectedProjectsMap: Map<String, (Project) -> Boolean> = emptyMap(),
+
     val projectsFilter: (Project) -> Boolean = { true },
 
     val action: Pair<String?, Job?> = null to null,
