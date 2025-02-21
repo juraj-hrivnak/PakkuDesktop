@@ -45,7 +45,7 @@ fun SonnerPopup(
     toastData: ToastData,
     onDismiss: (String) -> Unit,
     cornerRadius: Dp = 8.dp,
-    elevation: Dp = 4.dp
+    shadowSize: Dp = 4.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -112,10 +112,10 @@ fun SonnerPopup(
                 }
             }
             .shadow(
-                elevation = elevation,
+                elevation = shadowSize,
                 shape = RoundedCornerShape(cornerRadius),
-                ambientColor = JewelTheme.globalColors.panelBackground,
-                spotColor = JewelTheme.globalColors.panelBackground
+                ambientColor = JewelTheme.globalColors.borders.disabled,
+                spotColor = Color.Transparent,
             )
             .clip(RoundedCornerShape(cornerRadius))
             .background(JewelTheme.globalColors.panelBackground)

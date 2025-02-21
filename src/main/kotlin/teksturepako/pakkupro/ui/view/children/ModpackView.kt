@@ -2,6 +2,7 @@ package teksturepako.pakkupro.ui.view.children
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.getError
@@ -15,6 +16,7 @@ import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.Error
+import teksturepako.pakkupro.ui.component.SonnerToastHost
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkupro.ui.component.modpack.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
@@ -41,7 +43,6 @@ fun PakkuApplicationScope.ModpackView()
 
     LaunchedEffect(lifecycleState, profileData.currentProfile)
     {
-        ProfileViewModel.loadFromDisk()
         ModpackViewModel.loadFromDisk()
     }
 
@@ -96,22 +97,31 @@ fun PakkuApplicationScope.ModpackView()
                 modpackUiState.lockFile!!.getError()?.let { Error(it) }
             }
         }
-    }
-    else
-    {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .subtractTopHeight(titleBarHeight)
-        ) {
-            ModpackSideBar()
 
-            when (modpackUiState.selectedTab)
-            {
-                SelectedTab.PROJECTS -> ProjectsTab()
-                SelectedTab.MODPACK  -> ModpackTab()
-            }
+        return
+    }
+
+    Row(
+        Modifier
+            .fillMaxSize()
+            .subtractTopHeight(titleBarHeight)
+    ) {
+        ModpackSideBar()
+
+        when (modpackUiState.selectedTab)
+        {
+            SelectedTab.PROJECTS -> ProjectsTab()
+            SelectedTab.MODPACK  -> ModpackTab()
         }
     }
+
+    SonnerToastHost(
+        ModpackViewModel.toasts,
+        Modifier
+            .fillMaxSize()
+            .subtractTopHeight(titleBarHeight),
+        alignment = Alignment.TopEnd,
+        spacing = 8.dp
+    )
 
 }
