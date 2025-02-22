@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
 @Composable
-fun HorizontalBar(content: @Composable RowScope.() -> Unit = { })
+fun HorizontalBar(content: @Composable ColumnScope.() -> Unit = { })
 {
     Column {
         Row(
@@ -20,7 +20,7 @@ fun HorizontalBar(content: @Composable RowScope.() -> Unit = { })
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            content()
+            content(this@Column)
         }
         Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
     }

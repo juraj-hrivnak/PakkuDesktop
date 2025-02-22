@@ -26,6 +26,7 @@ import teksturepako.pakkupro.ui.component.ProjectCard
 import teksturepako.pakkupro.ui.component.button.CopyToClipboardButton
 import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 
 @Composable
 fun ProjectDisplay() {
@@ -82,7 +83,10 @@ fun ProjectDisplay() {
 }
 
 @Composable
-fun ProjectFileName(projectFile: ProjectFile) {
+fun ProjectFileName(projectFile: ProjectFile)
+{
+    val profileData by ProfileViewModel.profileData.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,21 +108,37 @@ fun ProjectFileName(projectFile: ProjectFile) {
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Platform Icon
-                val provIcon = when (projectFile.type) {
-                    "curseforge" -> PakkuDesktopIcons.Platforms.curseForge
-                    "github" -> PakkuDesktopIcons.Platforms.gitHub
-                    "modrinth" -> PakkuDesktopIcons.Platforms.modrinth
-                    else -> null
+                when (projectFile.type) {
+                    "curseforge" ->
+                    {
+                        Icon(
+                            PakkuDesktopIcons.Platforms.curseForge,
+                            projectFile.type,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                    "github" ->
+                    {
+                        Icon(
+                            PakkuDesktopIcons.Platforms.gitHub,
+                            projectFile.type,
+                            modifier = Modifier.size(25.dp),
+                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                        )
+                    }
+                    "modrinth" ->
+                    {
+                        Icon(
+                            PakkuDesktopIcons.Platforms.modrinth,
+                            projectFile.type,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                    else ->
+                    {
+                        Text(projectFile.type)
+                    }
                 }
-
-                provIcon?.let {
-                    Icon(
-                        it,
-                        contentDescription = projectFile.type,
-                        modifier = Modifier.size(25.dp)
-                    )
-                } ?: Text(projectFile.type)
 
                 SelectionContainer {
                     Text(projectFile.fileName)

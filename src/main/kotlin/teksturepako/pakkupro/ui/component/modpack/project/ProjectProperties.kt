@@ -1,14 +1,15 @@
 package teksturepako.pakkupro.ui.component.modpack.project
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
@@ -31,7 +32,6 @@ fun ProjectProperties()
     val coroutineScope = rememberCoroutineScope()
 
     Column(
-        Modifier.padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
@@ -41,7 +41,7 @@ fun ProjectProperties()
             Column(
                 Modifier.weight(1F)
             ) {
-                Text("Properties", fontWeight = FontWeight.Bold)
+                Text("Properties")
             }
             Column(
                 horizontalAlignment = Alignment.End

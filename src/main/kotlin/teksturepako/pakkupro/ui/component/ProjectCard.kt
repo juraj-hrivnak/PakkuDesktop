@@ -3,7 +3,10 @@ package teksturepako.pakkupro.ui.component
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -13,6 +16,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
+import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -21,6 +25,8 @@ fun ProjectCard(
     modifier: Modifier = Modifier,
     name: @Composable (String) -> Unit = { Text(it) }
 ) {
+    val profileData by ProfileViewModel.profileData.collectAsState()
+
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -36,16 +42,20 @@ fun ProjectCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Project name
-            project.name.values.firstOrNull()?.let {
-                name(it)
+            SelectionContainer {
+                // Project name
+                project.name.values.firstOrNull()?.let {
+                    name(it)
+                }
             }
 
-            // Project type
-            Text(
-                text = project.type.name,
-                color = Color.Gray
-            )
+            SelectionContainer {
+                // Project type
+                Text(
+                    text = project.type.name,
+                    color = Color.Gray
+                )
+            }
         }
 
         Column(
@@ -61,27 +71,46 @@ fun ProjectCard(
                     modifier = Modifier.padding(4.dp)
                 ) {
                     providers.forEach { provider ->
-                        val provIcon = when (provider.serialName) {
-                            "curseforge" -> PakkuDesktopIcons.Platforms.curseForge
-                            "github" -> PakkuDesktopIcons.Platforms.gitHub
-                            "modrinth" -> PakkuDesktopIcons.Platforms.modrinth
-                            else -> null
-                        }
-
-                        provIcon?.let {
-                            Icon(
-                                it,
-                                contentDescription = provider.name,
-                                modifier = Modifier.size(25.dp)
-                            )
+                        when (provider.serialName) {
+                            "curseforge" ->
+                            {
+                                Icon(
+                                    PakkuDesktopIcons.Platforms.curseForge,
+                                    contentDescription = provider.name,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                            }
+                            "github" ->
+                            {
+                                Icon(
+                                    PakkuDesktopIcons.Platforms.gitHub,
+                                    contentDescription = provider.name,
+                                    modifier = Modifier.size(25.dp),
+                                    tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                                )
+                            }
+                            "modrinth" ->
+                            {
+                                Icon(
+                                    PakkuDesktopIcons.Platforms.modrinth,
+                                    contentDescription = provider.name,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                            }
+                            else ->
+                            {
+                                Text(provider.name)
+                            }
                         }
                     }
 
                     slug?.let {
-                        Text(
-                            text = it,
-                            color = Color.Gray
-                        )
+                        SelectionContainer {
+                            Text(
+                                text = it,
+                                color = Color.Gray
+                            )
+                        }
                     }
                 }
             }
