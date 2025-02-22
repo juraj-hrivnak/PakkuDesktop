@@ -94,7 +94,15 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
         }
     }
 
-    Column {
+    Column(
+        Modifier
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                layout((placeable.width - offsetPx * 2).coerceAtLeast(40), placeable.height) {
+                    placeable.placeRelative(-offsetPx, 0)
+                }
+            }
+    ) {
         // Top control bar
         Row(
             modifier = Modifier
@@ -144,9 +152,9 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
                 )
 
                 (if (sortOrder is SortOrder.Name && sortOrder.ascending)
-                    AllIconsKeys.Actions.MoveUp
+                    AllIconsKeys.Gutter.Fold
                 else if (sortOrder is SortOrder.Name)
-                    AllIconsKeys.Actions.MoveDown
+                    AllIconsKeys.Gutter.FoldBottom
                 else null)?.let {
                     Icon(
                         it,
@@ -173,9 +181,9 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
                 )
 
                 (if (sortOrder is SortOrder.LastUpdated && sortOrder.ascending)
-                    AllIconsKeys.Actions.MoveUp
+                    AllIconsKeys.Gutter.Fold
                 else if (sortOrder is SortOrder.LastUpdated)
-                    AllIconsKeys.Actions.MoveDown
+                    AllIconsKeys.Gutter.FoldBottom
                 else null)?.let {
                     Icon(
                         it,
