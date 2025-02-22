@@ -73,9 +73,7 @@ object RevealFileAction
                 {
                     // Try common Linux file managers
                     val fileManagers = listOf("nautilus", "dolphin", "nemo", "thunar", "pcmanfm", "dde-file-manager")
-                    val foundManager = fileManagers.firstOrNull {
-                        Path("/usr/bin/$it").exists()
-                    }
+                    val foundManager = fileManagers.firstOrNull { Path("/usr/bin/$it").exists() }
 
                     // Special handling for specific file managers
                     when (foundManager)

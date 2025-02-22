@@ -81,7 +81,6 @@ fun ProjectDisplay() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectFileName(projectFile: ProjectFile) {
     Column(

@@ -46,7 +46,8 @@ private fun getMacAddress(ip: InetAddress): String? =
             .joinToString("")
     }.getOrNull()
 
-private fun isVMMac(mac: ByteArray?): Boolean {
+private fun isVMMac(mac: ByteArray?): Boolean
+{
     val invalidMacs = listOf(
         byteArrayOf(0x00, 0x05, 0x69),          // VMWare
         byteArrayOf(0x00, 0x1C, 0x14),          // VMWare

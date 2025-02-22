@@ -55,7 +55,7 @@ fun ThemeButton(
             },
             Modifier.size(30.dp),
         ) {
-            Icon( PakkuDesktopIcons.lightTheme,"light_theme")
+            Icon(PakkuDesktopIcons.lightTheme,"light_theme")
         }
     }
 }

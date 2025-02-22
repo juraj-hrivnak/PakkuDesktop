@@ -57,15 +57,18 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
     var showTargetBorder by remember { mutableStateOf(false) }
     val dragAndDropTarget = remember {
         object : DragAndDropTarget {
-            override fun onStarted(event: DragAndDropEvent) {
+            override fun onStarted(event: DragAndDropEvent)
+            {
                 showTargetBorder = true
             }
 
-            override fun onEnded(event: DragAndDropEvent) {
+            override fun onEnded(event: DragAndDropEvent)
+            {
                 showTargetBorder = false
             }
 
-            override fun onDrop(event: DragAndDropEvent): Boolean {
+            override fun onDrop(event: DragAndDropEvent): Boolean
+            {
                 println("Action at the target: ${event.action}")
 
                 if (event.dragData() !is DragData.FilesList) return false
@@ -137,60 +140,74 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope()) {
                     modifier = Modifier
                         .padding(vertical = 4.dp)
                         .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top  // Changed to Top alignment
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.Top
+                    // Controls row aligned with the project name
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)  // Fixed width for controls
+                            .padding(end = 4.dp)
+                            // Add padding to match the project name's position in ProjectCard
+                            .padding(top = 12.dp)  // Adjust this value to match your ProjectCard's title padding
                     ) {
-                        IconButton(
-                            onClick = { ModpackViewModel.selectProject(project) },
-                            modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .size(30.dp),
-                            enabled = modpackUiState.selectedProject != project
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Tooltip({ Text("Properties") }) {
-                                Icon(
-                                    key = PakkuDesktopIcons.properties,
-                                    contentDescription = "properties",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.padding(horizontal = 4.dp)
-                                )
+                            IconButton(
+                                onClick = { ModpackViewModel.selectProject(project) },
+                                modifier = Modifier
+                                    .size(30.dp),
+                                enabled = modpackUiState.selectedProject != project
+                            ) {
+                                Tooltip({ Text("Properties") }) {
+                                    Icon(
+                                        key = PakkuDesktopIcons.properties,
+                                        contentDescription = "properties",
+                                        tint = Color.Gray,
+                                        modifier = Modifier.padding(4.dp)
+                                    )
+                                }
                             }
-                        }
 
-                        Checkbox(
-                            checked = ModpackViewModel.SelectedProjects.isSelected(project),
-                            onCheckedChange = { checked ->
-                                if (shiftPressed && lastClickedIndex != null)
-                                {
-                                    val startIdx = minOf(lastClickedIndex!!, index)
-                                    val endIdx = maxOf(lastClickedIndex!!, index)
-                                    val projectsInRange = filteredProjects.slice(startIdx..endIdx)
-
-                                    if (checked)
+                            Checkbox(
+                                checked = ModpackViewModel.SelectedProjects.isSelected(project),
+                                onCheckedChange = { checked ->
+                                    if (shiftPressed && lastClickedIndex != null)
                                     {
-                                        ModpackViewModel.SelectedProjects.select(projectsInRange)
+                                        val startIdx = minOf(lastClickedIndex!!, index)
+                                        val endIdx = maxOf(lastClickedIndex!!, index)
+                                        val projectsInRange = filteredProjects.slice(startIdx..endIdx)
+
+                                        if (checked)
+                                        {
+                                            ModpackViewModel.SelectedProjects.select(projectsInRange)
+                                        }
+                                        else
+                                        {
+                                            ModpackViewModel.SelectedProjects.deselect { p ->
+                                                projectsInRange.any { it.pakkuId == p.pakkuId }
+                                            }
+                                        }
                                     }
                                     else
                                     {
-                                        ModpackViewModel.SelectedProjects.deselect { p ->
-                                            projectsInRange.any { it.pakkuId == p.pakkuId }
-                                        }
+                                        ModpackViewModel.SelectedProjects.toggle(project)
+                                        lastClickedIndex = index
                                     }
-                                }
-                                else
-                                {
-                                    ModpackViewModel.SelectedProjects.toggle(project)
-                                    lastClickedIndex = index
-                                }
-                            },
-                            enabled = true,
-                            modifier = Modifier.padding(4.dp)
-                        )
-
-                        ProjectCard(project)
+                                },
+                                enabled = true,
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
                     }
+
+                    // Project card takes remaining width
+                    ProjectCard(
+                        project = project,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
