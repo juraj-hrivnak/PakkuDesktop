@@ -20,7 +20,7 @@ import teksturepako.pakkupro.ui.component.button.ThemeButton
 fun PakkuApplicationScope.MainTitleBar(
     modifier: Modifier,
     withGradient: Boolean = false,
-    content: @Composable RowScope.() -> Unit = { }
+    content: @Composable TitleBarScope.() -> Unit = { }
 )
 {
     Column {
@@ -36,7 +36,7 @@ fun PakkuApplicationScope.MainTitleBar(
                         Modifier.size(25.dp)
                     )
 
-                    content(this)
+                    content(this@TitleBar)
                 }
 
                 AlignedTitleBarContent(modifier, alignment = Alignment.End) {
@@ -53,7 +53,7 @@ fun PakkuApplicationScope.MainTitleBar(
 
 @Composable
 fun TitleBarScope.AlignedTitleBarContent(
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
     alignment: Alignment.Horizontal,
     content: @Composable RowScope.() -> Unit
 )
