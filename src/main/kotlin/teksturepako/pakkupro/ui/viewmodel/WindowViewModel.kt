@@ -27,7 +27,7 @@ object WindowViewModel
     {
         val windowDataState = WindowData.readOrNew()
 
-        logger.info { "WindowViewModel loaded from disk" }
+        logger.info { "loaded from disk" }
 
         _windowData.update {
             windowDataState
@@ -36,7 +36,7 @@ object WindowViewModel
 
     suspend fun writeToDisk()
     {
-        logger.info { "WindowViewModel written to disk" }
+        logger.info { "written to disk" }
 
         // Write to disk
         _windowData.value.write()

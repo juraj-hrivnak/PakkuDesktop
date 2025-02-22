@@ -29,11 +29,6 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
     val windowData by WindowViewModel.windowData.collectAsState()
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
-    LaunchedEffect(Unit)
-    {
-        WindowViewModel.loadFromDisk()
-    }
-
     val windowState = rememberWindowState(
         placement = windowData.placement,
         isMinimized = false,

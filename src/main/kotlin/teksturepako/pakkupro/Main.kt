@@ -13,6 +13,7 @@ import teksturepako.pakkupro.ui.application.window.MainWindow
 import teksturepako.pakkupro.ui.view.RootView
 import teksturepako.pakkupro.ui.viewmodel.LicenseKeyViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkupro.ui.viewmodel.WindowViewModel
 
 fun main()
 {
@@ -34,6 +35,7 @@ fun main()
     }
 
     CoroutineScope(Dispatchers.IO).launch {
+        WindowViewModel.loadFromDisk()
         LicenseKeyViewModel.checkActivation()
         ProfileViewModel.loadFromDisk()
     }
