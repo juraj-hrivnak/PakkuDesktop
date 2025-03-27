@@ -1,21 +1,17 @@
 package teksturepako.pakkupro.ui.component.button
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.padding
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
-import kotlinx.coroutines.delay
-import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
-import kotlin.time.Duration.Companion.seconds
+import teksturepako.pakkupro.ui.component.ImmediateTooltip
+import teksturepako.pakkupro.ui.component.TooltipPosition
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CopyToClipboardButton(
     text: String,
@@ -24,16 +20,9 @@ fun CopyToClipboardButton(
 )
 {
     val clipboardManager = LocalClipboardManager.current
-    var tooltipExpanded by remember { mutableStateOf(false) }
 
-    IconButton(
-        onClick = {
-            tooltipExpanded = true
-            clipboardManager.setText(AnnotatedString((text)))
-        },
-        modifier
-    ) {
-        Tooltip({
+    ImmediateTooltip(
+        tooltip = {
             if (useSimpleTooltip)
             {
                 Text("Copy to clipboard")
@@ -42,7 +31,15 @@ fun CopyToClipboardButton(
             {
                 Text("Copy \"$text\" to clipboard")
             }
-        }) {
+        },
+        position = TooltipPosition.END
+    ) {
+        IconButton(
+            onClick = {
+                clipboardManager.setText(AnnotatedString((text)))
+            },
+            modifier
+        ) {
             Icon(
                 key = PakkuDesktopIcons.clone,
                 contentDescription = "copy",
@@ -50,35 +47,5 @@ fun CopyToClipboardButton(
                 hints = arrayOf(),
             )
         }
-    }
-
-    if (tooltipExpanded)
-    {
-        PopupMenu(
-            onDismissRequest = {
-                tooltipExpanded = false
-                true
-            },
-            horizontalAlignment = Alignment.Start,
-            popupProperties = PopupProperties(
-                focusable = false,
-                dismissOnBackPress = true,
-                dismissOnClickOutside = true,
-                clippingEnabled = false,
-            )
-        ) {
-            passiveItem {
-                Text(
-                    if (useSimpleTooltip) "copied to clipboard" else "\"$text\" copied to clipboard",
-                    Modifier.padding(horizontal = 10.dp)
-                )
-            }
-        }
-    }
-
-    LaunchedEffect(Unit)
-    {
-        delay(5.seconds)
-        tooltipExpanded = false
     }
 }

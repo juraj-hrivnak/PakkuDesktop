@@ -32,7 +32,7 @@ fun ProjectFilter()
 
     LaunchedEffect(textFieldState)
     {
-        ModpackViewModel.updateFilter { project ->
+        ModpackViewModel.updateProjectsFilter { project ->
             project.name.values.any { value -> textFieldState.text.toString().lowercase() in value.lowercase() }
                     || textFieldState.text.toString() in project
         }

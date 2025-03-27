@@ -94,7 +94,7 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:243.21565.208")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku-jvm:0.26.0.214-SNAPSHOT")
+    implementation("teksturepako.pakku:pakku-jvm:1.0.0")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
@@ -136,7 +136,7 @@ compose.desktop {
                 "jdk.localedata",
             )
 
-//            includeAllModules = true
+            includeAllModules = true
 
             macOS {
                 iconFile.set(project.file("icon.icns"))

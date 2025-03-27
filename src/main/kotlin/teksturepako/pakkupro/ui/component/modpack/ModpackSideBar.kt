@@ -1,6 +1,5 @@
 package teksturepako.pakkupro.ui.component.modpack
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -14,12 +13,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.Tooltip
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
+import teksturepako.pakkupro.ui.component.ImmediateTooltip
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModpackSideBar()
 {
@@ -35,7 +33,7 @@ fun ModpackSideBar()
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Tooltip({ Text("Projects") }) {
+            ImmediateTooltip({ Text("Projects") }) {
                 IconButton(
                     onClick = { ModpackViewModel.selectTab(SelectedTab.PROJECTS) },
                     Modifier.size(30.dp),
@@ -49,7 +47,7 @@ fun ModpackSideBar()
                     )
                 }
             }
-            Tooltip({ Text("Modpack") }) {
+            ImmediateTooltip({ Text("Modpack") }) {
                 IconButton(
                     onClick = { ModpackViewModel.selectTab(SelectedTab.MODPACK) },
                     Modifier.size(30.dp),

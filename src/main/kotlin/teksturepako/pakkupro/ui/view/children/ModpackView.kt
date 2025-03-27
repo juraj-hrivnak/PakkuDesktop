@@ -17,8 +17,8 @@ import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.Error
 import teksturepako.pakkupro.ui.component.SonnerToastHost
+import teksturepako.pakkupro.ui.component.dialog.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
-import teksturepako.pakkupro.ui.component.modpack.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab

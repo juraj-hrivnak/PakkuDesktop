@@ -118,8 +118,7 @@ object ModpackViewModel
         configFile.write()
     }
 
-
-    object SelectedProjects
+    object ProjectsSelection
     {
         fun select(pakkuId: String)
         {
@@ -164,7 +163,8 @@ object ModpackViewModel
             }
         }
 
-        fun toggle(project: Project) {
+        fun toggle(project: Project)
+        {
             _modpackUiState.update { currentState ->
                 if (isSelected(project)) {
                     currentState.copy(
@@ -192,7 +192,8 @@ object ModpackViewModel
             }
         }
 
-        fun selectRange(startProject: Project, endProject: Project) {
+        fun selectRange(startProject: Project, endProject: Project)
+        {
             _modpackUiState.update { currentState ->
                 val projects = currentState.lockFile?.get()?.getAllProjects() ?: return@update currentState
 
@@ -215,7 +216,6 @@ object ModpackViewModel
             }
         }
 
-
         fun clear()
         {
             _modpackUiState.update { currentState ->
@@ -228,14 +228,17 @@ object ModpackViewModel
         fun isSelected(project: Project): Boolean =
             _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
 
-        fun getSelectedProjects(): List<Project> = _modpackUiState.value.lockFile?.get()?.getAllProjects()
+        fun getSelectedProjects(): List<Project> = _modpackUiState.value.lockFile?.get()
+            ?.getAllProjects()
             ?.filter { project ->
                 _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
             }
             ?: emptyList()
     }
 
-    fun updateFilter(updatedFilter: (Project) -> Boolean)
+    // -- PROJECTS FILTER --
+
+    fun updateProjectsFilter(updatedFilter: (Project) -> Boolean)
     {
         _modpackUiState.update { currentState ->
             currentState.copy(
@@ -243,6 +246,8 @@ object ModpackViewModel
             )
         }
     }
+
+    // -- ACTIONS --
 
     fun runActionWithJob(updatedAction: String, job: Job)
     {
@@ -278,7 +283,7 @@ object ModpackViewModel
         }
     }
 
-    // -- TOASTER --
+    // -- TOASTS --
 
     val toasts = mutableStateOf(listOf<ToastData>())
 }

@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component
+package teksturepako.pakkupro.ui.component.modpack.project
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -71,7 +71,8 @@ fun ProjectCard(
                     modifier = Modifier.padding(4.dp)
                 ) {
                     providers.forEach { provider ->
-                        when (provider.serialName) {
+                        when (provider.serialName)
+                        {
                             "curseforge" ->
                             {
                                 Icon(

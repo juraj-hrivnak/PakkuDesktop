@@ -1,7 +1,10 @@
 package teksturepako.pakkupro.ui.application.window
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -9,6 +12,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.jewel.intui.window.styling.light
 import org.jetbrains.jewel.window.DecoratedWindow
@@ -28,6 +34,10 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
 {
     val windowData by WindowViewModel.windowData.collectAsState()
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+
+    CoroutineScope(Dispatchers.IO).launch {
+        WindowViewModel.loadFromDisk()
+    }
 
     val windowState = rememberWindowState(
         placement = windowData.placement,

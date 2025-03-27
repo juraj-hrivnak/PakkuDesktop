@@ -38,12 +38,10 @@ fun PakkuApplicationScope.MainTitleBar(
 
                     content(this@TitleBar)
                 }
-
                 AlignedTitleBarContent(modifier, alignment = Alignment.End) {
                     ThemeButton()
                 }
             }
-
         }
         Row {
             Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())

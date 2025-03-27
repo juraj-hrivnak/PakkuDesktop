@@ -1,4 +1,4 @@
-package teksturepako.pakkupro.ui.component.modpack
+package teksturepako.pakkupro.ui.component.dialog
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable

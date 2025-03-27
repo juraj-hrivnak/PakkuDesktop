@@ -95,7 +95,10 @@ fun PakkuApplicationScope.WelcomeView() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Header("Modpacks", Modifier.padding(horizontal = 24.dp))
-                            OutlinedButton(onClick = { pickerLauncher.launch() }) {
+                            OutlinedButton(
+                                onClick = { pickerLauncher.launch() },
+                                Modifier.padding(horizontal = 24.dp),
+                            ) {
                                 Text("Open")
                             }
                         }
@@ -139,7 +142,6 @@ fun PakkuApplicationScope.WelcomeView() {
                                                 color = Color.Gray
                                             )
                                         }
-
                                     }
                                 }
                             }
