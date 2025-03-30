@@ -13,6 +13,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.component.ImmediateTooltip
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
@@ -57,6 +58,20 @@ fun ModpackSideBar()
                         key = PakkuDesktopIcons.properties,
                         contentDescription = "icon",
                         tint = if (modpackUiState.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
+                        hints = arrayOf()
+                    )
+                }
+            }
+            ImmediateTooltip({ Text("Commit") }) {
+                IconButton(
+                    onClick = { ModpackViewModel.selectTab(SelectedTab.GIT) },
+                    Modifier.size(30.dp),
+                    enabled = modpackUiState.selectedTab != SelectedTab.GIT,
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Toolwindows.ToolWindowCommit,
+                        contentDescription = "git icon",
+                        tint = if (modpackUiState.selectedTab == SelectedTab.GIT) Color.LightGray else Color.Gray,
                         hints = arrayOf()
                     )
                 }

@@ -12,6 +12,7 @@ import io.github.vinceglb.filekit.core.FileKitPlatformSettings
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
@@ -21,6 +22,7 @@ import teksturepako.pakkupro.ui.component.dialog.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkupro.ui.modifier.subtractTopHeight
+import teksturepako.pakkupro.ui.view.children.modpackTabs.GitTab
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ProjectsTab
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
@@ -108,11 +110,34 @@ fun PakkuApplicationScope.ModpackView()
     ) {
         ModpackSideBar()
 
-        when (modpackUiState.selectedTab)
-        {
-            SelectedTab.PROJECTS -> ProjectsTab()
-            SelectedTab.MODPACK  -> ModpackTab()
-        }
+        VerticalSplitLayout(
+            state = ModpackViewModel.actionSplitState,
+            first = {
+                Column {
+                    Row {
+                        when (modpackUiState.selectedTab)
+                        {
+                            SelectedTab.PROJECTS -> ProjectsTab()
+                            SelectedTab.MODPACK  -> ModpackTab()
+                            SelectedTab.GIT      -> GitTab()
+                        }
+                    }
+                }
+            },
+            second = {
+                Column {
+                    Row {
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            firstPaneMinWidth = 100.dp,
+            secondPaneMinWidth = 40.dp,
+            draggableWidth = 16.dp
+        )
+
     }
 
     SonnerToastHost(
