@@ -18,7 +18,8 @@ import teksturepako.pakkupro.ui.component.text.GradientHeader
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
 @Composable
-fun ProjectDisplay() {
+fun ProjectDisplay()
+{
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
     val project = modpackUiState.selectedProject ?: return
     val scrollState = rememberScrollState()

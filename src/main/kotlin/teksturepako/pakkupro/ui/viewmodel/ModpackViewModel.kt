@@ -1,5 +1,6 @@
 package teksturepako.pakkupro.ui.viewmodel
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.mutableStateOf
 import com.github.michaelbull.result.get
 import io.klogging.Klogger
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.ui.component.SplitLayoutState
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
@@ -19,6 +21,7 @@ import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkupro.ui.component.ToastData
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkupro.ui.viewmodel.state.SortOrder
 import java.io.File
 
 object ModpackViewModel
@@ -227,13 +230,17 @@ object ModpackViewModel
 
         fun isSelected(project: Project): Boolean =
             _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
+    }
 
-        fun getSelectedProjects(): List<Project> = _modpackUiState.value.lockFile?.get()
-            ?.getAllProjects()
-            ?.filter { project ->
-                _modpackUiState.value.selectedProjectsMap.containsKey(project.pakkuId)
-            }
-            ?: emptyList()
+    // -- SORT ORDER --
+
+    fun updateSortOrder(updatedSortOrder: SortOrder)
+    {
+        _modpackUiState.update { currentState ->
+            currentState.copy(
+                sortOrder = updatedSortOrder
+            )
+        }
     }
 
     // -- PROJECTS FILTER --
@@ -286,4 +293,13 @@ object ModpackViewModel
     // -- TOASTS --
 
     val toasts = mutableStateOf(listOf<ToastData>())
+
+    // -- PROJECTS SCROLL STATE --
+
+    val projectsScrollState = mutableStateOf(LazyListState(0, 0))
+
+    // -- SPLIT LAYOUT STATE --
+
+    val actionSplitState: SplitLayoutState =  SplitLayoutState(1f)
+    val projectsTabSplitState: SplitLayoutState =  SplitLayoutState(0.2F)
 }

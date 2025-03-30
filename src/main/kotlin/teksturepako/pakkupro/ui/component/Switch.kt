@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -48,7 +47,7 @@ fun Switch(
         label = "thumbPosition",
         transitionSpec = {
             spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
+                dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
             )
         }
@@ -58,7 +57,7 @@ fun Switch(
         label = "backgroundAlpha",
         transitionSpec = {
             spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
+                dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
             )
         }
@@ -71,7 +70,7 @@ fun Switch(
             else -> 1f
         },
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
         )
     )
@@ -79,7 +78,7 @@ fun Switch(
     val animatedGlowPosition by animateOffsetAsState(
         targetValue = if (isHovered) mousePosition else Offset(boxSize.x / 2, boxSize.y / 2),
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = 120f
         )
     )
@@ -121,18 +120,20 @@ fun Switch(
                     scaleY = scale
                     transformOrigin = TransformOrigin(0.5f, 0.5f)
                 }
-                .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(16.dp),
-                    ambientColor = JewelTheme.globalColors.borders.disabled,
-                    spotColor = Color.Transparent
-                )
                 .clip(RoundedCornerShape(16.dp))
+                .background(
+                    color = JewelTheme.globalColors.panelBackground.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            PakkuDesktopConstants.highlightColor.copy(alpha = backgroundAlpha * 0.8f),
-                            PakkuDesktopConstants.highlightColor.copy(alpha = backgroundAlpha)
+                            PakkuDesktopConstants.highlightColor.copy(
+                                alpha = 0.2f + (backgroundAlpha * 0.8f)
+                            ),
+                            PakkuDesktopConstants.highlightColor.copy(
+                                alpha = 0.2f + backgroundAlpha
+                            )
                         )
                     )
                 )
@@ -163,12 +164,7 @@ fun Switch(
                     .size(28.dp)
                     .offset(x = 2.dp + 20.dp * thumbPosition)
                     .align(Alignment.CenterStart)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = CircleShape,
-                        ambientColor = JewelTheme.globalColors.borders.disabled,
-                        spotColor = Color.Transparent
-                    )
+                    .clip(CircleShape)
                     .background(
                         color = JewelTheme.globalColors.panelBackground,
                         shape = CircleShape

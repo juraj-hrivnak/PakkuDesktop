@@ -1,5 +1,6 @@
 package teksturepako.pakkupro.ui.viewmodel.state
 
+import androidx.compose.foundation.text.input.TextFieldState
 import com.github.michaelbull.result.Result
 import kotlinx.coroutines.Job
 import teksturepako.pakku.api.actions.errors.ActionError
@@ -17,7 +18,9 @@ data class ModpackUiState(
     val editingProject: Boolean = false,
 
     val selectedProjectsMap: Map<String, (Project) -> Boolean> = emptyMap(),
+    val sortOrder: SortOrder = SortOrder.Name(ascending = true),
 
+    val projectsFilterTextFieldState: TextFieldState = TextFieldState(""),
     val projectsFilter: (Project) -> Boolean = { true },
 
     val action: Pair<String?, Job?> = null to null,

@@ -37,7 +37,7 @@ fun CreateModpackDialog()
             ) {
                 Column {
                     Header(
-                        headerText = "Modpack '${profileData.currentProfile?.name}' is not not initialized.",
+                        text = "Modpack '${profileData.currentProfile?.name}' is not not initialized.",
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                     Text(

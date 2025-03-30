@@ -1,312 +1,371 @@
 package teksturepako.pakkupro.ui.component.modpack.project
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.border
-import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draganddrop.DragAndDropEvent
-import androidx.compose.ui.draganddrop.DragAndDropTarget
-import androidx.compose.ui.draganddrop.DragData
-import androidx.compose.ui.draganddrop.dragData
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Checkbox
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakku.api.platforms.Provider
-import teksturepako.pakku.io.readPathBytesOrNull
+import teksturepako.pakkupro.ui.component.dialog.DismissibleDialog
+import teksturepako.pakkupro.ui.component.text.Header
+import teksturepako.pakkupro.ui.modifier.allowDragAndDrop
 import teksturepako.pakkupro.ui.modifier.clickableHover
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
-import java.net.URI
-import kotlin.io.path.Path
+import teksturepako.pakkupro.ui.viewmodel.state.SortOrder
 
-sealed class SortOrder(open val ascending: Boolean)
+@Composable
+fun ProjectsList()
 {
-    data class Name(override val ascending: Boolean) : SortOrder(ascending)
-    data class LastUpdated(override val ascending: Boolean) : SortOrder(ascending)
+    // For shift+click functionality
+    val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
+    val shiftPressed = remember { mutableStateOf(false) }
+
+    Column {
+        Spacer(Modifier.fillMaxWidth().padding(vertical = 4.dp))
+
+        // Filter
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ProjectFilter()
+        }
+
+        // Controls
+        Column {
+            ListControls(lastClickedIndex)
+        }
+
+        Spacer(
+            Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth()
+        )
+
+        // Main content with scrollbar
+        Box(modifier = Modifier.weight(1f)) {
+            List(lastClickedIndex, shiftPressed)
+        }
+
+        // Bottom border
+        Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+
+        // Actions at bottom
+        ListActions()
+    }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
+private fun ListActions()
+{
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+
+    val selectedProjects = modpackUiState.selectedProjectsMap.values.size
+    val projects = modpackUiState.lockFile?.get()?.getAllProjects()?.filter { project ->
+        modpackUiState.selectedProjectsMap[project.pakkuId]?.let { it(project) } == true
+    } ?: emptyList()
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        val message = when
+        {
+            modpackUiState.lockFile?.get()?.getAllProjects()?.size == selectedProjects ->
+            {
+                "All $selectedProjects projects selected"
+            }
+            selectedProjects > 1  -> "$selectedProjects projects selected"
+            selectedProjects == 1 -> "1 project selected"
+            else                  -> ""
+        }
+
+        Text(message)
+    }
+
+    Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DefaultButton(
+                onClick = {
+
+                },
+                enabled = selectedProjects > 0
+            ) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Update")
+                    Icon(
+                        key = AllIconsKeys.Actions.CheckOut,
+                        contentDescription = "update",
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+
+            var removePopupVisible by remember { mutableStateOf(false) }
+
+            DismissibleDialog(
+                removePopupVisible,
+                onDismiss = {
+                    removePopupVisible = false
+                }
+            ) {
+                FlowColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Header("Do you want to remove this project?")
+                    Spacer(Modifier.height(8.dp))
+                    projects.map {
+                        ProjectCard(it)
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    removePopupVisible = true
+                },
+                enabled = selectedProjects > 0
+            ) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Remove")
+                    Icon(
+                        key = AllIconsKeys.General.Delete,
+                        contentDescription = "remove",
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ListControls(lastClickedIndex: MutableState<Int?>)
+{
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.width(40.dp).padding(end = 4.dp)
+        ) {
+            Checkbox(
+                checked = modpackUiState.lockFile?.get()?.getAllProjects()
+                    ?.filter(modpackUiState.projectsFilter)
+                    ?.all { ModpackViewModel.ProjectsSelection.isSelected(it) } == true,
+                onCheckedChange = { checked ->
+                    val filteredProjects = modpackUiState.lockFile?.get()
+                        ?.getAllProjects()
+                        ?.filter(modpackUiState.projectsFilter)
+                        ?: return@Checkbox
+
+                    if (checked)
+                    {
+                        ModpackViewModel.ProjectsSelection.select(filteredProjects)
+                    }
+                    else
+                    {
+                        ModpackViewModel.ProjectsSelection.clear()
+                    }
+
+                    lastClickedIndex.value = null
+                },
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickableHover(scaleOnHover = true) {
+                ModpackViewModel.updateSortOrder(
+                    when
+                    {
+                        modpackUiState.sortOrder is SortOrder.Name && modpackUiState.sortOrder.ascending ->
+                        {
+                            SortOrder.Name(ascending = false)
+                        }
+
+                        else                                                                             ->
+                        {
+                            SortOrder.Name(ascending = true)
+                        }
+                    }
+                )
+            }) {
+            Text(
+                text = "Name", color = JewelTheme.contentColor
+            )
+
+            when
+            {
+                modpackUiState.sortOrder is SortOrder.Name && modpackUiState.sortOrder.ascending ->
+                {
+                    AllIconsKeys.Gutter.Fold
+                }
+
+                modpackUiState.sortOrder is SortOrder.Name                                       ->
+                {
+                    AllIconsKeys.Gutter.FoldBottom
+                }
+
+                else                                                                             -> null
+            }?.let {
+                Icon(
+                    it,
+                    contentDescription = "Sort direction",
+                    modifier = Modifier.size(16.dp).padding(start = 4.dp)
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickableHover(scaleOnHover = true) {
+                ModpackViewModel.updateSortOrder(
+                    when
+                    {
+                        modpackUiState.sortOrder is SortOrder.LastUpdated && !modpackUiState.sortOrder.ascending ->
+                        {
+                            SortOrder.LastUpdated(ascending = true)
+                        }
+
+                        else                                                                                     ->
+                        {
+                            SortOrder.LastUpdated(ascending = false)
+                        }
+                    }
+                )
+            }) {
+            Text(
+                text = "Last Updated", color = JewelTheme.contentColor
+            )
+
+            when
+            {
+                modpackUiState.sortOrder is SortOrder.LastUpdated && modpackUiState.sortOrder.ascending ->
+                {
+                    AllIconsKeys.Gutter.Fold
+                }
+
+                modpackUiState.sortOrder is SortOrder.LastUpdated                                       ->
+                {
+                    AllIconsKeys.Gutter.FoldBottom
+                }
+
+                else                                                                                    -> null
+            }?.let {
+                Icon(
+                    it,
+                    contentDescription = "Sort direction",
+                    modifier = Modifier.size(16.dp).padding(start = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun List(lastClickedIndex: MutableState<Int?>, shiftPressed: MutableState<Boolean>)
 {
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
     val lockFile = modpackUiState.lockFile?.get() ?: return
 
-    val scrollState = rememberLazyListState()
-
-    // For shift+click functionality
-    var lastClickedIndex by remember { mutableStateOf<Int?>(null) }
-    var shiftPressed by remember { mutableStateOf(false) }
-
-    // For sorting
-    var sortOrder: SortOrder by remember { mutableStateOf(SortOrder.Name(ascending = true)) }
-
-    /** How much space you want to remove from the start and the end of the Icon */
     val offsetDp = 10.dp
     val density = LocalDensity.current
-    /** Offset in pixels */
+
     val offsetPx = remember(offsetDp) { density.run { offsetDp.roundToPx() } }
 
-    var showTargetBorder by remember { mutableStateOf(false) }
-    val dragAndDropTarget = remember {
-        object : DragAndDropTarget
-        {
-            override fun onStarted(event: DragAndDropEvent)
-            {
-                showTargetBorder = true
-            }
-
-            override fun onEnded(event: DragAndDropEvent)
-            {
-                showTargetBorder = false
-            }
-
-            override fun onDrop(event: DragAndDropEvent): Boolean
-            {
-                println("Action at the target: ${event.action}")
-
-                if (event.dragData() !is DragData.FilesList) return false
-
-                val pathUri = (event.dragData() as DragData.FilesList)
-                    .readFiles()
-                    .first()
-                    .let(::URI)
-
-                println(pathUri.path)
-
-                coroutineScope.launch {
-                    readPathBytesOrNull(Path(pathUri.path))
-                }
-
-                return true
-            }
-        }
-    }
-
-    Column(
-        Modifier
-            .layout { measurable, constraints ->
+    Row(
+        Modifier.padding(vertical = 8.dp)
+    ) {
+        LazyColumn(
+            Modifier.padding(start = 26.dp, end = 16.dp).layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
                 layout((placeable.width - offsetPx * 2).coerceAtLeast(40), placeable.height) {
                     placeable.placeRelative(-offsetPx, 0)
                 }
-            }
-    )
-    {
-        // Top control bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        )
-        {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .padding(end = 4.dp)
-            )
-            {
-                Checkbox(
-                    checked = modpackUiState.lockFile?.get()?.getAllProjects()
-                        ?.filter(modpackUiState.projectsFilter)
-                        ?.all { ModpackViewModel.ProjectsSelection.isSelected(it) } == true,
-                    onCheckedChange = { checked ->
-                        val filteredProjects = modpackUiState.lockFile?.get()
-                            ?.getAllProjects()
-                            ?.filter(modpackUiState.projectsFilter)
-                            ?: return@Checkbox
-
-                        if (checked)
+            }.allowDragAndDrop().onKeyEvent { event ->
+                when (event.type)
+                {
+                    KeyEventType.KeyDown -> shiftPressed.value = event.isShiftPressed
+                    KeyEventType.KeyUp   -> if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight)
+                    {
+                        shiftPressed.value = false
+                    }
+                }
+                true
+            },
+            ModpackViewModel.projectsScrollState.value
+        ) {
+            val filteredProjects = lockFile.getAllProjects().filter(modpackUiState.projectsFilter).let { projects ->
+                when (modpackUiState.sortOrder)
+                {
+                    is SortOrder.Name ->
+                    {
+                        if (modpackUiState.sortOrder.ascending)
                         {
-                            ModpackViewModel.ProjectsSelection.select(filteredProjects)
+                            projects.sortedBy { it.name.values.firstOrNull() }
                         }
                         else
                         {
-                            ModpackViewModel.ProjectsSelection.clear()
+                            projects.sortedByDescending { it.name.values.firstOrNull() }
                         }
-
-                        lastClickedIndex = null
-                    },
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickableHover(
-                    scaleOnHover = true
-                ) {
-                    sortOrder = when
-                    {
-                        sortOrder is SortOrder.Name && sortOrder.ascending -> SortOrder.Name(ascending = false)
-                        else -> SortOrder.Name(ascending = true)
                     }
-                }
-            )
-            {
-                Text(
-                    text = "Name",
-                    color = JewelTheme.contentColor
-                )
 
-                when
-                {
-                    sortOrder is SortOrder.Name && sortOrder.ascending -> AllIconsKeys.Gutter.Fold
-                    sortOrder is SortOrder.Name                        -> AllIconsKeys.Gutter.FoldBottom
-                    else                                               -> null
-                }?.let {
-                    Icon(
-                        it,
-                        contentDescription = "Sort direction",
-                        modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                    )
+                    is SortOrder.LastUpdated ->
+                    {
+                        if (modpackUiState.sortOrder.ascending)
+                        {
+                            projects.sortedBy { it.getLatestFile(Provider.providers)?.datePublished }
+                        }
+                        else
+                        {
+                            projects.sortedByDescending { it.getLatestFile(Provider.providers)?.datePublished }
+                        }
+                    }
                 }
             }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickableHover(scaleOnHover = true)
-                {
-                    sortOrder = when
-                    {
-                        sortOrder is SortOrder.LastUpdated && !sortOrder.ascending ->
-                        {
-                            SortOrder.LastUpdated(ascending = true)
-                        }
-                        else -> SortOrder.LastUpdated(ascending = false)
-                    }
-                }
-            ) {
-                Text(
-                    text = "Last Updated",
-                    color = JewelTheme.contentColor
-                )
-
-                when
-                {
-                    sortOrder is SortOrder.LastUpdated && sortOrder.ascending -> AllIconsKeys.Gutter.Fold
-                    sortOrder is SortOrder.LastUpdated                        -> AllIconsKeys.Gutter.FoldBottom
-                    else                                                      -> null
-                }?.let {
-                    Icon(
-                        it,
-                        contentDescription = "Sort direction",
-                        modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                    )
-                }
-            }
-        }
-
-        LazyColumn(
-            Modifier
-                .padding(start = 26.dp, end = 16.dp)
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    layout((placeable.width - offsetPx * 2).coerceAtLeast(40), placeable.height) {
-                        placeable.placeRelative(-offsetPx, 0)
-                    }
-                }
-                .then(
-                    if (showTargetBorder)
-                        Modifier.border(
-                            width = 3.dp,
-                            color = JewelTheme.globalColors.outlines.focused,
-                            shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
-                        )
-                    else Modifier
-                )
-                .dragAndDropTarget(
-                    shouldStartDragAndDrop = { true },
-                    target = dragAndDropTarget
-                )
-                .onKeyEvent { event ->
-                    when (event.type) {
-                        KeyEventType.KeyDown -> shiftPressed = event.isShiftPressed
-                        KeyEventType.KeyUp -> if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight) {
-                            shiftPressed = false
-                        }
-                    }
-                    true
-                },
-            scrollState
-        ) {
-            val filteredProjects = lockFile.getAllProjects()
-                .filter(modpackUiState.projectsFilter)
-                .let { projects ->
-                    when (sortOrder)
-                    {
-                        is SortOrder.Name ->
-                        {
-                            if (sortOrder.ascending)
-                            {
-                                projects.sortedBy { it.name.values.firstOrNull() }
-                            }
-                            else
-                            {
-                                projects.sortedByDescending { it.name.values.firstOrNull() }
-                            }
-                        }
-                        is SortOrder.LastUpdated ->
-                        {
-                            if (sortOrder.ascending)
-                            {
-                                projects.sortedBy { it.getLatestFile(Provider.providers)?.datePublished }
-                            }
-                            else
-                            {
-                                projects.sortedByDescending { it.getLatestFile(Provider.providers)?.datePublished }
-                            }
-                        }
-                    }
-                }
 
             filteredProjects.mapIndexed { index, project ->
-                item {
+                item(
+                    key = project.pakkuId
+                ) {
                     Row(
-                        modifier = Modifier
-                            .padding(vertical = 4.dp)
-                            .fillMaxWidth(),
+                        modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth(),
                         verticalAlignment = Alignment.Top
-                    )
-                    {
+                    ) {
                         Box(
-                            modifier = Modifier
-                                .width(40.dp)
-                                .padding(top = 7.dp)
-                                .padding(end = 4.dp)
-                        )
-                        {
+                            modifier = Modifier.width(40.dp).padding(top = 7.dp).padding(end = 4.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
-                            )
-                            {
+                            ) {
                                 Checkbox(
                                     checked = ModpackViewModel.ProjectsSelection.isSelected(project),
                                     onCheckedChange = { checked ->
-                                        if (shiftPressed && lastClickedIndex != null)
+                                        if (shiftPressed.value && lastClickedIndex.value != null)
                                         {
-                                            val startIdx = minOf(lastClickedIndex!!, index)
-                                            val endIdx = maxOf(lastClickedIndex!!, index)
+                                            val startIdx = minOf(lastClickedIndex.value!!, index)
+                                            val endIdx = maxOf(lastClickedIndex.value!!, index)
 
                                             val projectsInRange = filteredProjects.slice(startIdx..endIdx)
 
@@ -324,7 +383,7 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
                                         else
                                         {
                                             ModpackViewModel.ProjectsSelection.toggle(project)
-                                            lastClickedIndex = index
+                                            lastClickedIndex.value = index
                                         }
                                     },
                                     enabled = true,
@@ -348,10 +407,9 @@ fun ProjectsList(coroutineScope: CoroutineScope = rememberCoroutineScope())
                 }
             }
         }
-    }
 
-    VerticalScrollbar(
-        modifier = Modifier.fillMaxHeight(),
-        scrollState = scrollState
-    )
+        VerticalScrollbar(
+            modifier = Modifier.fillMaxHeight(), scrollState = ModpackViewModel.projectsScrollState.value
+        )
+    }
 }

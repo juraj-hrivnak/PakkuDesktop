@@ -33,7 +33,7 @@ fun Error(error: ActionError)
                 ) {
                     error::class.simpleName?.let {
                         Header(
-                            headerText = "Error of type '$it' occurred.",
+                            text = "Error of type '$it' occurred.",
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }

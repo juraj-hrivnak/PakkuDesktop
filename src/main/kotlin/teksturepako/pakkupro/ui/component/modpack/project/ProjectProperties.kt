@@ -11,13 +11,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakku.api.projects.UpdateStrategy
+import teksturepako.pakkupro.ui.component.Switch
 import teksturepako.pakkupro.ui.component.modpack.project.projectPropSelection.NullableProjectEnumSelection
 import teksturepako.pakkupro.ui.component.modpack.project.projectPropSelection.NullableProjectStringSelection
 import teksturepako.pakkupro.ui.component.modpack.project.projectPropSelection.ProjectBooleanSelection
@@ -46,22 +46,26 @@ fun ProjectProperties()
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                OutlinedButton(
-                    onClick = {
-                        if (!modpackUiState.editingProject)
-                        {
-                            ModpackViewModel.editProject(true)
-                        }
-                        else
-                        {
-                            ModpackViewModel.editProject(false)
-                            coroutineScope.launch {
-                                ModpackViewModel.loadFromDisk()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Edit: ")
+                    Switch(
+                        checked = modpackUiState.editingProject,
+                        onCheckedChange = {
+                            if (!modpackUiState.editingProject)
+                            {
+                                ModpackViewModel.editProject(true)
+                            }
+                            else
+                            {
+                                ModpackViewModel.editProject(false)
+                                coroutineScope.launch {
+                                    ModpackViewModel.loadFromDisk()
+                                }
                             }
                         }
-                    }
-                ) {
-                    Text("Edit")
+                    )
                 }
             }
         }

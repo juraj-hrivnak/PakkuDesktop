@@ -12,6 +12,7 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.component.ContentBox
+import teksturepako.pakkupro.ui.component.ImmediateTooltip
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import kotlin.reflect.KMutableProperty1
 
@@ -44,6 +45,7 @@ fun ProjectBooleanSelection(
                         ModpackViewModel.writeEditingProjectToDisk {
                             projectConfigRef.set(this, boolean)
                         }
+                        ModpackViewModel.loadFromDisk()
                     }
                 }
             )
@@ -68,24 +70,25 @@ fun ProjectBooleanSelection(
                         }
                     }
                     Row {
-                        IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    ModpackViewModel.writeEditingProjectToDisk {
-                                        projectConfigRef.set(this, null)
+                        ImmediateTooltip({ Text("Reset to default") }) {
+                            IconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        ModpackViewModel.writeEditingProjectToDisk {
+                                            projectConfigRef.set(this, null)
+                                        }
+                                        ModpackViewModel.loadFromDisk()
+                                        buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
                                     }
-                                    ModpackViewModel.loadFromDisk()
-                                    buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
-                                }
-                            },
-                            modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
-                        ) {
-                            Icon(
-                                PakkuDesktopIcons.rollback,
-                                "reset",
-                                tint = JewelTheme.contentColor,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
+                                }, modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
+                            ) {
+                                Icon(
+                                    PakkuDesktopIcons.rollback,
+                                    "reset",
+                                    tint = JewelTheme.contentColor,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                )
+                            }
                         }
                     }
                 }

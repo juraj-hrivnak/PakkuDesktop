@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
@@ -16,13 +17,13 @@ import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 @Composable
 fun ProjectFilter()
 {
-    val textFieldState = rememberTextFieldState()
+    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
     TextField(
-        textFieldState,
+        modpackUiState.projectsFilterTextFieldState,
         Modifier
-            .height(60.dp)
-            .width(180.dp)
+            .height(35.dp)
+            .width(300.dp)
             .fillMaxWidth()
             .padding(start = 4.dp, end = 4.dp, top = 0.dp, bottom = 0.dp),
         placeholder = {
@@ -30,11 +31,12 @@ fun ProjectFilter()
         }
     )
 
-    LaunchedEffect(textFieldState)
+    LaunchedEffect(modpackUiState.projectsFilterTextFieldState)
     {
         ModpackViewModel.updateProjectsFilter { project ->
-            project.name.values.any { value -> textFieldState.text.toString().lowercase() in value.lowercase() }
-                    || textFieldState.text.toString() in project
+            project.name.values.any { value ->
+                modpackUiState.projectsFilterTextFieldState.text.toString().lowercase() in value.lowercase()
+            } || modpackUiState.projectsFilterTextFieldState.text.toString() in project
         }
     }
 }
