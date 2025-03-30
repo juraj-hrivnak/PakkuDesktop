@@ -1,12 +1,29 @@
 package teksturepako.pakkupro.ui.viewmodel.state
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.Repository
+
+data class GitState(
+    val gitFiles: List<GitFile> = emptyList(),
+    val selectedFiles: Set<String> = emptySet(),
+    val currentDiff: DiffContent? = null,
+    val commitMessage: String = "",
+    val repository: Repository? = null,
+    val git: Git? = null,
+)
+{
+    companion object
+    {
+        fun fromRepository(repository: Repository): GitState = GitState(
+            repository = repository,
+            git = Git(repository)
+        )
+    }
+}
 
 sealed interface GitChange
 {
@@ -20,12 +37,15 @@ sealed interface GitChange
 }
 
 data class GitFile(
+    val path: String,
     val status: GitChange,
     val lastModified: LocalDateTime,
     val size: Long,
     val isSelected: Boolean = false
-) {
-    companion object {
+)
+{
+    companion object
+    {
         fun fromFileInfo(
             path: String,
             status: GitChange,
@@ -33,6 +53,7 @@ data class GitFile(
             size: Long,
             isSelected: Boolean = false
         ): GitFile = GitFile(
+            path = path,
             status = status,
             lastModified = Instant
                 .fromEpochMilliseconds(modifiedEpochMillis)
@@ -58,32 +79,17 @@ data class DiffLine(
     val number: LineNumbers,
     val content: String,
     val type: DiffType
-) {
+)
+{
     data class LineNumbers(
         val old: Int?,
         val new: Int?
     )
 }
 
-enum class DiffType {
+enum class DiffType
+{
     ADDED,
     DELETED,
     UNCHANGED,
-    MODIFIED;
-
-    @Composable
-    fun backgroundColor() = when(this) {
-        ADDED -> Color(0xff2a8441)
-        DELETED -> Color(0xffaf5c5c)
-        MODIFIED -> Color.Transparent
-        UNCHANGED -> Color.Transparent
-    }
-
-    @Composable
-    fun textColor() = when(this) {
-        ADDED -> Color(0xFF50FA7B)
-        DELETED -> Color(0xFFFF5555)
-        MODIFIED -> JewelTheme.contentColor
-        UNCHANGED -> JewelTheme.contentColor
-    }
 }

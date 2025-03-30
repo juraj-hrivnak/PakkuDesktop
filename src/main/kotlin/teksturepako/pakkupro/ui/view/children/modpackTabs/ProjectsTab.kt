@@ -8,7 +8,7 @@ import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkupro.ui.component.HorizontalBar
 import teksturepako.pakkupro.ui.component.modpack.project.ProjectDisplay
-import teksturepako.pakkupro.ui.component.modpack.project.ProjectsList
+import teksturepako.pakkupro.ui.component.modpack.project.list.ProjectsList
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 
 @Composable

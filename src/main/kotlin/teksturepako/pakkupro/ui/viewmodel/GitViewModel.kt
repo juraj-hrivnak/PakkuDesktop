@@ -15,24 +15,6 @@ import teksturepako.pakkupro.ui.viewmodel.state.*
 import java.nio.file.Path
 import kotlin.math.absoluteValue
 
-data class GitState(
-    val gitFiles: List<GitFile> = emptyList(),
-    val selectedFiles: Set<String> = emptySet(),
-    val currentDiff: DiffContent? = null,
-    val commitMessage: String = "",
-    val repository: Repository? = null,
-    val git: Git? = null,
-)
-{
-    companion object
-    {
-        fun fromRepository(repository: Repository): GitState = GitState(
-            repository = repository,
-            git = Git(repository)
-        )
-    }
-}
-
 object GitViewModel
 {
     private val _state = MutableStateFlow(GitState())
@@ -82,9 +64,11 @@ object GitViewModel
         val currentState = _state.value
         val git = currentState.git
         val repository = currentState.repository
-        return if (git != null && repository != null) {
+        return if (git != null && repository != null)
+        {
             block(git, repository)
-        } else null
+        }
+        else null
     }
 
     private fun createRepository(path: Path): Result<Repository> = runCatching {
@@ -285,7 +269,6 @@ object GitViewModel
                         type = DiffType.UNCHANGED
                     ))
                 }
-                else -> { /* Handle other cases if needed */ }
             }
         }
 

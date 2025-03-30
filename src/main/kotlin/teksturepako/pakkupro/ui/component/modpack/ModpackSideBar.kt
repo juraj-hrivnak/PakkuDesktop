@@ -64,14 +64,14 @@ fun ModpackSideBar()
             }
             ImmediateTooltip({ Text("Commit") }) {
                 IconButton(
-                    onClick = { ModpackViewModel.selectTab(SelectedTab.GIT) },
+                    onClick = { ModpackViewModel.selectTab(SelectedTab.COMMIT) },
                     Modifier.size(30.dp),
-                    enabled = modpackUiState.selectedTab != SelectedTab.GIT,
+                    enabled = modpackUiState.selectedTab != SelectedTab.COMMIT,
                 ) {
                     Icon(
                         key = AllIconsKeys.Toolwindows.ToolWindowCommit,
                         contentDescription = "git icon",
-                        tint = if (modpackUiState.selectedTab == SelectedTab.GIT) Color.LightGray else Color.Gray,
+                        tint = if (modpackUiState.selectedTab == SelectedTab.COMMIT) Color.LightGray else Color.Gray,
                         hints = arrayOf()
                     )
                 }

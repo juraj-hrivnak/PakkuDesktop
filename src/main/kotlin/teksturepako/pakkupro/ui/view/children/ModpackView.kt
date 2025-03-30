@@ -20,6 +20,7 @@ import teksturepako.pakkupro.ui.component.Error
 import teksturepako.pakkupro.ui.component.SonnerToastHost
 import teksturepako.pakkupro.ui.component.dialog.CreateModpackDialog
 import teksturepako.pakkupro.ui.component.dropdown.ModpackDropdown
+import teksturepako.pakkupro.ui.component.dropdown.VcsDropdown
 import teksturepako.pakkupro.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.view.children.modpackTabs.GitTab
@@ -70,6 +71,7 @@ fun PakkuApplicationScope.ModpackView()
 
     MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
         ModpackDropdown(pickerLauncher)
+        VcsDropdown()
         if (modpackUiState.action.first != null)
         {
             Box(Modifier.padding(4.dp)) {
@@ -118,8 +120,8 @@ fun PakkuApplicationScope.ModpackView()
                         when (modpackUiState.selectedTab)
                         {
                             SelectedTab.PROJECTS -> ProjectsTab()
-                            SelectedTab.MODPACK  -> ModpackTab()
-                            SelectedTab.GIT      -> GitTab()
+                            SelectedTab.MODPACK -> ModpackTab()
+                            SelectedTab.COMMIT  -> GitTab()
                         }
                     }
                 }

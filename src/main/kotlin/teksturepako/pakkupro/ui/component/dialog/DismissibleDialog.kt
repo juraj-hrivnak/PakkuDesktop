@@ -17,8 +17,8 @@ import teksturepako.pakkupro.ui.component.ContentBox
 fun DismissibleDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
-    maxWidth: Dp = 600.dp,
-    maxHeight: Dp = 400.dp,
+    maxWidth: Dp = 1200.dp,
+    maxHeight: Dp = 2000.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     if (visible)

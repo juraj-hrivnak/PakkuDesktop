@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
@@ -28,7 +27,7 @@ fun WelcomeViewDropdown(
 
     val coroutineScope = rememberCoroutineScope()
 
-    Dropdown(
+    DropdownImpl(
         Modifier.padding(vertical = 4.dp),
         content = {
             Row(
