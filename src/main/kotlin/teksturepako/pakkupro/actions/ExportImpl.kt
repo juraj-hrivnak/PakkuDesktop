@@ -2,18 +2,21 @@ package teksturepako.pakkupro.actions
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.getOrElse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.IOExportingError
 import teksturepako.pakku.api.actions.export.ExportProfile
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
+import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.cli.ui.shortForm
 import teksturepako.pakku.io.toHumanReadableSize
 import teksturepako.pakkupro.io.RevealFileAction
@@ -21,6 +24,7 @@ import teksturepako.pakkupro.ui.component.showToast
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.ModpackUiState
 import java.nio.file.Path
+import kotlin.io.path.Path
 import kotlin.io.path.fileSize
 import kotlin.io.path.pathString
 import kotlin.time.Duration
@@ -88,7 +92,7 @@ fun exportImpl(modpackUiState: ModpackUiState)
                                     modifier = Modifier.padding(16.dp).width(300.dp)
                                 ) {
                                     Column {
-                                        Text("[${profile.name} profile]")
+                                        Text("[${profile.name} profile]", fontWeight = FontWeight.Bold)
                                         Spacer(Modifier.height(8.dp))
                                         Text(error.rawMessage)
                                     }
@@ -100,7 +104,7 @@ fun exportImpl(modpackUiState: ModpackUiState)
                 },
                 onSuccess = { profile: ExportProfile, path: Path, duration: Duration ->
                     val fileSize = path.fileSize().toHumanReadableSize()
-                    val filePath = path.pathString
+                    val filePath = Path(workingPath).relativize(path).pathString
 
                     val message = "[${profile.name} profile] exported to '$filePath' " +
                             "($fileSize) in ${duration.shortForm()}"
@@ -111,11 +115,10 @@ fun exportImpl(modpackUiState: ModpackUiState)
                                 modifier = Modifier.padding(16.dp).width(300.dp)
                             ) {
                                 Column {
-                                    Text("[${profile.name} profile]")
+                                    Text("[${profile.name} profile]", fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(8.dp))
-                                    Text("exported to '$filePath'")
-                                    Spacer(Modifier.height(8.dp))
-                                    Text("($fileSize) in ${duration.shortForm()}")
+                                    Text("exported to '$filePath'", style = JewelTheme.consoleTextStyle)
+                                    Text(" ($fileSize) in ${duration.shortForm()}")
                                     Spacer(Modifier.height(8.dp))
                                     DefaultButton(
                                         onClick = {
