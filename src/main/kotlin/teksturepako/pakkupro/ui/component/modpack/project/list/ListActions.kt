@@ -56,7 +56,7 @@ fun ListActions()
                     Text("Add Projects...")
                     Icon(
                         key = AllIconsKeys.General.InlineAdd,
-                        contentDescription = "add",
+                        contentDescription = "teksturepako.pakkupro.actions.add",
                         tint = JewelTheme.contentColor,
                         hints = arrayOf(),
                         modifier = Modifier.size(15.dp)

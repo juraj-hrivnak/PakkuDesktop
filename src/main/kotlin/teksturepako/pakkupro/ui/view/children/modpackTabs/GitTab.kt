@@ -155,6 +155,7 @@ private fun CommitPanel(
     modifier: Modifier = Modifier,
 )
 {
+
     Column(
         modifier = modifier.padding(16.dp)
     ) {
@@ -163,6 +164,11 @@ private fun CommitPanel(
         )
 
         val textFieldState = rememberTextFieldState()
+
+        LaunchedEffect(textFieldState.text)
+        {
+            GitViewModel.updateCommitMessage(textFieldState.text.toString())
+        }
 
         TextField(
             textFieldState,

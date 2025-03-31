@@ -20,6 +20,32 @@ object GitViewModel
     private val _state = MutableStateFlow(GitState())
     val state: StateFlow<GitState> = _state.asStateFlow()
 
+    fun initialize(path: Path)
+    {
+        createRepository(path)
+            .map { repository ->
+                updateState { GitState.fromRepository(repository) }
+                refreshChanges()
+            }
+            .onFailure { e ->
+                println("Failed to initialize Git repository: ${e.message}")
+                e.printStackTrace()
+            }
+    }
+
+    fun refreshChanges()
+    {
+        withGitState { git, repository ->
+            runCatching {
+                val files = processGitStatus(git.status().call(), repository.workTree)
+                updateState { it.copy(gitFiles = files) }
+            }.onFailure { e ->
+                println("Error refreshing changes: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
     private fun updateState(update: (GitState) -> GitState)
     {
         _state.update(update)
@@ -79,19 +105,6 @@ object GitViewModel
             .build()
     }
 
-    fun initialize(path: Path)
-    {
-        createRepository(path)
-            .map { repository ->
-                updateState { GitState.fromRepository(repository) }
-                refreshChanges()
-            }
-            .onFailure { e ->
-                println("Failed to initialize Git repository: ${e.message}")
-                e.printStackTrace()
-            }
-    }
-
     private fun createGitFile(path: String, status: GitChange, workTree: java.io.File): GitFile =
         workTree.resolve(path).let { file ->
             GitFile.fromFileInfo(
@@ -119,19 +132,6 @@ object GitViewModel
 
         return statusMappings.flatMap { (paths, createChange) ->
             paths.map { path -> createGitFile(path, createChange(path), workTree) }
-        }
-    }
-
-    private fun refreshChanges()
-    {
-        withGitState { git, repository ->
-            runCatching {
-                val files = processGitStatus(git.status().call(), repository.workTree)
-                updateState { it.copy(gitFiles = files) }
-            }.onFailure { e ->
-                println("Error refreshing changes: ${e.message}")
-                e.printStackTrace()
-            }
         }
     }
 

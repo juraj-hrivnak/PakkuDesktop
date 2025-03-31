@@ -44,7 +44,7 @@ fun AddProjectsDialog(
             Spacer(Modifier.height(8.dp))
             Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Text("Enter the projects to add")
+            Text("Enter the projects to teksturepako.pakkupro.actions.add")
             Spacer(Modifier.height(8.dp))
             TextField(state = textFieldState)
         }

@@ -57,7 +57,7 @@ object ProfileViewModel
 
         if (path.absolutePathString() !in _profileData.value.recentProfiles.map { it.path })
         {
-            // Don't add the profile to recent profiles if it doesn't have a lock file.
+            // Don't teksturepako.pakkupro.actions.add the profile to recent profiles if it doesn't have a lock file.
             if (LockFile.readToResultFrom(Path(path.pathString, LockFile.FILE_NAME)).isErr) return@runBlocking
 
             _profileData.update { currentState ->

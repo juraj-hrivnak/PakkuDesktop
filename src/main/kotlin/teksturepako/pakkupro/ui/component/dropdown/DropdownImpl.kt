@@ -91,7 +91,7 @@ fun DropdownImpl(
                 .onPointerEvent(PointerEventType.Press) {
                     if (enabled)
                     {
-                        currentlyExpandedDropdownId = if (currentlyExpandedDropdownId == dropdownId) null else dropdownId
+                        currentlyExpandedDropdownId = dropdownId
                     }
                 },
             contentAlignment = Alignment.CenterStart,
