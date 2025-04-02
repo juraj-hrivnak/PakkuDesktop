@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.michaelbull.result.fold
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import kotlinx.coroutines.Dispatchers
@@ -91,36 +90,45 @@ object GitViewModel
     {
         if (_gitState.value.gitFiles.isNotEmpty()) return
 
-        (gitRepoOf(workingPath) exec "checkout ${branch.name}")
-            .mapToResultMessages()
-            .let { (ok, err) ->
-                ok?.let { message ->
-                    withContext(Dispatchers.Main) {
-                        ModpackViewModel.toasts.showToast {
-                            Box(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .width(300.dp)
-                            ) {
-                                Text(message)
-                            }
+        val remoteBranchName by lazy {
+            branch.name.split('/', limit = 2).getOrNull(1)
+        }
+
+        if (branch.isRemote && remoteBranchName != null)
+        {
+            (gitRepoOf(workingPath) exec "checkout -b $remoteBranchName ${branch.name} --")
+        }
+        else
+        {
+            (gitRepoOf(workingPath) exec "checkout ${branch.name}")
+        }.output(
+            success = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
                     }
                 }
-                err?.let { message ->
-                    withContext(Dispatchers.Main) {
-                        ModpackViewModel.toasts.showToast {
-                            Box(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .width(300.dp)
-                            ) {
-                                Text(message)
-                            }
+            },
+            failure = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
                     }
                 }
             }
+        )
 
         load()
 
@@ -150,103 +158,69 @@ object GitViewModel
 
         if (remoteBranch != currentBranch) return
 
-        (gitRepoOf(workingPath) exec "fetch $remoteName --progress")
-            .collect { result ->
-                result.fold(
-                    success = { event ->
-                        when (event)
-                        {
-                            is GitEvent.Progress ->
-                            {
-                                _eventProgress.update { event }
-                            }
-                            is GitEvent.Output   ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(event.message)
-                                        }
-                                    }
-                                }
-                            }
+        (gitRepoOf(workingPath) exec "fetch $remoteName --progress").output(
+            progress = {
+                _eventProgress.update { it }
+            },
+            success = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                    failure = { error ->
-                        when (error)
-                        {
-                            is GitError.Command ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(error.message)
-                                        }
-                                    }
-                                }
-                            }
-                            else -> { }
+                    }
+                }
+            },
+            failure = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                )
+                    }
+                }
             }
+        )
 
-        (gitRepoOf(workingPath) exec "pull $remoteName $remoteBranch --progress")
-            .collect { result ->
-                result.fold(
-                    success = { event ->
-                        when (event)
-                        {
-                            is GitEvent.Progress ->
-                            {
-                                _eventProgress.update { event }
-                            }
-                            is GitEvent.Output   ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(event.message)
-                                        }
-                                    }
-                                }
-                            }
+        (gitRepoOf(workingPath) exec "pull $remoteName $remoteBranch --progress").output(
+            progress = {
+                _eventProgress.update { it }
+            },
+            success = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                    failure = { error ->
-                        when (error)
-                        {
-                            is GitError.Command ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(error.message)
-                                        }
-                                    }
-                                }
-                            }
-                            else -> { }
+                    }
+                }
+            },
+            failure = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                )
+                    }
+                }
             }
+        )
 
         load()
 
@@ -255,54 +229,37 @@ object GitViewModel
 
     suspend fun push()
     {
-        (gitRepoOf(workingPath) exec "push --progress origin HEAD")
-            .collect { result ->
-                result.fold(
-                    success = { event ->
-                        when (event)
-                        {
-                            is GitEvent.Progress ->
-                            {
-                                _eventProgress.update { event }
-                            }
-                            is GitEvent.Output   ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(event.message)
-                                        }
-                                    }
-                                }
-                            }
+        (gitRepoOf(workingPath) exec "push --progress origin HEAD").output(
+            progress = {
+                _eventProgress.update { it }
+            },
+            success = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                    failure = { error ->
-                        when (error)
-                        {
-                            is GitError.Command ->
-                            {
-                                withContext(Dispatchers.Main) {
-                                    ModpackViewModel.toasts.showToast {
-                                        Box(
-                                            modifier = Modifier
-                                                .padding(16.dp)
-                                                .width(300.dp)
-                                        ) {
-                                            Text(error.message)
-                                        }
-                                    }
-                                }
-                            }
-                            else -> { }
+                    }
+                }
+            },
+            failure = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
-                    },
-                )
+                    }
+                }
             }
+        )
 
         load()
 
@@ -336,36 +293,34 @@ object GitViewModel
             return
         }
 
-        (gitRepoOf(workingPath) exec "commit -m \"${_gitState.value.commitMessage}\"")
-            .mapToResultMessages()
-            .let { (ok, err) ->
-                ok?.let { message ->
-                    withContext(Dispatchers.Main) {
-                        ModpackViewModel.toasts.showToast {
-                            Box(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .width(300.dp)
-                            ) {
-                                Text(message)
-                            }
+        (gitRepoOf(workingPath) exec "commit -m \"${_gitState.value.commitMessage}\"").output(
+            success = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
                     }
                 }
-                err?.let { message ->
-                    withContext(Dispatchers.Main) {
-                        ModpackViewModel.toasts.showToast {
-                            Box(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .width(300.dp)
-                            ) {
-                                Text(message)
-                            }
+            },
+            failure = {
+                withContext(Dispatchers.Main) {
+                    ModpackViewModel.toasts.showToast {
+                        Box(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .width(300.dp)
+                        ) {
+                            Text(it)
                         }
                     }
                 }
             }
+        )
 
         load()
 

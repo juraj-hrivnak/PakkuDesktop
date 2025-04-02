@@ -8,12 +8,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.github.michaelbull.result.Result
-import com.github.michaelbull.result.get
-import com.github.michaelbull.result.onFailure
-import com.github.michaelbull.result.onSuccess
+import com.github.michaelbull.result.*
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
@@ -61,6 +59,7 @@ fun NullableProjectStringSelection(
                         projectConfigRef.set(this, null)
                     }
                 }
+
                 ModpackViewModel.loadFromDisk()
             }
         }
@@ -110,7 +109,13 @@ fun NullableProjectStringSelection(
                 FlowRow(
                     modifier = Modifier.padding(4.dp)
                 ) {
-                    TextField(textFieldState)
+                    val outline = projectRef(modpackUiState.selectedProject!!)
+                        ?.fold(
+                            success = { Outline.None },
+                            failure = { Outline.Error }
+                        )
+
+                    TextField(textFieldState, outline = outline ?: Outline.None)
                 }
             }
         }
@@ -140,6 +145,7 @@ fun NullableProjectStringSelection(
                         Modifier.padding(2.dp),
                         color = Color.Red
                     ) {
+                        Text("Error: " + it.rawMessage)
                         Text("Error: " + it.rawMessage)
                     }
                 }
