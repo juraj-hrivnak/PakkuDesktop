@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.SplitLayoutState
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
@@ -32,13 +31,8 @@ object ModpackViewModel
     val modpackUiState: StateFlow<ModpackUiState> = _modpackUiState.asStateFlow()
 
     suspend fun loadFromDisk() = coroutineScope {
-        launch {
-            ProfileViewModel.profileData.value.currentProfile?.path?.let {
-                workingPath = it
-                logger.info { "workingPath set to [$workingPath]" }
-            }
-        }.join()
-
+        ProfileViewModel.loadFromDisk()
+        
         val lockFile = LockFile.readToResult()
 
         _modpackUiState.update { currentState ->

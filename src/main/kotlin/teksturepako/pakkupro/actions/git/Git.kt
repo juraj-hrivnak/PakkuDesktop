@@ -1,6 +1,7 @@
-package teksturepako.pakkupro.actions
+package teksturepako.pakkupro.actions.git
 
 import com.github.michaelbull.result.*
+import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -10,36 +11,41 @@ import java.nio.file.Path
 
 sealed interface GitError
 {
+    val message: String
+
     data class Output(
-        val message: String,
+        override val message: String,
     ) : GitError
 
     data class Command(
         val code: Int,
-        val message: String,
+        override val message: String,
     ) : GitError
 
     data class Execution(
         val cause: Throwable,
+        override val message: String = cause.message ?: cause.stackTraceToString()
     ) : GitError
 }
 
-sealed interface GitEvent
+sealed class GitEvent
 {
     data class Output(
         val message: String,
-    ) : GitEvent
+    ) : GitEvent()
 
     data class Progress(
         val operation: String,
         val current: Int,
         val total: Int? = null,
         val message: String? = null,
-    ) : GitEvent
+    ) : GitEvent()
     {
         val percentage: Float
             get() = total?.let { current.toFloat() / it } ?: 0f
     }
+
+    fun output() = if (this is Output) this else null
 }
 
 suspend infix fun Git.exec(args: String): Flow<Result<GitEvent, GitError>> = withContext(Dispatchers.IO) {
@@ -49,10 +55,17 @@ suspend infix fun Git.exec(args: String): Flow<Result<GitEvent, GitError>> = wit
     }.flowOn(Dispatchers.IO)
 }
 
-class Git private constructor(private val repoPath: Path)
+fun gitRepoOf(path: Path) = Git(path)
+fun gitRepoOf(file: File) = Git(file.toPath())
+fun gitRepoOf(path: String) = Git(Path.of(path))
+
+class Git(private val repoPath: Path)
 {
-    fun buildCommand(args: String): List<String> =
-        listOf("git") + args.split(" ")
+    private val logger = logger(this::class)
+
+    suspend fun buildCommand(args: String): List<String> =
+        (listOf("git") + args.split(" "))
+            .also { logger.info(it.joinToString(" ")) }
 
     suspend fun executeCommand(command: List<String>): Flow<Result<GitEvent, GitError>> = withContext(Dispatchers.IO) {
         flow {
@@ -77,6 +90,7 @@ class Git private constructor(private val repoPath: Path)
                                 ?.let { progress -> emit(Ok(progress)) }
                                 ?: parseError(line)?.let { error -> emit(Err(error)) }
                                 ?: emit(Ok(GitEvent.Output(line)))
+                                    .also { logger.info(line) }
                         }
                     }
                 },
@@ -87,6 +101,7 @@ class Git private constructor(private val repoPath: Path)
                                 ?.let { progress -> emit(Ok(progress)) }
                                 ?: parseError(line)?.let { error -> emit(Err(error)) }
                                 ?: emit(Ok(GitEvent.Output(line)))
+                                    .also { logger.info(line) }
                         }
                     }
                 },
@@ -122,13 +137,6 @@ class Git private constructor(private val repoPath: Path)
             )
         }
     }
-
-    companion object
-    {
-        fun at(path: Path) = Git(path)
-        fun at(file: File) = at(file.toPath())
-        fun at(path: String) = at(Path.of(path))
-    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -150,4 +158,31 @@ suspend infix fun Flow<Result<GitEvent, GitError>>.andThen(
             }
         }.flowOn(Dispatchers.IO)
     }
+}
+
+suspend fun Flow<Result<GitEvent, GitError>>.mapToResultMessages(): Pair<String?, String?>
+{
+    val successMessage = this.toList()
+        .filter { it.isOk }
+        .map { result ->
+            result.fold(
+                success = { event -> event.output()?.message },
+                failure = { null }
+            )
+        }
+        .joinToString("\n")
+        .takeIf { it.isNotBlank() }
+
+    val errorMessage = this.toList()
+        .filter { it.isErr }
+        .map { result ->
+            result.fold(
+                success = { null },
+                failure = { error -> error.message }
+            )
+        }
+        .joinToString("\n")
+        .takeIf { it.isNotBlank() }
+
+    return successMessage to errorMessage
 }

@@ -3,14 +3,17 @@ package teksturepako.pakkupro.ui.viewmodel
 import com.github.michaelbull.result.get
 import io.klogging.Klogger
 import io.klogging.logger
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkupro.data.Profile
 import teksturepako.pakkupro.data.ProfileData
 import teksturepako.pakkupro.data.ProfileData.CloseDialogData
@@ -27,8 +30,8 @@ object ProfileViewModel
     private var _profileData = MutableStateFlow(ProfileData())
     val profileData: StateFlow<ProfileData> = _profileData.asStateFlow()
 
-    suspend fun loadFromDisk()
-    {
+    suspend fun loadFromDisk(updateWorkingPath: Boolean = true) = coroutineScope {
+
         val updatedProfileData = ProfileData.readOrNew()
 
         logger.info { "loaded from disk" }
@@ -40,6 +43,16 @@ object ProfileViewModel
                 theme = updatedProfileData.theme,
                 closeDialog = currentState.closeDialog
             )
+        }
+
+        if (updateWorkingPath)
+        {
+            launch {
+                _profileData.value.currentProfile?.path.let {
+                    workingPath = it ?: "."
+                    logger.info { "workingPath set to [$workingPath]" }
+                }
+            }.join()
         }
     }
 
@@ -92,9 +105,9 @@ object ProfileViewModel
         }
     }
 
-    suspend fun updateCurrentProfile(updatedCurrentProfile: Path?)
-    {
-        loadFromDisk()
+    suspend fun updateCurrentProfile(updatedCurrentProfile: Path?) = coroutineScope {
+
+        loadFromDisk(updateWorkingPath = false)
 
         _profileData.value.currentProfilePath?.let { addRecentProfile(it) }
 
@@ -121,6 +134,13 @@ object ProfileViewModel
                 )
             }
         }
+
+        launch {
+            _profileData.value.currentProfile?.path.let {
+                workingPath = it ?: "."
+                logger.info { "workingPath set to [$workingPath]" }
+            }
+        }.join()
 
         writeToDisk()
 

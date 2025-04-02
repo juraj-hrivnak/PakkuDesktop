@@ -7,18 +7,15 @@ import kotlinx.datetime.toLocalDateTime
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.Repository
 
-data class GitState(
-    val gitFiles: List<GitFile> = emptyList(),
-    val selectedFiles: Set<String> = emptySet(),
+data class GitDiffState(
     val currentDiff: DiffContent? = null,
-    val commitMessage: String = "",
     val repository: Repository? = null,
     val git: Git? = null,
 )
 {
     companion object
     {
-        fun fromRepository(repository: Repository): GitState = GitState(
+        fun fromRepository(repository: Repository): GitDiffState = GitDiffState(
             repository = repository,
             git = Git(repository)
         )
@@ -35,6 +32,17 @@ sealed interface GitChange
     data class Added(override val path: String) : GitChange
     data class Deleted(override val path: String) : GitChange
 }
+
+data class GitBranch(
+    val name: String,
+    val isRemote: Boolean,
+    val isCurrent: Boolean,
+)
+
+data class GitCommit(
+    val hash: String,
+    val message: String,
+)
 
 data class GitFile(
     val path: String,

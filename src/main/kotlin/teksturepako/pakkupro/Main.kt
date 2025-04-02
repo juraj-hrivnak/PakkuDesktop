@@ -6,7 +6,7 @@ import io.klogging.config.ANSI_CONSOLE
 import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
 import io.klogging.sending.STDOUT
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug

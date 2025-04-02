@@ -1,25 +1,27 @@
 package teksturepako.pakkupro.ui.view.children.modpackTabs
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkupro.ui.component.HorizontalBar
 import teksturepako.pakkupro.ui.component.git.diff.DiffViewer
+import teksturepako.pakkupro.ui.viewmodel.GitDiffViewModel
 import teksturepako.pakkupro.ui.viewmodel.GitViewModel
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkupro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkupro.ui.viewmodel.state.GitChange
 import teksturepako.pakkupro.ui.viewmodel.state.GitFile
 import kotlin.io.path.Path
@@ -27,12 +29,14 @@ import kotlin.io.path.Path
 @Composable
 fun GitTab()
 {
-    val viewModel = GitViewModel
-    val gitState by viewModel.state.collectAsState()
+    val diffState by GitDiffViewModel.state.collectAsState()
+    val gitState by GitViewModel.gitState.collectAsState()
+
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit)
     {
-        viewModel.initialize(Path(workingPath))
+        GitDiffViewModel.init(Path(workingPath))
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -48,7 +52,17 @@ fun GitTab()
                         ChangesPanel(
                             files = gitState.gitFiles,
                             selectedFiles = gitState.selectedFiles,
-                            onFileSelect = viewModel::toggleFileSelection,
+                            currentDiff = diffState.currentDiff,
+                            onFileSelect = {
+                                coroutineScope.launch(Dispatchers.Main) {
+                                    GitViewModel.toggleFileSelection(it)
+                                }
+                            },
+                            onFileView = {
+                                coroutineScope.launch(Dispatchers.Main) {
+                                    GitDiffViewModel.selectDiff(it)
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .fillMaxHeight()
@@ -60,7 +74,7 @@ fun GitTab()
                 Column {
                     Row {
                         DiffViewer(
-                            gitState.currentDiff, modifier = Modifier.weight(1f)
+                            diffState.currentDiff, modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -79,12 +93,14 @@ fun GitTab()
 @Composable
 private fun ChangesPanel(
     files: List<GitFile>,
-    selectedFiles: Set<String>,
-    onFileSelect: (String) -> Unit,
+    selectedFiles: Set<GitFile>,
+    currentDiff: DiffContent?,
+    onFileSelect: (GitFile) -> Unit,
+    onFileView: (GitFile) -> Unit,
     modifier: Modifier = Modifier,
 )
 {
-    val viewModel = GitViewModel
+    val coroutineScope = rememberCoroutineScope()
 
     FlowColumn(
         modifier = modifier
@@ -99,8 +115,10 @@ private fun ChangesPanel(
                 items(files) { file ->
                     FileRow(
                         file = file,
-                        isSelected = selectedFiles.contains(file.status.path),
-                        onSelect = { onFileSelect(file.status.path) }
+                        isSelected = selectedFiles.contains(file),
+                        isViewed = currentDiff?.newPath == file.status.path,
+                        onSelect = { onFileSelect(file) },
+                        onView = { onFileView(file) }
                     )
                 }
             }
@@ -110,7 +128,11 @@ private fun ChangesPanel(
             verticalArrangement = Arrangement.Bottom
         ) {
             CommitPanel(
-                onCommit = viewModel::commit,
+                onCommit = {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        GitViewModel.commit()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
             )
@@ -122,15 +144,19 @@ private fun ChangesPanel(
 private fun FileRow(
     file: GitFile,
     isSelected: Boolean,
+    isViewed: Boolean,
     onSelect: () -> Unit,
+    onView: () -> Unit,
 )
 {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(if (isSelected) Color(0xFF2F65CA) else Color.Transparent)
-                .padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically
+                .background(if (isViewed) Color(0xFF2F65CA) else Color.Transparent)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .clickable { onView() },
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
             checked = isSelected,
@@ -155,7 +181,6 @@ private fun CommitPanel(
     modifier: Modifier = Modifier,
 )
 {
-
     Column(
         modifier = modifier.padding(16.dp)
     ) {

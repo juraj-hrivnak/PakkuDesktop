@@ -6,39 +6,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.github.michaelbull.result.fold
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakku.api.data.workingPath
-import teksturepako.pakkupro.actions.Git
-import teksturepako.pakkupro.actions.GitError
-import teksturepako.pakkupro.actions.GitEvent
-import teksturepako.pakkupro.actions.exec
-import teksturepako.pakkupro.ui.component.showToast
+import teksturepako.pakkupro.ui.component.dialog.git.PushDialog
 import teksturepako.pakkupro.ui.viewmodel.GitViewModel
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
-import kotlin.io.path.Path
 
 @Composable
 fun VcsDropdown()
 {
     val profileData by ProfileViewModel.profileData.collectAsState()
-    val gitState by GitViewModel.state.collectAsState()
+    val gitState by GitViewModel.gitState.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit)
-    {
-        GitViewModel.initialize(Path(workingPath))
-    }
+    // -- DIALOGS --
 
-    val branch = gitState.repository?.branch ?: return
+    var pushDialogVisible by remember { mutableStateOf(false) }
+
+    PushDialog(
+        pushDialogVisible,
+        onDismiss = { pushDialogVisible = false }
+    )
+
+    // -- DROPDOWN --
 
     DropdownImpl(
         Modifier.padding(vertical = 4.dp),
@@ -49,17 +46,21 @@ fun VcsDropdown()
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(AllIconsKeys.General.Vcs, "vcs")
-                Text(branch)
+                Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: return@DropdownImpl)
             }
         },
         menuModifier = Modifier
             .offset(x = 12.dp)
-            .width(160.dp),
+            .width(200.dp),
         menuContent = {
             selectableItem(false, onClick = {
-
+                coroutineScope.launch {
+                    GitViewModel.pull()
+                }
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Actions.CheckOut,
@@ -81,7 +82,9 @@ fun VcsDropdown()
             selectableItem(false, onClick = {
                 ModpackViewModel.selectTab(SelectedTab.COMMIT)
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Actions.Commit,
@@ -101,58 +104,13 @@ fun VcsDropdown()
             }
 
             selectableItem(false, onClick = {
-                val git = Git.at(workingPath)
-
                 coroutineScope.launch {
-                    (git exec "push --progress origin HEAD")
-                        .collect { result ->
-                            result.fold(
-                                success = { event ->
-                                    when (event)
-                                    {
-                                        is GitEvent.Progress -> println("Progress: ${event.percentage}")
-                                        is GitEvent.Output   ->
-                                        {
-                                            withContext(Dispatchers.Main) {
-                                                ModpackViewModel.toasts.showToast {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .padding(16.dp)
-                                                            .width(300.dp)
-                                                    ) {
-                                                        Text(event.message)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                failure = { error ->
-                                    when (error)
-                                    {
-                                        is GitError.Command ->
-                                        {
-                                            withContext(Dispatchers.Main) {
-                                                ModpackViewModel.toasts.showToast {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .padding(16.dp)
-                                                            .width(300.dp)
-                                                    ) {
-                                                        Text(error.message)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        else -> { }
-                                    }
-                                },
-                            )
-                        }
+                    GitViewModel.push()
                 }
-
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Vcs.Push,
@@ -162,14 +120,86 @@ fun VcsDropdown()
                         )
                     }
                     Column {
+                        val outgoingCommits = gitState.outgoingCommits.size
                         Text(
-                            "Push...",
+                            "Push... $outgoingCommits",
                             Modifier,
                             color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
                         )
                     }
                 }
             }
+
+            separator()
+
+            passiveItem {
+                Row(
+                    Modifier.padding(start = 10.dp),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        "Local Branches",
+                        color = Color.Gray,
+                    )
+                }
+            }
+
+            gitState.branches.filterNot { it.isRemote }.forEach { branch ->
+                selectableItem(false, onClick = {
+                    coroutineScope.launch {
+                        GitViewModel.checkout(branch)
+                    }
+                }) {
+                    Row {
+                        Column(Modifier.fillMaxWidth(0.2f)) {}
+                        Column {
+                            Text(
+                                branch.name,
+                                Modifier,
+                                color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            )
+                        }
+                    }
+                }
+            }
+
+            passiveItem {
+                Row(
+                    Modifier.padding(start = 10.dp),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        "Remote Branches",
+                        color = Color.Gray,
+                    )
+                }
+            }
+
+            gitState.branches.filter { it.isRemote }.forEach { branch ->
+                selectableItem(false, onClick = {
+                    coroutineScope.launch {
+                        GitViewModel.checkout(branch)
+                    }
+                }) {
+                    Row {
+                        Column(Modifier.fillMaxWidth(0.2f)) {}
+                        Column {
+                            Text(
+                                branch.name,
+                                Modifier,
+                                color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            )
+                        }
+                    }
+                }
+            }
         }
     )
+
+    val gitEventProgress by GitViewModel.eventProgress.collectAsState()
+
+    gitEventProgress?.let { event ->
+        Text(event.operation)
+        HorizontalProgressBar(event.percentage, Modifier.width(60.dp))
+    }
 }

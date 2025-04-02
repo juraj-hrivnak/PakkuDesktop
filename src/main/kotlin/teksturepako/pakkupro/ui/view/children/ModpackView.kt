@@ -26,6 +26,7 @@ import teksturepako.pakkupro.ui.modifier.subtractTopHeight
 import teksturepako.pakkupro.ui.view.children.modpackTabs.GitTab
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ModpackTab
 import teksturepako.pakkupro.ui.view.children.modpackTabs.ProjectsTab
+import teksturepako.pakkupro.ui.viewmodel.GitViewModel
 import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
@@ -47,6 +48,7 @@ fun PakkuApplicationScope.ModpackView()
     LaunchedEffect(lifecycleState, profileData.currentProfile)
     {
         ModpackViewModel.loadFromDisk()
+        GitViewModel.load()
     }
 
     val pickerLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
