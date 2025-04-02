@@ -26,7 +26,12 @@ object GitDiffViewModel
     {
         createRepository(path)
             .map { repository ->
-                _state.update { GitDiffState.fromRepository(repository) }
+                _state.update {
+                    it.copy(
+                        repository = repository,
+                        git = Git(repository)
+                    )
+                }
                 GitViewModel.getGitFiles()
             }
             .onFailure { e ->

@@ -12,15 +12,6 @@ data class GitDiffState(
     val repository: Repository? = null,
     val git: Git? = null,
 )
-{
-    companion object
-    {
-        fun fromRepository(repository: Repository): GitDiffState = GitDiffState(
-            repository = repository,
-            git = Git(repository)
-        )
-    }
-}
 
 sealed interface GitChange
 {

@@ -53,7 +53,6 @@ fun ListActions()
                 Modifier.align(Alignment.Bottom)
             ) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Add Projects...")
                     Icon(
                         key = AllIconsKeys.General.InlineAdd,
                         contentDescription = "teksturepako.pakkupro.actions.add",
@@ -61,6 +60,7 @@ fun ListActions()
                         hints = arrayOf(),
                         modifier = Modifier.size(15.dp)
                     )
+                    Text("Add Projects...")
                 }
             }
 

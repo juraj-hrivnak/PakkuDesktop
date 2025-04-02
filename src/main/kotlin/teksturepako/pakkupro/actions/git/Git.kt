@@ -86,11 +86,11 @@ class Git(private val repoPath: Path)
                 flow {
                     process.inputStream.bufferedReader().use { reader ->
                         reader.lineSequence().forEach { line ->
-                            parseProgress(line)
-                                ?.let { progress -> emit(Ok(progress)) }
-                                ?: parseError(line)?.let { error -> emit(Err(error)) }
-                                ?: emit(Ok(GitEvent.Output(line)))
-                                    .also { logger.info(line) }
+                            parseError(line)?.let { error ->
+                                emit(Err(error))
+                                logger.error(error.message)
+                            } ?: emit(Ok(GitEvent.Output(line)))
+                                .also { logger.info(line) }
                         }
                     }
                 },
@@ -99,7 +99,10 @@ class Git(private val repoPath: Path)
                         reader.lineSequence().forEach { line ->
                             parseProgress(line)
                                 ?.let { progress -> emit(Ok(progress)) }
-                                ?: parseError(line)?.let { error -> emit(Err(error)) }
+                                ?: parseError(line)?.let { error ->
+                                    emit(Err(error))
+                                    logger.error(error.message)
+                                }
                                 ?: emit(Ok(GitEvent.Output(line)))
                                     .also { logger.info(line) }
                         }
@@ -162,7 +165,9 @@ suspend infix fun Flow<Result<GitEvent, GitError>>.andThen(
 
 suspend fun Flow<Result<GitEvent, GitError>>.mapToResultMessages(): Pair<String?, String?>
 {
-    val successMessage = this.toList()
+    val resultList = this.toList()
+
+    val successMessage = resultList
         .filter { it.isOk }
         .map { result ->
             result.fold(
@@ -173,7 +178,7 @@ suspend fun Flow<Result<GitEvent, GitError>>.mapToResultMessages(): Pair<String?
         .joinToString("\n")
         .takeIf { it.isNotBlank() }
 
-    val errorMessage = this.toList()
+    val errorMessage = resultList
         .filter { it.isErr }
         .map { result ->
             result.fold(
@@ -185,4 +190,50 @@ suspend fun Flow<Result<GitEvent, GitError>>.mapToResultMessages(): Pair<String?
         .takeIf { it.isNotBlank() }
 
     return successMessage to errorMessage
+}
+
+suspend fun Flow<Result<GitEvent, GitError>>.output(
+    success: suspend (String) -> Unit,
+    failure: suspend (String) -> Unit,
+    progress: (GitEvent.Progress) -> Unit = { },
+)
+{
+    val resultList = this.toList()
+
+    resultList
+        .filter { it.isOk }
+        .mapNotNull { result ->
+            result.fold(
+                success = { event ->
+                    when (event)
+                    {
+                        is GitEvent.Progress ->
+                        {
+                            progress(event)
+                            null
+                        }
+                        is GitEvent.Output   ->
+                        {
+                            event.message
+                        }
+                    }
+                },
+                failure = { null }
+            )
+        }
+        .joinToString("\n")
+        .takeIf { it.isNotBlank() }
+        ?.let { success(it) }
+
+    resultList
+        .filter { it.isErr }
+        .mapNotNull { result ->
+            result.fold(
+                success = { null },
+                failure = { error -> error.message }
+            )
+        }
+        .joinToString("\n")
+        .takeIf { it.isNotBlank() }
+        ?.let { failure(it) }
 }

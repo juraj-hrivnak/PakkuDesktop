@@ -34,7 +34,7 @@ fun GitTab()
 
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit)
+    LaunchedEffect(gitState)
     {
         GitDiffViewModel.init(Path(workingPath))
     }
