@@ -32,6 +32,7 @@ import kotlin.system.exitProcess
 @Composable
 fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() -> Unit)
 {
+    val profileData by ProfileViewModel.profileData.collectAsState()
     val windowData by WindowViewModel.windowData.collectAsState()
     val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
 
@@ -75,7 +76,7 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
                 }
             }
         },
-        title = appName,
+        title = profileData.currentProfile?.name ?: appName,
         icon = painterResource("icons/pakku.svg"),
         style = DecoratedWindowStyle.light()
     ) {
