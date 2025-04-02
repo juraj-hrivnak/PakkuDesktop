@@ -44,8 +44,7 @@ fun ModpackDropdown(
             }
         },
         menuModifier = Modifier
-            .offset(x = 12.dp)
-            .width(160.dp),
+            .width(200.dp),
         menuContent = {
 
             // -- OPEN --
@@ -53,7 +52,9 @@ fun ModpackDropdown(
             selectableItem(false, onClick = {
                 pickerLauncher.launch()
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = PakkuDesktopIcons.open,
@@ -88,7 +89,9 @@ fun ModpackDropdown(
                     }
                 }
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                     }
                     Column {
@@ -112,7 +115,9 @@ fun ModpackDropdown(
                 },
                 enabled = modpackUiState.action.first == null
             ) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = PakkuDesktopIcons.cube,
@@ -138,7 +143,9 @@ fun ModpackDropdown(
             selectableItem(false, onClick = {
 
             }) {
-                Row {
+                Row(
+                    Modifier.padding(2.dp)
+                ) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = PakkuDesktopIcons.cloudDownload,
@@ -165,12 +172,12 @@ fun ModpackDropdown(
 
                 passiveItem {
                     Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        Modifier.padding(start = 10.dp),
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         Text(
                             "Recent Modpacks",
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            color = Color.Gray,
                         )
                     }
                 }
@@ -190,7 +197,9 @@ fun ModpackDropdown(
                             }
                         }
                     }) {
-                        Row {
+                        Row(
+                            Modifier.padding(2.dp)
+                        ) {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
                             Column {
                                 Text(

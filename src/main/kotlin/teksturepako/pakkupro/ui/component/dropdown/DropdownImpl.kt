@@ -137,7 +137,7 @@ fun DropdownImpl(
                     focusable = false
                 ),
                 modifier = menuModifier
-                    .offset(x = (-11).dp)
+                    .offset(x = (-10).dp)
                     .defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
                 style = style.menuStyle,
                 horizontalAlignment = Alignment.Start,

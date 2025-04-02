@@ -78,12 +78,12 @@ fun WelcomeViewDropdown(
 
                 passiveItem {
                     Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        Modifier.padding(start = 10.dp),
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         Text(
                             "Recent Modpacks",
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            color = Color.Gray,
                         )
                     }
                 }

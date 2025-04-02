@@ -2,11 +2,11 @@ package teksturepako.pakkupro.ui.component.dropdown
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
@@ -18,6 +18,7 @@ import teksturepako.pakkupro.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkupro.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkupro.ui.viewmodel.state.SelectedTab
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VcsDropdown()
 {
@@ -40,18 +41,22 @@ fun VcsDropdown()
     DropdownImpl(
         Modifier.padding(vertical = 4.dp),
         content = {
-            Row(
-                Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.Center
             ) {
-                Icon(AllIconsKeys.General.Vcs, "vcs")
-                Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: return@DropdownImpl)
+                Icon(
+                    key = AllIconsKeys.General.Vcs,
+                    contentDescription = "Clone Repository Icon",
+                    tint = JewelTheme.contentColor,
+                    hints = arrayOf(),
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git")
             }
         },
         menuModifier = Modifier
-            .offset(x = 12.dp)
-            .width(200.dp),
+            .width(300.dp),
         menuContent = {
             selectableItem(false, onClick = {
                 coroutineScope.launch {
