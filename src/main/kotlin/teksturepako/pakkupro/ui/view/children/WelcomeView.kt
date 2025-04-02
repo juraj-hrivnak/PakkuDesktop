@@ -18,10 +18,13 @@ import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.core.FileKitPlatformSettings
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkupro.ui.PakkuDesktopConstants
+import teksturepako.pakkupro.ui.PakkuDesktopIcons
 import teksturepako.pakkupro.ui.application.PakkuApplicationScope
 import teksturepako.pakkupro.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkupro.ui.component.ContentBox
@@ -41,7 +44,7 @@ fun PakkuApplicationScope.WelcomeView() {
     val coroutineScope = rememberCoroutineScope()
     val titleBarHeight = 40.dp
 
-    val pickerLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
+    val openModpackDirectoryLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
         title = "Open modpack directory",
         platformSettings = FileKitPlatformSettings(parentWindow = this.decoratedWindowScope.window)
     ) { directory ->
@@ -53,7 +56,7 @@ fun PakkuApplicationScope.WelcomeView() {
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
         Text("Welcome to Pakku Pro")
-        WelcomeViewDropdown(pickerLauncher)
+        WelcomeViewDropdown(openModpackDirectoryLauncher)
     }
 
     Column(
@@ -95,11 +98,62 @@ fun PakkuApplicationScope.WelcomeView() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Header("Modpacks", Modifier.padding(horizontal = 24.dp))
-                            OutlinedButton(
-                                onClick = { pickerLauncher.launch() },
+
+                            Row(
                                 Modifier.padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             ) {
-                                Text("Open")
+                                OutlinedButton(
+                                    onClick = {  },
+                                ) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            key = AllIconsKeys.General.InlineAdd,
+                                            contentDescription = "new modpack icon",
+                                            tint = JewelTheme.contentColor,
+                                            hints = arrayOf(),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text("New Modpack...")
+                                    }
+                                }
+                                OutlinedButton(
+                                    onClick = { openModpackDirectoryLauncher.launch() },
+                                ) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            key = PakkuDesktopIcons.open,
+                                            contentDescription = "Open Icon",
+                                            tint = JewelTheme.contentColor,
+                                            hints = arrayOf(),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text("Open...")
+                                    }
+                                }
+                                OutlinedButton(
+                                    onClick = { },
+                                ) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            key = AllIconsKeys.General.Vcs,
+                                            contentDescription = "Clone Repository Icon",
+                                            tint = JewelTheme.contentColor,
+                                            hints = arrayOf(),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text("Clone Repository...")
+                                    }
+                                }
                             }
                         }
 
