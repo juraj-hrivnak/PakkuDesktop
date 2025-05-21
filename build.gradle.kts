@@ -94,7 +94,7 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:243.21565.208")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku-jvm:1.0.0")
+    implementation("teksturepako.pakku:pakku-jvm:1.2.1")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
@@ -109,7 +109,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "teksturepako.pakkupro.MainKt"
+        mainClass = "teksturepako.pakkuDesktop.MainKt"
 
         buildTypes.release.proguard {
             isEnabled.set(false)
@@ -120,7 +120,7 @@ compose.desktop {
 
         nativeDistributions {
 
-            packageName = "PakkuPro"
+            packageName = "PakkuDesktop"
             packageVersion = "1.0.0"
             vendor = "teksturepako"
 
