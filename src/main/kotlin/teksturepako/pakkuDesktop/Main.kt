@@ -11,12 +11,12 @@ import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
 import teksturepako.pakku.debugMode
-import teksturepako.pakkuDesktop.ui.application.theme.themedApplication
-import teksturepako.pakkuDesktop.ui.application.window.MainWindow
-import teksturepako.pakkuDesktop.ui.view.RootView
-import teksturepako.pakkuDesktop.ui.viewmodel.LicenseKeyViewModel
-import teksturepako.pakkuDesktop.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.ui.viewmodel.WindowViewModel
+import teksturepako.pakkuDesktop.app.ui.application.theme.themedApplication
+import teksturepako.pakkuDesktop.app.ui.application.window.MainWindow
+import teksturepako.pakkuDesktop.app.ui.view.RootView
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.LicenseKeyViewModel
+import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.viewmodel.WindowViewModel
 
 fun main()
 {
