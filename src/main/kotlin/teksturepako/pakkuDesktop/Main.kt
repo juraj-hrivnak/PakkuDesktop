@@ -38,7 +38,7 @@ fun main()
 
     pakku {
         curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY") ?: credentials?.curseForgeApiKey)
-        withUserAgent("PakkuPro (github.com/juraj-hrivnak/PakkuPro)")
+        withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
     runBlocking {

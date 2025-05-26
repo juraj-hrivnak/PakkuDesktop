@@ -41,7 +41,7 @@ object Polar
             connectTimeoutMillis = timeout
         }
         install(UserAgent) {
-            agent = "juraj-hrivnak/Pakku-Pro (tekeksturepako@gmail.com)"
+            agent = "PakkuPro (github.com/juraj-hrivnak/PakkuDesktop)"
         }
         engine {
             pipelining = true
