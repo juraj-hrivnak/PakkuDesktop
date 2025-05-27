@@ -23,6 +23,7 @@ fun CopyToClipboardButton(
     useSimpleTooltip: Boolean = false
 )
 {
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
 
     PkUiTooltip(
