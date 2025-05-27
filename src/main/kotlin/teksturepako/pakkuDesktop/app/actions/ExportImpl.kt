@@ -33,7 +33,7 @@ fun exportImpl(modpackUiState: ModpackUiState)
 {
     if (modpackUiState.action.first != null) return
 
-    runAction("Exporting") {
+    actionRunner("Exporting") {
         launch {
             val lockFile = modpackUiState.lockFile?.getOrElse {
                 withContext(Dispatchers.Main) {
