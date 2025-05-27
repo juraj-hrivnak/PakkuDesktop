@@ -1,26 +1,29 @@
 package teksturepako.pakkuDesktop.app.ui.view
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import kotlinx.serialization.Serializable
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.view.children.ModpackView
 import teksturepako.pakkuDesktop.app.ui.view.children.WelcomeView
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+
+@Serializable
+data object Home
+
+@Serializable
+data object Modpack
 
 @Composable
-@Preview
-fun PakkuApplicationScope.RootView()
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
+fun PakkuApplicationScope.RootView() {
+    val navController = rememberNavController()
 
-    if (profileData.currentProfile == null)
-    {
-        WelcomeView()
-    }
-    else
-    {
-        ModpackView()
+    NavHost(
+        navController = navController,
+        startDestination = Home,
+    ) {
+        composable<Home> { WelcomeView(navController) }
+        composable<Modpack> { ModpackView(navController) }
     }
 }

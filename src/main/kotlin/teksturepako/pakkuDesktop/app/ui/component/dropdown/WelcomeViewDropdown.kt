@@ -9,25 +9,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.app.ui.view.Modpack
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import kotlin.io.path.Path
 
 @Composable
 fun WelcomeViewDropdown(
     pickerLauncher: PickerResultLauncher,
+    navController: NavHostController
 )
 {
     val profileData by ProfileViewModel.profileData.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
 
-    DropdownImpl(
+    PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         content = {
             Row(
@@ -91,6 +95,7 @@ fun WelcomeViewDropdown(
                 profileData.recentProfilesFiltered.map { profile ->
                     selectableItem(false, onClick = {
                         coroutineScope.launch {
+                            navController.navigate(Modpack)
                             ProfileViewModel.updateCurrentProfile(Path(profile.path))
                         }
                     }) {

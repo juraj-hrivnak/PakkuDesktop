@@ -5,7 +5,7 @@ import java.util.*
 plugins {
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "2.0.20"
-    id("org.jetbrains.compose") version "1.7.1"
+    id("org.jetbrains.compose") version "1.8.1"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.20"
 }
 
@@ -84,6 +84,9 @@ dependencies {
 
     // Compose Preview
     implementation("org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.7.1")
+
+    // Navigation
+    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta01")
 
     // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-swing
     runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")

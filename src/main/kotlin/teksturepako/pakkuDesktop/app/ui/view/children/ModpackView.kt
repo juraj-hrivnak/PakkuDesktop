@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.github.michaelbull.result.getError
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
@@ -33,7 +34,7 @@ import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
 import kotlin.io.path.Path
 
 @Composable
-fun PakkuApplicationScope.ModpackView()
+fun PakkuApplicationScope.ModpackView(navController: NavHostController)
 {
     val titleBarHeight = 40.dp
 
@@ -71,7 +72,7 @@ fun PakkuApplicationScope.ModpackView()
     }
 
     MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
-        ModpackDropdown(pickerLauncher)
+        ModpackDropdown(pickerLauncher, navController)
         Pro { GitDropdown() }
         if (modpackUiState.action.first != null)
         {

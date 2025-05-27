@@ -13,7 +13,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
-import teksturepako.pakkuDesktop.app.ui.component.dropdown.DropdownImpl
+import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
@@ -38,7 +38,7 @@ fun GitDropdown()
 
     // -- DROPDOWN --
 
-    DropdownImpl(
+    PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         content = {
             FlowRow(

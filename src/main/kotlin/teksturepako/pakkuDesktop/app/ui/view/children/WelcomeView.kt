@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.core.FileKitPlatformSettings
@@ -34,13 +35,13 @@ import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
+import teksturepako.pakkuDesktop.app.ui.view.Modpack
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 import kotlin.io.path.Path
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PakkuApplicationScope.WelcomeView() {
+fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
     val profileData by ProfileViewModel.profileData.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val titleBarHeight = 40.dp
@@ -57,7 +58,7 @@ fun PakkuApplicationScope.WelcomeView() {
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
         Text("Welcome to $appName!")
-        WelcomeViewDropdown(openModpackDirectoryLauncher)
+        WelcomeViewDropdown(openModpackDirectoryLauncher, navController)
     }
 
     Column(
@@ -174,10 +175,11 @@ fun PakkuApplicationScope.WelcomeView() {
                                 horizontalArrangement = Arrangement.Center,
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
-                                profileData.recentProfilesFiltered.mapIndexed { i, profile ->
+                                profileData.recentProfilesFiltered.map { profile ->
                                     HoverablePanel(
                                         onClick = {
                                             coroutineScope.launch {
+                                                navController.navigate(Modpack)
                                                 ProfileViewModel.updateCurrentProfile(Path(profile.path))
                                             }
                                         }

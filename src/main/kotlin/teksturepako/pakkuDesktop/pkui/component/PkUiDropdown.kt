@@ -1,4 +1,4 @@
-package teksturepako.pakkuDesktop.app.ui.component.dropdown
+package teksturepako.pakkuDesktop.pkui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -36,7 +36,7 @@ private var currentlyExpandedDropdownId by mutableStateOf<Int?>(null)
 private var dropdownCounter = 0
 
 @Composable
-fun DropdownImpl(
+fun PkUiDropdown(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     menuModifier: Modifier = Modifier,

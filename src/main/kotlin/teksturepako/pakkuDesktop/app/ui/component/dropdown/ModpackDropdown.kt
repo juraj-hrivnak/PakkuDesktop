@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
@@ -18,11 +19,13 @@ import teksturepako.pakkuDesktop.app.actions.exportImpl
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import kotlin.io.path.Path
 
 @Composable
 fun ModpackDropdown(
     pickerLauncher: PickerResultLauncher,
+    navController: NavHostController,
     enabled: Boolean = true,
 )
 {
@@ -31,7 +34,7 @@ fun ModpackDropdown(
 
     val coroutineScope = rememberCoroutineScope()
 
-    DropdownImpl(
+    PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         enabled = enabled,
         content = {
@@ -80,12 +83,14 @@ fun ModpackDropdown(
                 {
                     ProfileViewModel.updateCloseDialog {
                         ProfileViewModel.updateCurrentProfile(null)
+                        navController.popBackStack()
                     }
                 }
                 else
                 {
                     coroutineScope.launch {
                         ProfileViewModel.updateCurrentProfile(null)
+                        navController.popBackStack()
                     }
                 }
             }) {
