@@ -137,9 +137,14 @@ compose.desktop {
                 "java.sql",
                 "java.naming",
                 "jdk.localedata",
+                "java.desktop",
+                "jdk.jdwp.agent",
+                "java.net.http",
+                "jdk.crypto.ec",
+                "java.scripting",
+                "jdk.accessibility",
+                "java.prefs",
             )
-
-            includeAllModules = true
 
             macOS {
                 iconFile.set(project.file("icon.icns"))
