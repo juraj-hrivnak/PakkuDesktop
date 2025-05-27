@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.ui.viewmodel.state
 
 import kotlinx.datetime.Instant

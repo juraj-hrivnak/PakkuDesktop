@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pkui.component
 
 import androidx.compose.foundation.hoverable
@@ -16,13 +20,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
 
 enum class TooltipPosition {
     TOP, BOTTOM, START, END
 }
 
 @Composable
-fun ImmediateTooltip(
+fun PkUiTooltip(
     tooltip: @Composable BoxScope.() -> Unit,
     position: TooltipPosition = TooltipPosition.END,
     content: @Composable BoxScope.() -> Unit
@@ -82,6 +87,7 @@ fun ImmediateTooltip(
                             tooltipSize = coordinates.size
                         }
                         .padding(8.dp)
+                        .zIndex(0f)
                 ) {
                     tooltip(this)
                 }

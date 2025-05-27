@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection
 
 import androidx.compose.foundation.layout.*
@@ -11,9 +15,9 @@ import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
-import teksturepako.pakkuDesktop.pkui.component.ImmediateTooltip
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.pkui.component.ContentBox
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import kotlin.enums.EnumEntries
 import kotlin.reflect.KMutableProperty1
 
@@ -72,7 +76,7 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
                         }
                     }
                     Row {
-                        ImmediateTooltip({ Text("Reset to default") }) {
+                        PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch {
@@ -184,7 +188,7 @@ fun <T : Enum<T>> ProjectEnumSelection(
                         }
                     }
                     Row {
-                        ImmediateTooltip({ Text("Reset to default") }) {
+                        PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch {

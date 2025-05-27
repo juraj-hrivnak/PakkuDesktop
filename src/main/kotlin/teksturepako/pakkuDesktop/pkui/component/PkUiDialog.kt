@@ -1,8 +1,11 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pkui.component
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -11,11 +14,13 @@ import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.component.text.Header
 
 @Composable
-fun DismissibleDialog(
+fun PkUiDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
+    title: String? = null,
     maxWidth: Dp = 1200.dp,
     maxHeight: Dp = 2000.dp,
     content: @Composable BoxScope.() -> Unit
@@ -34,15 +39,22 @@ fun DismissibleDialog(
                     .widthIn(max = maxWidth)
                     .heightIn(max = maxHeight)
             ) {
-                Box(
-                    modifier = Modifier.align(Alignment.TopEnd)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    // Close button in the top-right corner
+                    // Title on the left
+                    title?.let {
+                        Header(
+                            text = title,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
+
+                    // Close button stays on the right
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(24.dp)
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
                             AllIconsKeys.General.Close,
@@ -51,12 +63,12 @@ fun DismissibleDialog(
                     }
                 }
 
-                // Main content with padding to accommodate close button
+                // Main content with padding to accommodate header row
                 Box(
                     modifier = Modifier
                         .padding(top = 32.dp)
-                        .widthIn(max = maxWidth - 32.dp) // Account for padding
-                        .heightIn(max = maxHeight - 48.dp) // Account for padding and close button
+                        .widthIn(max = maxWidth - 32.dp)
+                        .heightIn(max = maxHeight - 48.dp)
                 ) {
                     content(this)
                 }

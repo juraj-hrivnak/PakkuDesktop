@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.dialog
 
 import androidx.compose.foundation.layout.*
@@ -14,11 +18,10 @@ import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.pkui.component.ContentBox
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CreateModpackDialog()
 {
@@ -29,6 +32,8 @@ fun CreateModpackDialog()
     Dialog(
         onDismissRequest = { ProfileViewModel.dismissCloseDialog() },
     ) {
+        if (profileData.currentProfile == null) return@Dialog
+
         ContentBox {
             Row(
                 Modifier.padding(PakkuDesktopConstants.commonPaddingSize),
@@ -60,6 +65,7 @@ fun CreateModpackDialog()
                             onClick = {
                                 coroutineScope.launch {
                                     ProfileViewModel.updateCurrentProfile(null)
+
                                 }
                             },
                             modifier = Modifier.padding(vertical = 4.dp)

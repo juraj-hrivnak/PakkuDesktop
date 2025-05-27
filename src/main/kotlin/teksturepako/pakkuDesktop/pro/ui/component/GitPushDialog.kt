@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakkuDesktop.pkui.component.DismissibleDialog
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -27,7 +31,7 @@ fun GitPushDialog(
 
     val coroutineScope = rememberCoroutineScope()
 
-    DismissibleDialog(visible, onDismiss) {
+    PkUiDialog(visible, onDismiss) {
         FlowColumn(
             Modifier,
             verticalArrangement = Arrangement.spacedBy(4.dp)

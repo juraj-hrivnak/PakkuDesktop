@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.actions
 
 import androidx.compose.foundation.layout.*
@@ -20,9 +24,9 @@ import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.cli.ui.shortForm
 import teksturepako.pakku.io.toHumanReadableSize
 import teksturepako.pakkuDesktop.app.io.RevealFileAction
-import teksturepako.pakkuDesktop.pkui.component.toast.showToast
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.ModpackUiState
+import teksturepako.pakkuDesktop.pkui.component.toast.showToast
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.fileSize

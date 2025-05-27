@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.git
 
 fun longestCommonSubsequence(a: List<String>, b: List<String>): List<String>

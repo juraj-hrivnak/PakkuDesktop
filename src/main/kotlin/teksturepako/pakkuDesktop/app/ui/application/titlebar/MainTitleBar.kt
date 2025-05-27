@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.application.titlebar
 
 import androidx.compose.foundation.background
@@ -29,18 +33,19 @@ fun PakkuApplicationScope.MainTitleBar(
                 modifier.newFullscreenControls(),
                 gradientStartColor = if (withGradient) Color(16, 77, 69) else Color.Unspecified
             ) {
-                AlignedTitleBarContent(modifier, alignment = Alignment.Start) {
+                AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.Start) {
                     Icon(
                         PakkuDesktopIcons.pakku,
                         "pakku",
                         Modifier.size(25.dp)
                     )
-
-                    content(this@TitleBar)
                 }
-                AlignedTitleBarContent(modifier, alignment = Alignment.End) {
+
+                AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {
                     ThemeButton()
                 }
+
+                content(this@TitleBar)
             }
         }
         Row {
@@ -57,9 +62,7 @@ fun TitleBarScope.AlignedTitleBarContent(
 )
 {
     Row(
-        modifier
-            .align(alignment)
-            .padding(horizontal = 8.dp),
+        modifier.align(alignment),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

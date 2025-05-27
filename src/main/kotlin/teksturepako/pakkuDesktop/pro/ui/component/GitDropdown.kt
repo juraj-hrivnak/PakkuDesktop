@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.foundation.layout.*
@@ -12,13 +16,12 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
-import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GitDropdown()
 {

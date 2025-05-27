@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 
 import androidx.compose.foundation.border
@@ -18,7 +22,6 @@ import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectCard(
     project: Project,

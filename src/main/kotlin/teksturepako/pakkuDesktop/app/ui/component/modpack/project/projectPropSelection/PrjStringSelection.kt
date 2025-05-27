@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection
 
 import androidx.compose.foundation.layout.*
@@ -22,9 +26,9 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
-import teksturepako.pakkuDesktop.pkui.component.ImmediateTooltip
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.pkui.component.ContentBox
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import kotlin.reflect.KFunction1
 import kotlin.reflect.KMutableProperty1
 
@@ -82,7 +86,7 @@ fun NullableProjectStringSelection(
                         }
                     }
                     Row {
-                        ImmediateTooltip({ Text("Reset to default") }) {
+                        PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch {

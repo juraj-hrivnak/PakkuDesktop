@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.dropdown
 
 import androidx.compose.foundation.layout.*
@@ -16,7 +20,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.view.Modpack
+import teksturepako.pakkuDesktop.app.ui.view.Navigation
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import kotlin.io.path.Path
@@ -43,7 +47,6 @@ fun WelcomeViewDropdown(
             }
         },
         menuModifier = Modifier
-            .offset(x = 12.dp)
             .width(160.dp),
         menuContent = {
 
@@ -95,7 +98,7 @@ fun WelcomeViewDropdown(
                 profileData.recentProfilesFiltered.map { profile ->
                     selectableItem(false, onClick = {
                         coroutineScope.launch {
-                            navController.navigate(Modpack)
+                            navController.navigate(Navigation.Modpack.route)
                             ProfileViewModel.updateCurrentProfile(Path(profile.path))
                         }
                     }) {

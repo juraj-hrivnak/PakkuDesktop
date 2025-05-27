@@ -1,4 +1,8 @@
-package teksturepako.pakkuDesktop.app.ui.view.children.modpackTabs
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
+package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,10 +21,10 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
+import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitDiffViewModel
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile

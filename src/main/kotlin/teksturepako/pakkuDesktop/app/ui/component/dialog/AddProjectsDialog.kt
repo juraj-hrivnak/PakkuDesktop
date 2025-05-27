@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.dialog
 
 import androidx.compose.foundation.background
@@ -15,9 +19,8 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.pkui.component.DismissibleDialog
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddProjectsDialog(
     visible: Boolean,
@@ -33,7 +36,7 @@ fun AddProjectsDialog(
 
     val textFieldState = rememberTextFieldState()
 
-    DismissibleDialog(
+    PkUiDialog(
         visible = visible,
         onDismiss = onDismiss
     ) {

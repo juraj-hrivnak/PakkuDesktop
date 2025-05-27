@@ -1,11 +1,14 @@
-package teksturepako.pakkuDesktop.app.ui.view.children
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
+package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -13,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import io.github.vinceglb.filekit.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
@@ -27,22 +31,24 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appName
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
 import teksturepako.pakkuDesktop.app.ui.component.HoverablePanel
+import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
-import teksturepako.pakkuDesktop.app.ui.view.Modpack
+import teksturepako.pakkuDesktop.app.ui.view.Navigation
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 import kotlin.io.path.Path
 
 @Composable
 fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
-    val profileData by ProfileViewModel.profileData.collectAsState()
+    val profileData by ProfileViewModel.profileData.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val titleBarHeight = 40.dp
 
@@ -53,12 +59,18 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
         if (directory?.path == null) return@rememberDirectoryPickerLauncher
         coroutineScope.launch {
             ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
+            navController.navigate(Navigation.Modpack.route)
         }
     }
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
-        Text("Welcome to $appName!")
-        WelcomeViewDropdown(openModpackDirectoryLauncher, navController)
+        AlignedTitleBarContent(alignment = Alignment.Start) {
+            Text("Welcome to $appName!")
+            WelcomeViewDropdown(openModpackDirectoryLauncher, navController)
+        }
+        AlignedTitleBarContent(alignment = Alignment.End) {
+            SettingsButton(onClick = { navController.navigate(Navigation.Settings(Navigation.Home).route) })
+        }
     }
 
     Column(
@@ -179,7 +191,7 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
                                     HoverablePanel(
                                         onClick = {
                                             coroutineScope.launch {
-                                                navController.navigate(Modpack)
+                                                navController.navigate(Navigation.Modpack.route)
                                                 ProfileViewModel.updateCurrentProfile(Path(profile.path))
                                             }
                                         }

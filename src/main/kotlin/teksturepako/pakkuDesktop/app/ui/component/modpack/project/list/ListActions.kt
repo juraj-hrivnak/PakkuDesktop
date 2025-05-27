@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
 import androidx.compose.foundation.background
@@ -14,10 +18,10 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
-import teksturepako.pakkuDesktop.pkui.component.DismissibleDialog
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -111,7 +115,7 @@ fun ListActions()
 
                     var removePopupVisible by remember { mutableStateOf(false) }
 
-                    DismissibleDialog(
+                    PkUiDialog(
                         removePopupVisible,
                         onDismiss = {
                             removePopupVisible = false

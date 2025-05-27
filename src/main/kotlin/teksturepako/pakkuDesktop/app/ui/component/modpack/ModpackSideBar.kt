@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.modpack
 
 import androidx.compose.foundation.background
@@ -14,11 +18,11 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakkuDesktop.pro.ui.component.Pro
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.pkui.component.ImmediateTooltip
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
+import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
 fun ModpackSideBar()
@@ -35,7 +39,7 @@ fun ModpackSideBar()
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ImmediateTooltip({ Text("Projects") }) {
+            PkUiTooltip({ Text("Projects") }) {
                 IconButton(
                     onClick = { ModpackViewModel.selectTab(SelectedTab.PROJECTS) },
                     Modifier.size(30.dp),
@@ -49,7 +53,7 @@ fun ModpackSideBar()
                     )
                 }
             }
-            ImmediateTooltip({ Text("Modpack") }) {
+            PkUiTooltip({ Text("Modpack") }) {
                 IconButton(
                     onClick = { ModpackViewModel.selectTab(SelectedTab.MODPACK) },
                     Modifier.size(30.dp),
@@ -64,7 +68,7 @@ fun ModpackSideBar()
                 }
             }
             Pro {
-                ImmediateTooltip({ Text("Commit") }) {
+                PkUiTooltip({ Text("Commit") }) {
                     IconButton(
                         onClick = { ModpackViewModel.selectTab(SelectedTab.COMMIT) },
                         Modifier.size(30.dp),

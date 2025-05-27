@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.ui.viewmodel
 
 import androidx.compose.foundation.layout.Box
@@ -12,9 +16,9 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.workingPath
-import teksturepako.pakkuDesktop.pro.git.*
-import teksturepako.pakkuDesktop.pkui.component.toast.showToast
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.pkui.component.toast.showToast
+import teksturepako.pakkuDesktop.pro.git.*
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile

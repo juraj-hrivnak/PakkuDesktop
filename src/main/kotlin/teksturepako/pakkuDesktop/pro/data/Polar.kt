@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pro.data
 
 import com.github.michaelbull.result.Err
@@ -11,7 +15,6 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.json

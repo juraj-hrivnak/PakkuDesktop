@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.viewmodel
 
 import androidx.compose.foundation.lazy.LazyListState
@@ -17,10 +21,10 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.api.projects.Project
-import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.ModpackUiState
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SortOrder
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import java.io.File
 
 object ModpackViewModel

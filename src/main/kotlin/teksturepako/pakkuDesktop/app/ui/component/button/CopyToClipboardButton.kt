@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.app.ui.component.button
 
 import androidx.compose.runtime.Composable
@@ -9,7 +13,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.pkui.component.ImmediateTooltip
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.TooltipPosition
 
 @Composable
@@ -21,7 +25,7 @@ fun CopyToClipboardButton(
 {
     val clipboardManager = LocalClipboardManager.current
 
-    ImmediateTooltip(
+    PkUiTooltip(
         tooltip = {
             if (useSimpleTooltip)
             {

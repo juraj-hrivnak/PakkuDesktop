@@ -1,4 +1,8 @@
-package teksturepako.pakkuDesktop.app.ui.view.children.modpackTabs
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
+package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -7,12 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakkuDesktop.app.ui.component.*
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.component.HoverablePanel
+import teksturepako.pakkuDesktop.app.ui.component.Switch
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pkui.component.toast.showToast
 
 @Composable

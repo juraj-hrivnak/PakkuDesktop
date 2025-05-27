@@ -1,4 +1,8 @@
-package teksturepako.pakkuDesktop.app.ui.view.children
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
+package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -9,11 +13,10 @@ import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
-import teksturepako.pakkuDesktop.pro.ui.component.license.LicenseKeyField
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
+import teksturepako.pakkuDesktop.pro.ui.component.license.LicenseKeyField
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PakkuApplicationScope.ActivationView()
 {

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ */
+
 package teksturepako.pakkuDesktop.pkui.component
 
 import androidx.compose.foundation.background
@@ -14,6 +18,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
 import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.modifier.border
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -137,7 +142,7 @@ fun PkUiDropdown(
                     focusable = false
                 ),
                 modifier = menuModifier
-                    .offset(x = (-10).dp)
+                    .zIndex(1f)
                     .defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
                 style = style.menuStyle,
                 horizontalAlignment = Alignment.Start,
