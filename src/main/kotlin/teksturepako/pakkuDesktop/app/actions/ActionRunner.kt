@@ -7,7 +7,7 @@ package teksturepako.pakkuDesktop.app.actions
 import kotlinx.coroutines.*
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
 
-val dispatcher = Dispatchers.IO.limitedParallelism(1, "action-runner")
+private val dispatcher = Dispatchers.IO.limitedParallelism(1, "action-runner")
 
 fun actionRunner(actionName: String, action: CoroutineScope.() -> Job)
 {

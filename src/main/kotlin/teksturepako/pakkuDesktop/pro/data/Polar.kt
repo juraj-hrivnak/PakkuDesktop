@@ -29,6 +29,7 @@ import teksturepako.pakkuDesktop.pro.io.getNetworkAddress
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import com.github.michaelbull.result.fold as resultFold
+import kotlinx.serialization.encodeToString as encodeString
 
 object Polar
 {
@@ -73,7 +74,7 @@ object Polar
         val pcId = generatePcId() ?: return Err(ActivationError("Failed to generate PC ID for you license activation."))
 
         val url = "https://api.polar.sh/v1/users/license-keys/activate"
-        val bodyContent = Json.encodeToString(ActivateLicenseKeyReq(key, ORGANIZATION_ID, label, Meta(pcId)))
+        val bodyContent = Json.encodeString(ActivateLicenseKeyReq(key, ORGANIZATION_ID, label, Meta(pcId)))
 
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)
@@ -107,7 +108,7 @@ object Polar
         val pcId = generatePcId() ?: return Err(ValidationError("Failed to generate PC ID for you license key."))
 
         val url = "https://api.polar.sh/v1/users/license-keys/validate"
-        val bodyContent = Json.encodeToString(ValidateLicenseKeyReq(key, ORGANIZATION_ID, activationId))
+        val bodyContent = Json.encodeString(ValidateLicenseKeyReq(key, ORGANIZATION_ID, activationId))
 
         val response = httpClient.post(url) {
             contentType(ContentType.Application.Json)
