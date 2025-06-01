@@ -19,3 +19,9 @@ Build, customise, and manage your modpacks in a modern, intuitive interface. Pow
     alt="Test modpack"
   />
 </p>
+
+## Why use Pakku Desktop?
+
+Pakku Desktop is a modpack manager, not a launcher. Meaning it can (and should) be used alongside any launcher of your choice.
+
+In contrast to modpack launchers, Pakku enables support for version control, simplifies collaboration options, and adds support for CI/CD.
