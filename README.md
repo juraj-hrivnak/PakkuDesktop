@@ -17,6 +17,7 @@ Build, customise, and manage your modpacks in a modern, intuitive interface. Pow
   <img
     src="https://github.com/user-attachments/assets/3acfc616-e498-490f-aa52-c65f79e429a4"
     alt="Test modpack"
+    width="600"
   />
 </p>
 
