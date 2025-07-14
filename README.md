@@ -1,5 +1,12 @@
 <div align="center">
 
+<p align="center">
+  <img
+    src="https://github.com/user-attachments/assets/3f2548fc-4312-4e9d-9560-7fb1ef1cd919"
+    alt="Pakku Desktop GUI"
+  />
+</p>
+
 # Pakku Desktop
 
 </div>
@@ -13,13 +20,7 @@ Pakku Desktop is the modern modpack manager for Minecraft modpack developers and
 
 Build, customise, and manage your modpacks in a modern, intuitive interface. Powered by the Pakku backend, Pakku Desktop brings fast, reliable, and visual modpack development to everyone.
 
-<p align="center">
-  <img
-    src="https://github.com/user-attachments/assets/3acfc616-e498-490f-aa52-c65f79e429a4"
-    alt="Test modpack"
-    width="600"
-  />
-</p>
+
 
 ## Why use Pakku Desktop?
 
