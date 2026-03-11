@@ -12,15 +12,13 @@
 </div>
 
 > [!NOTE]  
-> This project is currently under active development.
+> This project is currently heavily under work in progress.
 
 ## About
 
 Pakku Desktop is the modern modpack manager for Minecraft modpack developers and enthusiasts.
 
 Build, customise, and manage your modpacks in a modern, intuitive interface. Powered by the Pakku backend, Pakku Desktop brings fast, reliable, and visual modpack development to everyone.
-
-
 
 ## Why use Pakku Desktop?
 
