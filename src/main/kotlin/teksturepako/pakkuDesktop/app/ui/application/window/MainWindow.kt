@@ -19,10 +19,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.jewel.intui.window.styling.light
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
-import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.styling.DecoratedWindowStyle
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
 import teksturepako.pakkuDesktop.app.ui.application.theme.ThemedBox
@@ -56,7 +54,7 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
         height = windowData.height.dp
     )
 
-    DecoratedWindow(
+    JewelDecoratedWindow(
         state = windowState,
         onCloseRequest = {
             if (modpackUiState.action.first != null)
@@ -82,7 +80,6 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
         },
         title = profileData.currentProfile?.name ?: appNameWithVersion,
         icon = painterResource("icons/pakku.svg"),
-        style = DecoratedWindowStyle.light()
     ) {
         this.window.minimumSize = Dimension(600, 400)
 
@@ -93,7 +90,7 @@ fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() ->
                 object : PakkuApplicationScope
                 {
                     override val applicationScope = this@MainWindow
-                    override val decoratedWindowScope = this@DecoratedWindow
+                    override val decoratedWindowScope = this@JewelDecoratedWindow
                 }
             )
         }

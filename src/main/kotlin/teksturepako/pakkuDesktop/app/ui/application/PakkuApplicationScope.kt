@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop.app.ui.application
 
 import androidx.compose.ui.window.ApplicationScope
-import org.jetbrains.jewel.window.DecoratedWindowScope
+import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
 
 interface PakkuApplicationScope
 {

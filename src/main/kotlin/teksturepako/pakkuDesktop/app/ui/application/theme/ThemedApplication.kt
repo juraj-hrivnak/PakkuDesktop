@@ -13,11 +13,7 @@ import androidx.compose.ui.window.application
 import org.jetbrains.jewel.foundation.DisabledAppearanceValues
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
-import org.jetbrains.jewel.intui.window.decoratedWindow
-import org.jetbrains.jewel.intui.window.styling.dark
-import org.jetbrains.jewel.intui.window.styling.light
 import org.jetbrains.jewel.ui.ComponentStyling
-import org.jetbrains.jewel.window.styling.TitleBarStyle
 import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 
 fun themedApplication(
@@ -37,21 +33,7 @@ fun themedApplication(
     }
 
     IntUiTheme(
-        themeDefinition, ComponentStyling.default().decoratedWindow(
-            titleBarStyle = when (profileData.intUiTheme)
-            {
-                IntUiThemes.Light  -> TitleBarStyle.light()
-                IntUiThemes.Dark   -> TitleBarStyle.dark()
-                IntUiThemes.System -> if (profileData.intUiTheme.isDark())
-                {
-                    TitleBarStyle.dark()
-                }
-                else
-                {
-                    TitleBarStyle.light()
-                }
-            },
-        ),
+        themeDefinition, ComponentStyling.default(),
         swingCompatMode = false
     ) {
         content(this)

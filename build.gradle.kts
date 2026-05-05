@@ -1,37 +1,29 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 import java.io.FileInputStream
 import java.util.*
 
 plugins {
-    kotlin("jvm") version "2.1.20"
-    kotlin("plugin.serialization") version "2.1.20"
-    id("org.jetbrains.compose") version "1.9.0"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
+    kotlin("jvm") version "2.3.20"
+    kotlin("plugin.serialization") version "2.3.20"
+    id("org.jetbrains.compose") version "1.10.0"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.20"
+    id("io.github.kdroidfilter.nucleus") version "1.14.5"
 }
 
 group = "teksturepako"
 version = "1.0"
 
 /**
- * Create `github.properties` in root project folder file with
- * `gpr.usr=GITHUB_USER_ID` & `gpr.key=PERSONAL_ACCESS_TOKEN`
+ * Create `github.properties` in root project folder file with:
+ * ```properties
+ * gpr.usr=GITHUB_USER_ID
+ * gpr.key=PERSONAL_ACCESS_TOKEN
+ * ```
  **/
 val githubProperties: Properties = Properties().apply {
     val properties = runCatching { FileInputStream(rootProject.file("github.properties")) }
     properties.onSuccess { load(it) }
-}
-
-kotlin {
-    jvmToolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-        vendor = JvmVendorSpec.JETBRAINS
-    }
-}
-
-tasks.withType<JavaExec> {
-    javaLauncher = javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
 }
 
 repositories {
@@ -60,15 +52,23 @@ dependencies {
      * [release notes](https://github.com/JetBrains/intellij-community/blob/master/platform/jewel/RELEASE%20NOTES.md)
      * [mvn repo](https://mvnrepository.com/artifact/org.jetbrains.jewel/jewel-foundation)
      */
-    val jewel = "0.31.0-252.27409"
+    val jewel = "0.35.0-261.23567.138"
 
     implementation("org.jetbrains.jewel:jewel-foundation:$jewel")
 
     implementation("org.jetbrains.jewel:jewel-ui:$jewel")
     implementation("org.jetbrains.jewel:jewel-int-ui-standalone:$jewel")
 
-    // Optional, for custom decorated windows
-    implementation("org.jetbrains.jewel:jewel-int-ui-decorated-window:$jewel")
+    // Nucleus Jewel decorated window (replaces jewel-int-ui-decorated-window)
+    implementation("io.github.kdroidfilter:nucleus.decorated-window-jewel:1.14.5")
+    implementation("io.github.kdroidfilter:nucleus.decorated-window-core:1.14.5")
+    implementation("io.github.kdroidfilter:nucleus.decorated-window-jbr:1.14.5")
+
+    // Optional: Nucleus core runtime features (dark mode, notifications, etc.)
+    implementation("io.github.kdroidfilter:nucleus.core-runtime:1.14.5")
+
+    // Optional: System dark-mode reactive detection
+    implementation("io.github.kdroidfilter:nucleus.darkmode-detector:1.14.5")
 
     // Optional, for markdown renderer
     implementation("org.jetbrains.jewel:jewel-markdown-core:$jewel")
@@ -112,55 +112,55 @@ dependencies {
     implementation("io.klogging:klogging-jvm:0.8.0")
 }
 
-compose.desktop {
-    application {
-        mainClass = "teksturepako.pakkuDesktop.MainKt"
+nucleus.application {
+    mainClass = "teksturepako.pakkuDesktop.MainKt"
 
-        buildTypes.release.proguard {
-            isEnabled.set(false)
-            configurationFiles.from(project.file("compose-desktop.pro"))
-            obfuscate.set(false)
-            optimize.set(false)
+    nativeDistributions {
+        packageName = "Pakku Desktop"
+        packageVersion = "1.0.0"
+        vendor = "teksturepako"
+        copyright = "© teksturepako"
+
+        // Nucleus supports 16 formats; keep parity with previous setup:
+        targetFormats(
+            TargetFormat.Dmg,   // macOS
+            TargetFormat.Nsis,  // Windows (replaces Exe)
+            TargetFormat.Deb    // Linux
+        )
+
+        // JVM modules carry over as-is
+        modules(
+            "java.instrument",
+            "java.management",
+            "jdk.security.auth",
+            "jdk.unsupported",
+            "java.sql",
+            "java.naming",
+            "jdk.localedata",
+            "java.desktop",
+            "jdk.jdwp.agent",
+            "java.net.http",
+            "jdk.crypto.ec",
+            "java.scripting",
+            "jdk.accessibility",
+            "java.prefs",
+        )
+
+        macOS {
+            iconFile.set(project.file("icon.icns"))
+            bundleID = "teksturepako.pakkuDesktop"
         }
 
-        nativeDistributions {
+        windows {
+            menuGroup = group.toString()
+            shortcut = true
+            iconFile.set(project.file("icon.ico"))
+            perUserInstall = true
+        }
 
-            packageName = "Pakku Desktop"
-            packageVersion = "1.0.0"
-            vendor = "teksturepako"
-
-            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
-
-            modules(
-                "java.instrument",
-                "java.management",
-                "jdk.security.auth",
-                "jdk.unsupported",
-                "java.sql",
-                "java.naming",
-                "jdk.localedata",
-                "java.desktop",
-                "jdk.jdwp.agent",
-                "java.net.http",
-                "jdk.crypto.ec",
-                "java.scripting",
-                "jdk.accessibility",
-                "java.prefs",
-            )
-
-            macOS {
-                iconFile.set(project.file("icon.icns"))
-            }
-
-            windows {
-                menuGroup = group.toString()
-                shortcut = true
-                iconFile.set(project.file("icon.ico"))
-            }
-
-            linux {
-                iconFile.set(project.file("icon.png"))
-            }
+        linux {
+            iconFile.set(project.file("icon.png"))
+            packageName = "pakku-desktop"
         }
     }
 }

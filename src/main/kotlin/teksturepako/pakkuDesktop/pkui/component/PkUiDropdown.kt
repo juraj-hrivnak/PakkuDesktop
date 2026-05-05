@@ -35,7 +35,10 @@ import org.jetbrains.jewel.ui.focusOutline
 import org.jetbrains.jewel.ui.outline
 import org.jetbrains.jewel.ui.painter.hints.Stateful
 import org.jetbrains.jewel.ui.theme.dropdownStyle
-import org.jetbrains.jewel.ui.util.thenIf
+
+@Composable
+private fun Modifier.thenIf(condition: Boolean, block: @Composable Modifier.() -> Modifier): Modifier =
+    if (condition) then(block()) else this
 
 private var currentlyExpandedDropdownId by mutableStateOf<Int?>(null)
 private var dropdownCounter = 0

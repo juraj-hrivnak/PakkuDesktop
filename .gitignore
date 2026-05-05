@@ -57,5 +57,8 @@ bin/
 ### VS Code ###
 .vscode/
 
+### direnv ###
+.direnv/
+
 ### Mac OS ###
 .DS_Store

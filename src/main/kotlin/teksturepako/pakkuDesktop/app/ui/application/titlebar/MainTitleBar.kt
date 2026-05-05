@@ -13,9 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.window.TitleBar
-import org.jetbrains.jewel.window.TitleBarScope
-import org.jetbrains.jewel.window.newFullscreenControls
+import io.github.kdroidfilter.nucleus.window.TitleBarScope
+import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
+import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -29,7 +29,7 @@ fun PakkuApplicationScope.MainTitleBar(
 {
     Column {
         Row {
-            this@MainTitleBar.decoratedWindowScope.TitleBar(
+        this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                 modifier.newFullscreenControls(),
                 gradientStartColor = if (withGradient) Color(16, 77, 69) else Color.Unspecified
             ) {
@@ -46,7 +46,7 @@ fun PakkuApplicationScope.MainTitleBar(
                     AlphaLabel()
                 }
 
-                content(this@TitleBar)
+                content(this@JewelTitleBar)
             }
         }
         Row {

@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.window.DecoratedWindowScope
+import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
 import teksturepako.pakkuDesktop.app.data.WindowData
 
 object WindowViewModel
