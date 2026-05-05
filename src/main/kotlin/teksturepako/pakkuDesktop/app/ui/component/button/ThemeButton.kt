@@ -6,60 +6,35 @@ package teksturepako.pakkuDesktop.app.ui.component.button
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 
 @Composable
-fun ThemeButton(
-    coroutineScope: CoroutineScope = rememberCoroutineScope(),
-    onClick: (currentTheme: IntUiThemes) -> Unit = { currentTheme ->
-        if (currentTheme.isDark())
-        {
-            coroutineScope.launch {
-                ProfileViewModel.updateTheme(IntUiThemes.Light)
-            }
-        }
-        else
-        {
-            coroutineScope.launch {
-                ProfileViewModel.updateTheme(IntUiThemes.Dark)
-            }
-        }
-    }
-)
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
+fun ThemeButton() {
+    val model   = LocalAppModel.current
+    val publish = LocalAppPublish.current
+    val currentTheme = model.profile.data.intUiTheme
 
-    if (profileData.intUiTheme.isDark())
-    {
+    if (currentTheme.isDark()) {
         IconButton(
-            onClick = {
-                onClick(profileData.intUiTheme)
-            },
+            onClick = { publish(AppMsg.ThemeChangeRequested(IntUiThemes.Light)) },
             Modifier.size(30.dp),
         ) {
             Icon(PakkuDesktopIcons.darkTheme, "dark_theme")
         }
-    }
-    else
-    {
+    } else {
         IconButton(
-            onClick = {
-                onClick(profileData.intUiTheme)
-            },
+            onClick = { publish(AppMsg.ThemeChangeRequested(IntUiThemes.Dark)) },
             Modifier.size(30.dp),
         ) {
-            Icon(PakkuDesktopIcons.lightTheme,"light_theme")
+            Icon(PakkuDesktopIcons.lightTheme, "light_theme")
         }
     }
 }

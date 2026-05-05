@@ -4,44 +4,37 @@
 
 package teksturepako.pakkuDesktop.app.ui.application.theme
 
-import androidx.compose.animation.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ApplicationScope
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.elm.animatedColor
 
+/**
+ * Animated background Box that reacts to the current theme in the model.
+ * Uses [animatedColor] — purely local visual animation, no driver needed.
+ */
 @Composable
 fun ApplicationScope.ThemedBox(
     modifier: Modifier = Modifier,
-    content: @Composable (ApplicationScope) -> Unit
-)
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
+    content: @Composable (ApplicationScope) -> Unit,
+) {
+    val model = LocalAppModel.current
 
-    val themeDefinition = if (profileData.intUiTheme.isDark())
-    {
+    val themeDefinition = if (model.profile.data.intUiTheme.isDark()) {
         JewelTheme.darkThemeDefinition()
-    }
-    else
-    {
+    } else {
         JewelTheme.lightThemeDefinition()
     }
 
-    val color = remember { Animatable(themeDefinition.globalColors.panelBackground) }
+    val background = animatedColor(themeDefinition.globalColors.panelBackground)
 
-    LaunchedEffect(profileData.intUiTheme) {
-        color.animateTo(themeDefinition.globalColors.panelBackground, animationSpec = tween(200))
-    }
-
-    Box(
-        modifier.background(color.value),
-    ) {
+    Box(modifier.background(background)) {
         content(this@ThemedBox)
     }
 }

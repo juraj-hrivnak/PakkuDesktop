@@ -4,31 +4,8 @@
 
 package teksturepako.pakkuDesktop.app.actions
 
-import kotlinx.coroutines.*
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-
-private val dispatcher = Dispatchers.IO.limitedParallelism(1, "action-runner")
-
-fun actionRunner(actionName: String, action: CoroutineScope.() -> Job)
-{
-    val coroutineScope = CoroutineScope(SupervisorJob() + dispatcher)
-
-    try
-    {
-        val job = action(coroutineScope)
-
-        ModpackViewModel.updateActionWithJob(actionName, job)
-
-        job.invokeOnCompletion {
-            coroutineScope.launch {
-                ModpackViewModel.terminateAction()
-            }
-        }
-    }
-    catch (_: Exception)
-    {
-        coroutineScope.launch {
-            ModpackViewModel.terminateAction()
-        }
-    }
-}
+/**
+ * ActionRunner is no longer used in the fractal architecture.
+ * Actions are launched via [teksturepako.pakkuDesktop.app.ui.driver.LocalLaunchAction]
+ * provided by the actionDriver. This file is kept as an empty placeholder.
+ */

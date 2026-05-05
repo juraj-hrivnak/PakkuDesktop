@@ -9,13 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavHostController
 import com.github.michaelbull.result.getError
-import io.github.vinceglb.filekit.compose.PickerResultLauncher
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
-import io.github.vinceglb.filekit.core.FileKitPlatformSettings
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
@@ -26,115 +20,76 @@ import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
+import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
-import teksturepako.pakkuDesktop.app.ui.view.Nav
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
-import kotlin.io.path.Path
 
 @Composable
-fun PakkuApplicationScope.ModpackView(navController: NavHostController)
-{
+fun PakkuApplicationScope.ModpackView(
+    publish: (AppMsg) -> Unit,
+    model: AppModel,
+) {
     val titleBarHeight = 40.dp
+    val modpack = model.modpack
+    val pickDirectory = LocalPickDirectory.current
 
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-    val profileData by ProfileViewModel.profileData.collectAsState()
-
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(lifecycleState, profileData.currentProfile)
-    {
-        ModpackViewModel.loadFromDisk()
-    }
-
-    val pickerLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
-        title = "Open modpack directory",
-        platformSettings = FileKitPlatformSettings(parentWindow = this.decoratedWindowScope.window)
-    ) { directory ->
-        if (directory?.path == null) return@rememberDirectoryPickerLauncher
-
-        if (modpackUiState.action.first != null)
-        {
-            ProfileViewModel.updateCloseDialog {
-                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
-                navController.navigate(Nav.Modpack.route)
-            }
-        }
-        else
-        {
-            coroutineScope.launch {
-                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
-                navController.navigate(Nav.Modpack.route)
-            }
+    // React to FileNotFound error — show NewModpack dialog
+    LaunchedEffect(modpack.lockFile) {
+        if (modpack.lockFile?.getError() is FileNotFound) {
+            publish(AppMsg.ShowNewModpack)
         }
     }
+
+    // React to other errors
+    val hasNonFileNotFoundError = modpack.lockFile?.isErr == true &&
+        modpack.lockFile.getError() !is FileNotFound
+
+    val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
     MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            ModpackDropdown(pickerLauncher, navController)
+            ModpackDropdown(publish, model, onOpenDirectory = { pickDirectory() })
             Pro { GitDropdown() }
-            if (modpackUiState.action.first != null)
-            {
+            if (modpack.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(modpackUiState.action.first!!)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(modpack.actionName)
                         CircularProgressIndicator()
                     }
                 }
             }
         }
         AlignedTitleBarContent(alignment = Alignment.End) {
-            SettingsButton(onClick = { navController.navigate(Nav.Settings(Nav.Modpack).route) })
+            SettingsButton(onClick = { publish(AppMsg.ShowSettings) })
         }
     }
 
-    if (modpackUiState.lockFile?.isErr == true)
-    {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .subtractTopHeight(titleBarHeight)
-        ) {
-            if (modpackUiState.lockFile?.getError() is FileNotFound)
-            {
-                navController.navigate(Nav.NewModpack(Nav.Modpack).route)
-            }
-            else
-            {
-                navController.navigate(Nav.Err.route)
-            }
-        }
-
+    if (hasNonFileNotFoundError) {
+        // Error dialog will be shown by AppView
         return
     }
 
-    Row(
-        Modifier
-            .fillMaxSize()
-            .subtractTopHeight(titleBarHeight)
-    ) {
-        ModpackSideBar()
+    val toastState = remember { mutableStateOf(modpack.toasts) }
+    LaunchedEffect(modpack.toasts) { toastState.value = modpack.toasts }
+
+    Row(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
+        ModpackSideBar(publish, modpack)
 
         VerticalSplitLayout(
-            state = ModpackViewModel.actionSplitState,
+            state = actionSplitState,
             first = {
                 Column {
                     Row {
-                        when (modpackUiState.selectedTab)
-                        {
-                            SelectedTab.PROJECTS -> ProjectsTab()
+                        when (modpack.selectedTab) {
+                            SelectedTab.PROJECTS -> ProjectsTab(publish, model)
                             SelectedTab.MODPACK  -> ModpackTab()
                             SelectedTab.COMMIT   -> GitTab()
                         }
@@ -142,28 +97,21 @@ fun PakkuApplicationScope.ModpackView(navController: NavHostController)
                 }
             },
             second = {
-                Column {
-                    Row {
-                    }
-                }
+                Column { Row { } }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             firstPaneMinWidth = 100.dp,
             secondPaneMinWidth = 40.dp,
             draggableWidth = 16.dp
         )
-
     }
 
     ToastHost(
-        ModpackViewModel.toasts,
-        Modifier
-            .fillMaxSize()
-            .subtractTopHeight(titleBarHeight),
+        toasts = toastState,
+        modifier = Modifier.fillMaxSize().subtractTopHeight(titleBarHeight),
         alignment = Alignment.TopEnd,
-        spacing = 8.dp
+        spacing = 8.dp,
+        onDismiss = { id -> publish(AppMsg.Modpack.ToastDismissed(id)) },
     )
 
 }

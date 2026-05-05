@@ -5,98 +5,67 @@
 package teksturepako.pakkuDesktop.app.ui.application.window
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
+import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
 import teksturepako.pakkuDesktop.app.ui.application.theme.ThemedBox
-import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.WindowViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import java.awt.Dimension
-import kotlin.system.exitProcess
 
+/**
+ * Main application window. Receives:
+ * - [initialWindowData] loaded synchronously in main() before application {}
+ * - [onCloseRequest] called by the window system — dispatches into the ELM loop
+ * - [content] receives [PakkuApplicationScope] and a reference to the live [WindowState]
+ *   (needed by the windowDiskDriver to snapshot position/size before quitting)
+ */
 @Composable
-fun ApplicationScope.MainWindow(content: @Composable PakkuApplicationScope.() -> Unit)
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
-    val windowData by WindowViewModel.windowData.collectAsState()
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
-    CoroutineScope(Dispatchers.IO).launch {
-        WindowViewModel.loadFromDisk()
-    }
-
+fun ApplicationScope.MainWindow(
+    initialWindowData: WindowData,
+    onCloseRequest: () -> Unit,
+    content: @Composable PakkuApplicationScope.(windowState: WindowState) -> Unit,
+) {
     val windowState = rememberWindowState(
-        placement = windowData.placement,
+        placement = initialWindowData.placement,
         isMinimized = false,
-        position = if (windowData.x != null && windowData.y != null)
-        {
-            WindowPosition.Absolute(x = windowData.x!!.dp, y = windowData.y!!.dp)
-        }
-        else WindowPosition(Alignment.Center),
-        width = windowData.width.dp,
-        height = windowData.height.dp
+        position = if (initialWindowData.x != null && initialWindowData.y != null) {
+            WindowPosition.Absolute(x = initialWindowData.x!!.dp, y = initialWindowData.y!!.dp)
+        } else WindowPosition(Alignment.Center),
+        width = initialWindowData.width.dp,
+        height = initialWindowData.height.dp,
     )
+
+    // Title derived from model via CompositionLocal (set by AppComponent view)
+    val model = LocalAppModel.current
+    val title = model.profile.data.currentProfile?.name ?: appNameWithVersion
 
     JewelDecoratedWindow(
         state = windowState,
-        onCloseRequest = {
-            if (modpackUiState.action.first != null)
-            {
-                ProfileViewModel.updateCloseDialog(forceClose = true) {
-                    runBlocking {
-                        WindowViewModel.updateWindowData(windowState)
-
-                        exitApplication()
-                        exitProcess(0)
-                    }
-                }
-            }
-            else
-            {
-                runBlocking {
-                    WindowViewModel.updateWindowData(windowState)
-
-                    exitApplication()
-                    exitProcess(0)
-                }
-            }
-        },
-        title = profileData.currentProfile?.name ?: appNameWithVersion,
+        onCloseRequest = onCloseRequest,
+        title = title,
         icon = painterResource("icons/pakku.svg"),
     ) {
         this.window.minimumSize = Dimension(600, 400)
 
-        WindowViewModel.updateWindowScope(this)
-
         ThemedBox(Modifier.fillMaxSize()) {
             content(
-                object : PakkuApplicationScope
-                {
-                    override val applicationScope = this@MainWindow
+                object : PakkuApplicationScope {
+                    override val applicationScope    = this@MainWindow
                     override val decoratedWindowScope = this@JewelDecoratedWindow
-                }
+                },
+                windowState,
             )
         }
-
-        CloseDialog()
     }
-
-    WindowViewModel.applyInitialWindowPlacement(rememberCoroutineScope())
 }

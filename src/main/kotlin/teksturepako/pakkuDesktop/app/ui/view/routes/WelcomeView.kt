@@ -9,25 +9,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
-import io.github.vinceglb.filekit.compose.PickerResultLauncher
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
-import io.github.vinceglb.filekit.core.FileKitPlatformSettings
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appName
@@ -39,37 +32,32 @@ import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
+import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
-import teksturepako.pakkuDesktop.app.ui.view.Nav
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
-import kotlin.io.path.Path
 
 @Composable
-fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
-    val profileData by ProfileViewModel.profileData.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
+fun PakkuApplicationScope.WelcomeView(
+    publish: (AppMsg) -> Unit,
+    model: AppModel,
+) {
+    val profileData = model.profile.data
     val titleBarHeight = 40.dp
-
-    val openModpackDirectoryLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
-        title = "Open modpack directory",
-        platformSettings = FileKitPlatformSettings(parentWindow = this.decoratedWindowScope.window)
-    ) { directory ->
-        if (directory?.path == null) return@rememberDirectoryPickerLauncher
-        coroutineScope.launch {
-            ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
-            navController.navigate(Nav.Modpack.route)
-        }
-    }
+    val pickDirectory = LocalPickDirectory.current
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
             Text("Welcome to $appName!")
-            WelcomeViewDropdown(openModpackDirectoryLauncher, navController)
+            WelcomeViewDropdown(
+                onOpenDirectory = { pickDirectory() },
+                onNewModpack = { publish(AppMsg.ShowNewModpack) },
+            )
         }
         AlignedTitleBarContent(alignment = Alignment.End) {
-            SettingsButton(onClick = { navController.navigate(Nav.Settings(Nav.Home).route) })
+            SettingsButton(onClick = { publish(AppMsg.ShowSettings) })
         }
     }
 
@@ -83,7 +71,7 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.45F)
-                .padding(teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants.commonPaddingSize),
+                .padding(PakkuDesktopConstants.commonPaddingSize),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -117,11 +105,7 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
                                 Modifier.padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        navController.navigate(Nav.NewModpack(Nav.Home).route)
-                                    },
-                                ) {
+                                OutlinedButton(onClick = { publish(AppMsg.ShowNewModpack) }) {
                                     FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalArrangement = Arrangement.Center
@@ -136,9 +120,7 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
                                         Text("New Modpack...")
                                     }
                                 }
-                                OutlinedButton(
-                                    onClick = { openModpackDirectoryLauncher.launch() },
-                                ) {
+                                OutlinedButton(onClick = { pickDirectory() }) {
                                     FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalArrangement = Arrangement.Center
@@ -154,9 +136,7 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
                                     }
                                 }
                                 Pro {
-                                    OutlinedButton(
-                                        onClick = { },
-                                    ) {
+                                    OutlinedButton(onClick = { }) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             verticalArrangement = Arrangement.Center
@@ -176,44 +156,28 @@ fun PakkuApplicationScope.WelcomeView(navController: NavHostController) {
                         }
 
                         Spacer(
-                            Modifier.padding(vertical = 16.dp).background(JewelTheme.globalColors.borders.disabled)
+                            Modifier.padding(vertical = 16.dp)
+                                .background(JewelTheme.globalColors.borders.disabled)
                                 .height(1.dp).fillMaxWidth()
                         )
 
-                        Box(
-                            Modifier.fillMaxSize()
-                        ) {
+                        Box(Modifier.fillMaxSize()) {
                             FlowRow(
-                                Modifier.fillMaxWidth().verticalScroll(scrollState)
-                                    .padding(end = 12.dp), // Space for scrollbar
+                                Modifier.fillMaxWidth().verticalScroll(scrollState).padding(end = 12.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
-                                profileData.recentProfilesFiltered.map { profile ->
+                                profileData.recentProfilesFiltered.forEach { profile ->
                                     HoverablePanel(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                navController.navigate(Nav.Modpack.route)
-                                                ProfileViewModel.updateCurrentProfile(Path(profile.path))
-                                            }
-                                        }
+                                        onClick = { publish(AppMsg.DirectoryPicked(profile.path)) }
                                     ) {
                                         FlowColumn(
                                             Modifier.padding(16.dp),
                                             horizontalArrangement = Arrangement.Center,
                                             verticalArrangement = Arrangement.spacedBy(4.dp),
                                         ) {
-                                            Text(
-                                                profile.name,
-                                                Modifier.padding(horizontal = 24.dp),
-                                                fontSize = 18.sp
-                                            )
-                                            Text(
-                                                profile.path,
-                                                Modifier.padding(horizontal = 24.dp),
-                                                fontSize = 16.sp,
-                                                color = Color.Gray
-                                            )
+                                            Text(profile.name, Modifier.padding(horizontal = 24.dp), fontSize = 18.sp)
+                                            Text(profile.path, Modifier.padding(horizontal = 24.dp), fontSize = 16.sp, color = Color.Gray)
                                         }
                                     }
                                 }

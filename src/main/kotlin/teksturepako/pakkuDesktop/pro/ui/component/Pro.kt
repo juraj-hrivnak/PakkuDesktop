@@ -5,13 +5,12 @@
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.runtime.Composable
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.LicenseKeyViewModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 
 @Composable
-fun Pro(content: @Composable () -> Unit)
-{
-    if (LicenseKeyViewModel.isActivated == true)
-    {
+fun Pro(content: @Composable () -> Unit) {
+    val model = LocalAppModel.current
+    if (model.isProActivated == true) {
         content()
     }
 }

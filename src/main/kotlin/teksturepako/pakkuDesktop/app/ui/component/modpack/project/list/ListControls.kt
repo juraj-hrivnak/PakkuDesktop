@@ -7,8 +7,6 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -18,132 +16,85 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SortOrder
 
 @Composable
-fun ListControls(lastClickedIndex: MutableState<Int?>)
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+fun ListControls(
+    publish: (AppMsg) -> Unit,
+    model: AppModel,
+    lastClickedIndex: MutableState<Int?>,
+) {
+    val modpack = model.modpack
+    val projects = modpack.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val filteredProjects = projects.filter { p ->
+        modpack.projectsFilterText.isEmpty() ||
+            p.name.values.any { modpack.projectsFilterText.lowercase() in it.lowercase() } ||
+            modpack.projectsFilterText in p
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.width(40.dp).padding(end = 4.dp)
-        ) {
+        Box(modifier = Modifier.width(40.dp).padding(end = 4.dp)) {
             Checkbox(
-                checked = modpackUiState.lockFile?.get()?.getAllProjects()
-                    ?.filter(modpackUiState.projectsFilter)
-                    ?.all { ModpackViewModel.ProjectsSelection.isSelected(it) } == true,
+                checked = filteredProjects.isNotEmpty() &&
+                    filteredProjects.all { it.pakkuId in modpack.selectedPakkuIds },
                 onCheckedChange = { checked ->
-                    val filteredProjects = modpackUiState.lockFile?.get()
-                        ?.getAllProjects()
-                        ?.filter(modpackUiState.projectsFilter)
-                        ?: return@Checkbox
-
-                    if (checked)
-                    {
-                        ModpackViewModel.ProjectsSelection.select(filteredProjects)
+                    if (checked) {
+                        publish(AppMsg.Modpack.ProjectsSelected(filteredProjects.mapNotNull { it.pakkuId }.toSet()))
+                    } else {
+                        publish(AppMsg.Modpack.ProjectsCleared())
                     }
-                    else
-                    {
-                        ModpackViewModel.ProjectsSelection.clear()
-                    }
-
                     lastClickedIndex.value = null
                 },
                 modifier = Modifier.padding(4.dp)
             )
         }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clickableHover(scaleOnHover = true) {
-                ModpackViewModel.updateSortOrder(
-                    when
-                    {
-                        modpackUiState.sortOrder is SortOrder.Name && modpackUiState.sortOrder.ascending ->
-                        {
-                            SortOrder.Name(ascending = false)
-                        }
-
-                        else                                                                             ->
-                        {
-                            SortOrder.Name(ascending = true)
-                        }
+                publish(AppMsg.Modpack.SortOrderChanged(
+                    when {
+                        modpack.sortOrder is SortOrder.Name && modpack.sortOrder.ascending -> SortOrder.Name(ascending = false)
+                        else -> SortOrder.Name(ascending = true)
                     }
-                )
-            }) {
-            Text(
-                text = "Name", color = JewelTheme.contentColor
-            )
-
-            when
-            {
-                modpackUiState.sortOrder is SortOrder.Name && modpackUiState.sortOrder.ascending ->
-                {
-                    AllIconsKeys.Gutter.Fold
-                }
-
-                modpackUiState.sortOrder is SortOrder.Name                                       ->
-                {
-                    AllIconsKeys.Gutter.FoldBottom
-                }
-
-                else                                                                             -> null
+                ))
+            }
+        ) {
+            Text(text = "Name", color = JewelTheme.contentColor)
+            when {
+                modpack.sortOrder is SortOrder.Name && modpack.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
+                modpack.sortOrder is SortOrder.Name                               -> AllIconsKeys.Gutter.FoldBottom
+                else -> null
             }?.let {
-                Icon(
-                    it,
-                    contentDescription = "Sort direction",
-                    modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                )
+                Icon(it, contentDescription = "Sort direction", modifier = Modifier.size(16.dp).padding(start = 4.dp))
             }
         }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clickableHover(scaleOnHover = true) {
-                ModpackViewModel.updateSortOrder(
-                    when
-                    {
-                        modpackUiState.sortOrder is SortOrder.LastUpdated && !modpackUiState.sortOrder.ascending ->
-                        {
-                            SortOrder.LastUpdated(ascending = true)
-                        }
-
-                        else                                                                                     ->
-                        {
-                            SortOrder.LastUpdated(ascending = false)
-                        }
+                publish(AppMsg.Modpack.SortOrderChanged(
+                    when {
+                        modpack.sortOrder is SortOrder.LastUpdated && !modpack.sortOrder.ascending -> SortOrder.LastUpdated(ascending = true)
+                        else -> SortOrder.LastUpdated(ascending = false)
                     }
-                )
-            }) {
-            Text(
-                text = "Last Updated", color = JewelTheme.contentColor
-            )
-
-            when
-            {
-                modpackUiState.sortOrder is SortOrder.LastUpdated && modpackUiState.sortOrder.ascending ->
-                {
-                    AllIconsKeys.Gutter.Fold
-                }
-
-                modpackUiState.sortOrder is SortOrder.LastUpdated                                       ->
-                {
-                    AllIconsKeys.Gutter.FoldBottom
-                }
-
-                else                                                                                    -> null
+                ))
+            }
+        ) {
+            Text(text = "Last Updated", color = JewelTheme.contentColor)
+            when {
+                modpack.sortOrder is SortOrder.LastUpdated && modpack.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
+                modpack.sortOrder is SortOrder.LastUpdated                               -> AllIconsKeys.Gutter.FoldBottom
+                else -> null
             }?.let {
-                Icon(
-                    it,
-                    contentDescription = "Sort direction",
-                    modifier = Modifier.size(16.dp).padding(start = 4.dp)
-                )
+                Icon(it, contentDescription = "Sort direction", modifier = Modifier.size(16.dp).padding(start = 4.dp))
             }
         }
     }

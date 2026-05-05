@@ -25,7 +25,11 @@ fun ToastHost(
     toasts: MutableState<List<ToastData>>,
     modifier: Modifier = Modifier,
     alignment: Alignment = Alignment.TopCenter,
-    spacing: Dp = 4.dp
+    spacing: Dp = 4.dp,
+    /** Called when a toast is dismissed by the user or after its duration. */
+    onDismiss: (id: String) -> Unit = { id ->
+        toasts.value = toasts.value.filterNot { it.id == id }
+    },
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -67,25 +71,25 @@ fun ToastHost(
                             animationSpec = tween(150)
                         )
                     ) {
-                        Box(
-                            modifier = Modifier.animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessLow
+                            Box(
+                                modifier = Modifier.animateContentSize(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
                                 )
-                            )
-                        ) {
-                            Toast(
-                                toastData = toast,
-                                onDismiss = { id ->
-                                    appeared = false
-                                    coroutineScope.launch {
-                                        delay(150)
-                                        toasts.value = toasts.value.filterNot { it.id == id }
+                            ) {
+                                Toast(
+                                    toastData = toast,
+                                    onDismiss = { id ->
+                                        appeared = false
+                                        coroutineScope.launch {
+                                            delay(150)
+                                            onDismiss(id)
+                                        }
                                     }
-                                }
-                            )
-                        }
+                                )
+                            }
                     }
                 }
             }

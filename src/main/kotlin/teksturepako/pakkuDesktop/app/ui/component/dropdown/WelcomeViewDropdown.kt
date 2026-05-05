@@ -6,34 +6,27 @@ package teksturepako.pakkuDesktop.app.ui.component.dropdown
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import io.github.vinceglb.filekit.compose.PickerResultLauncher
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.view.Nav
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
-import kotlin.io.path.Path
 
 @Composable
 fun WelcomeViewDropdown(
-    pickerLauncher: PickerResultLauncher,
-    navController: NavHostController
-)
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
+    onOpenDirectory: () -> Unit,
+    onNewModpack: () -> Unit,
+) {
+    val model = LocalAppModel.current
+    val publish = LocalAppPublish.current
+    val profileData = model.profile.data
 
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
@@ -46,18 +39,11 @@ fun WelcomeViewDropdown(
                 Text("Modpack")
             }
         },
-        menuModifier = Modifier
-            .width(160.dp),
+        menuModifier = Modifier.width(160.dp),
         menuContent = {
 
             // -- OPEN --
-
-            selectableItem(
-                false,
-                onClick = {
-                    pickerLauncher.launch()
-                }
-            ) {
+            selectableItem(false, onClick = { onOpenDirectory() }) {
                 Row {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
@@ -68,47 +54,28 @@ fun WelcomeViewDropdown(
                         )
                     }
                     Column {
-                        Text(
-                            "Open...",
-                            Modifier,
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
+                        Text("Open...", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black)
                     }
                 }
             }
 
-            if (profileData.recentProfilesFiltered.isNotEmpty())
-            {
+            if (profileData.recentProfilesFiltered.isNotEmpty()) {
                 separator()
 
-                // -- RECENT MODPACKS --
-
                 passiveItem {
-                    Row(
-                        Modifier.padding(start = 10.dp),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Text(
-                            "Recent Modpacks",
-                            color = Color.Gray,
-                        )
+                    Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
+                        Text("Recent Modpacks", color = Color.Gray)
                     }
                 }
 
-                profileData.recentProfilesFiltered.map { profile ->
+                profileData.recentProfilesFiltered.forEach { profile ->
                     selectableItem(false, onClick = {
-                        coroutineScope.launch {
-                            navController.navigate(Nav.Modpack.route)
-                            ProfileViewModel.updateCurrentProfile(Path(profile.path))
-                        }
+                        publish(AppMsg.DirectoryPicked(profile.path))
                     }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
                             Column {
-                                Text(
-                                    profile.name,
-                                    color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                                )
+                                Text(profile.name, color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black)
                             }
                         }
                     }

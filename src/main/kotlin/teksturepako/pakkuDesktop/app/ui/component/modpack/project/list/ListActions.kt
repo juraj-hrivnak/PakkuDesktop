@@ -20,19 +20,19 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ListActions()
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+fun ListActions(publish: (AppMsg) -> Unit, model: AppModel) {
+    val modpack = model.modpack
+    val isDark = model.profile.data.intUiTheme.isDark()
 
-    val selectedProjects = modpackUiState.selectedProjectsMap.values.size
-    val projects = modpackUiState.lockFile?.get()?.getAllProjects()?.filter { project ->
-        modpackUiState.selectedProjectsMap[project.pakkuId]?.let { it(project) } == true
-    } ?: emptyList()
+    val selectedCount = modpack.selectedPakkuIds.size
+    val allProjects   = modpack.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val selectedProjects = allProjects.filter { it.pakkuId in modpack.selectedPakkuIds }
 
     Row(
         modifier = Modifier
@@ -47,19 +47,16 @@ fun ListActions()
             verticalArrangement = Arrangement.Center,
         ) {
             var addDialogVisible by remember { mutableStateOf(false) }
-
-            AddProjectsDialog(addDialogVisible, { addDialogVisible = false })
+            AddProjectsDialog(addDialogVisible, { addDialogVisible = false }, model)
 
             DefaultButton(
-                onClick = {
-                    addDialogVisible = true
-                },
+                onClick = { addDialogVisible = true },
                 Modifier.align(Alignment.Bottom)
             ) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(
                         key = AllIconsKeys.General.InlineAdd,
-                        contentDescription = "teksturepako.pakkuDesktop.actions.add",
+                        contentDescription = "add",
                         tint = JewelTheme.contentColor,
                         hints = arrayOf(),
                         modifier = Modifier.size(15.dp)
@@ -69,82 +66,41 @@ fun ListActions()
             }
 
             Spacer(
-                Modifier
-                    .background(JewelTheme.globalColors.borders.disabled)
-                    .width(1.dp)
-                    .padding(horizontal = 8.dp)
-                    .fillMaxHeight()
+                Modifier.background(JewelTheme.globalColors.borders.disabled)
+                    .width(1.dp).padding(horizontal = 8.dp).fillMaxHeight()
             )
 
-            FlowColumn(
-                Modifier.align(Alignment.Bottom),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            FlowColumn(Modifier.align(Alignment.Bottom), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row {
-                    val message = when
-                    {
-                        modpackUiState.lockFile?.get()?.getAllProjects()?.size == selectedProjects ->
-                        {
-                            "All $selectedProjects projects selected"
-                        }
-                        selectedProjects > 1  -> "$selectedProjects projects selected"
-                        selectedProjects == 1 -> "1 project selected"
-                        else                  -> "0 projects selected"
+                    val message = when {
+                        allProjects.size == selectedCount -> "All $selectedCount projects selected"
+                        selectedCount > 1  -> "$selectedCount projects selected"
+                        selectedCount == 1 -> "1 project selected"
+                        else               -> "0 projects selected"
                     }
-
                     Text(message)
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    DefaultButton(
-                        onClick = {
-
-                        },
-                        enabled = selectedProjects > 0
-                    ) {
+                    DefaultButton(onClick = { }, enabled = selectedCount > 0) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Update")
-                            Icon(
-                                key = AllIconsKeys.Actions.CheckOut,
-                                contentDescription = "update",
-                                tint = JewelTheme.contentColor,
-                                hints = arrayOf(),
-                                modifier = Modifier.size(15.dp)
-                            )
+                            Icon(AllIconsKeys.Actions.CheckOut, "update", tint = JewelTheme.contentColor, hints = arrayOf(), modifier = Modifier.size(15.dp))
                         }
                     }
 
                     var removePopupVisible by remember { mutableStateOf(false) }
-
-                    PkUiDialog(
-                        removePopupVisible,
-                        onDismiss = {
-                            removePopupVisible = false
-                        }
-                    ) {
+                    PkUiDialog(removePopupVisible, onDismiss = { removePopupVisible = false }) {
                         FlowColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Header("Do you want to remove this project?")
                             Spacer(Modifier.height(8.dp))
-                            projects.map {
-                                ProjectCard(it)
-                            }
+                            selectedProjects.forEach { ProjectCard(it, isDark = isDark) }
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            removePopupVisible = true
-                        },
-                        enabled = selectedProjects > 0
-                    ) {
+                    OutlinedButton(onClick = { removePopupVisible = true }, enabled = selectedCount > 0) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Remove...")
-                            Icon(
-                                key = AllIconsKeys.General.Delete,
-                                contentDescription = "remove",
-                                tint = JewelTheme.contentColor,
-                                hints = arrayOf(),
-                                modifier = Modifier.size(15.dp)
-                            )
+                            Icon(AllIconsKeys.General.Delete, "remove", tint = JewelTheme.contentColor, hints = arrayOf(), modifier = Modifier.size(15.dp))
                         }
                     }
                 }

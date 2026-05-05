@@ -7,8 +7,6 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,16 +17,14 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
-fun ModpackSideBar()
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
+fun ModpackSideBar(publish: (AppMsg) -> Unit, modpack: ModpackModel) {
     Row {
         Column(
             Modifier
@@ -41,28 +37,28 @@ fun ModpackSideBar()
         ) {
             PkUiTooltip({ Text("Projects") }) {
                 IconButton(
-                    onClick = { ModpackViewModel.selectTab(SelectedTab.PROJECTS) },
+                    onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.PROJECTS)) },
                     Modifier.size(30.dp),
-                    enabled = modpackUiState.selectedTab != SelectedTab.PROJECTS,
+                    enabled = modpack.selectedTab != SelectedTab.PROJECTS,
                 ) {
                     Icon(
                         key = PakkuDesktopIcons.Modpack.manage,
                         contentDescription = "projects icon",
-                        tint = if (modpackUiState.selectedTab == SelectedTab.PROJECTS) Color.LightGray else Color.Gray,
+                        tint = if (modpack.selectedTab == SelectedTab.PROJECTS) Color.LightGray else Color.Gray,
                         hints = arrayOf()
                     )
                 }
             }
             PkUiTooltip({ Text("Modpack") }) {
                 IconButton(
-                    onClick = { ModpackViewModel.selectTab(SelectedTab.MODPACK) },
+                    onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.MODPACK)) },
                     Modifier.size(30.dp),
-                    enabled = modpackUiState.selectedTab != SelectedTab.MODPACK,
+                    enabled = modpack.selectedTab != SelectedTab.MODPACK,
                 ) {
                     Icon(
                         key = PakkuDesktopIcons.properties,
                         contentDescription = "modpack icon",
-                        tint = if (modpackUiState.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
+                        tint = if (modpack.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
                         hints = arrayOf()
                     )
                 }
@@ -70,14 +66,14 @@ fun ModpackSideBar()
             Pro {
                 PkUiTooltip({ Text("Commit") }) {
                     IconButton(
-                        onClick = { ModpackViewModel.selectTab(SelectedTab.COMMIT) },
+                        onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.COMMIT)) },
                         Modifier.size(30.dp),
-                        enabled = modpackUiState.selectedTab != SelectedTab.COMMIT,
+                        enabled = modpack.selectedTab != SelectedTab.COMMIT,
                     ) {
                         Icon(
                             key = AllIconsKeys.Toolwindows.ToolWindowCommit,
                             contentDescription = "commit icon",
-                            tint = if (modpackUiState.selectedTab == SelectedTab.COMMIT) Color.LightGray else Color.Gray,
+                            tint = if (modpack.selectedTab == SelectedTab.COMMIT) Color.LightGray else Color.Gray,
                             hints = arrayOf()
                         )
                     }
