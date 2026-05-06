@@ -6,7 +6,6 @@ package teksturepako.pakkuDesktop
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.WindowState
-import androidx.compose.ui.window.application
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
 import io.klogging.config.ANSI_CONSOLE
@@ -90,9 +89,9 @@ fun main() {
 
 private fun snapshotWindowData(windowState: WindowState) = WindowData(
     placement = windowState.placement,
-    x         = windowState.position.x.value.takeUnless { it.isNaN() },
-    y         = windowState.position.y.value.takeUnless { it.isNaN() },
-    width     = windowState.size.width.value,
-    height    = windowState.size.height.value,
+    x = windowState.position.x.value.takeUnless { it.isNaN() },
+    y = windowState.position.y.value.takeUnless { it.isNaN() },
+    width = windowState.size.width.value,
+    height = windowState.size.height.value,
 )
 

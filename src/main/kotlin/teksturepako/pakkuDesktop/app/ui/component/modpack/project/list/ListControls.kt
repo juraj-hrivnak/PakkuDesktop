@@ -16,23 +16,22 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
 @Composable
 fun ListControls(
-    publish: (AppMsg) -> Unit,
-    model: AppModel,
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
     lastClickedIndex: MutableState<Int?>,
 ) {
-    val modpack = model.modpack
-    val projects = modpack.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val projects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
     val filteredProjects = projects.filter { p ->
-        modpack.projectsFilterText.isEmpty() ||
-            p.name.values.any { modpack.projectsFilterText.lowercase() in it.lowercase() } ||
-            modpack.projectsFilterText in p
+        model.projectsFilterText.isEmpty() ||
+            p.name.values.any { model.projectsFilterText.lowercase() in it.lowercase() } ||
+            model.projectsFilterText in p
     }
 
     Row(
@@ -43,12 +42,12 @@ fun ListControls(
         Box(modifier = Modifier.width(40.dp).padding(end = 4.dp)) {
             Checkbox(
                 checked = filteredProjects.isNotEmpty() &&
-                    filteredProjects.all { it.pakkuId in modpack.selectedPakkuIds },
+                    filteredProjects.all { it.pakkuId in model.selectedPakkuIds },
                 onCheckedChange = { checked ->
                     if (checked) {
-                        publish(AppMsg.Modpack.ProjectsSelected(filteredProjects.mapNotNull { it.pakkuId }.toSet()))
+                        publish(ModpackMsg.ProjectsSelected(filteredProjects.mapNotNull { it.pakkuId }.toSet()))
                     } else {
-                        publish(AppMsg.Modpack.ProjectsCleared())
+                        publish(ModpackMsg.ProjectsCleared())
                     }
                     lastClickedIndex.value = null
                 },
@@ -59,9 +58,9 @@ fun ListControls(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clickableHover(scaleOnHover = true) {
-                publish(AppMsg.Modpack.SortOrderChanged(
+                publish(ModpackMsg.SortOrderChanged(
                     when {
-                        modpack.sortOrder is SortOrder.Name && modpack.sortOrder.ascending -> SortOrder.Name(ascending = false)
+                        model.sortOrder is SortOrder.Name && model.sortOrder.ascending -> SortOrder.Name(ascending = false)
                         else -> SortOrder.Name(ascending = true)
                     }
                 ))
@@ -69,8 +68,8 @@ fun ListControls(
         ) {
             Text(text = "Name", color = JewelTheme.contentColor)
             when {
-                modpack.sortOrder is SortOrder.Name && modpack.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
-                modpack.sortOrder is SortOrder.Name                               -> AllIconsKeys.Gutter.FoldBottom
+                model.sortOrder is SortOrder.Name && model.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
+                model.sortOrder is SortOrder.Name                             -> AllIconsKeys.Gutter.FoldBottom
                 else -> null
             }?.let {
                 Icon(it, contentDescription = "Sort direction", modifier = Modifier.size(16.dp).padding(start = 4.dp))
@@ -80,9 +79,9 @@ fun ListControls(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clickableHover(scaleOnHover = true) {
-                publish(AppMsg.Modpack.SortOrderChanged(
+                publish(ModpackMsg.SortOrderChanged(
                     when {
-                        modpack.sortOrder is SortOrder.LastUpdated && !modpack.sortOrder.ascending -> SortOrder.LastUpdated(ascending = true)
+                        model.sortOrder is SortOrder.LastUpdated && !model.sortOrder.ascending -> SortOrder.LastUpdated(ascending = true)
                         else -> SortOrder.LastUpdated(ascending = false)
                     }
                 ))
@@ -90,8 +89,8 @@ fun ListControls(
         ) {
             Text(text = "Last Updated", color = JewelTheme.contentColor)
             when {
-                modpack.sortOrder is SortOrder.LastUpdated && modpack.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
-                modpack.sortOrder is SortOrder.LastUpdated                               -> AllIconsKeys.Gutter.FoldBottom
+                model.sortOrder is SortOrder.LastUpdated && model.sortOrder.ascending -> AllIconsKeys.Gutter.Fold
+                model.sortOrder is SortOrder.LastUpdated                             -> AllIconsKeys.Gutter.FoldBottom
                 else -> null
             }?.let {
                 Icon(it, contentDescription = "Sort direction", modifier = Modifier.size(16.dp).padding(start = 4.dp))

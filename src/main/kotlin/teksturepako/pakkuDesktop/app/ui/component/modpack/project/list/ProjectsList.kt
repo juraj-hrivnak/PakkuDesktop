@@ -14,11 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilter
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectsList(publish: (AppMsg) -> Unit, model: AppModel) {
+fun ProjectsList(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     // For shift+click functionality
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
     val shiftPressed = remember { mutableStateOf(false) }

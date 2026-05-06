@@ -14,19 +14,16 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkuDesktop.app.ui.LocalAppModel
-import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 
 @Composable
 fun WelcomeViewDropdown(
     onOpenDirectory: () -> Unit,
     onNewModpack: () -> Unit,
+    onRecentProfile: (String) -> Unit,
 ) {
-    val model = LocalAppModel.current
-    val publish = LocalAppPublish.current
-    val profileData = model.profile.data
+    val profileData = LocalAppModel.current.profile.data
 
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
@@ -69,9 +66,7 @@ fun WelcomeViewDropdown(
                 }
 
                 profileData.recentProfilesFiltered.forEach { profile ->
-                    selectableItem(false, onClick = {
-                        publish(AppMsg.DirectoryPicked(profile.path))
-                    }) {
+                    selectableItem(false, onClick = { onRecentProfile(profile.path) }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
                             Column {

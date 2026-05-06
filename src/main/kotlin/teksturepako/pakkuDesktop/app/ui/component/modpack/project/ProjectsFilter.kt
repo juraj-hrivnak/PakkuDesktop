@@ -12,22 +12,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 /**
  * The filter text field. Uses local [TextFieldState] for UI,
- * publishes [AppMsg.Modpack.FilterTextChanged] on each change.
- *
- * Note: LaunchedEffect(textFieldState.text) publishes a message — this is
- * a pragmatic compromise for text-field-driven filtering.
+ * publishes [ModpackMsg.FilterTextChanged] on each change.
  */
 @Composable
-fun ProjectFilter(publish: (AppMsg) -> Unit, model: AppModel) {
-    val textFieldState = rememberTextFieldState(model.modpack.projectsFilterText)
+fun ProjectFilter(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val textFieldState = rememberTextFieldState(model.projectsFilterText)
 
     LaunchedEffect(textFieldState.text) {
-        publish(AppMsg.Modpack.FilterTextChanged(textFieldState.text.toString()))
+        publish(ModpackMsg.FilterTextChanged(textFieldState.text.toString()))
     }
 
     TextField(

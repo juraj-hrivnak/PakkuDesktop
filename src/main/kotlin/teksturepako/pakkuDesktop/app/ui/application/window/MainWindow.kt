@@ -40,7 +40,7 @@ fun ApplicationScope.MainWindow(
         placement = initialWindowData.placement,
         isMinimized = false,
         position = if (initialWindowData.x != null && initialWindowData.y != null) {
-            WindowPosition.Absolute(x = initialWindowData.x!!.dp, y = initialWindowData.y!!.dp)
+            WindowPosition.Absolute(x = initialWindowData.x.dp, y = initialWindowData.y.dp)
         } else WindowPosition(Alignment.Center),
         width = initialWindowData.width.dp,
         height = initialWindowData.height.dp,
@@ -61,7 +61,7 @@ fun ApplicationScope.MainWindow(
         ThemedBox(Modifier.fillMaxSize()) {
             content(
                 object : PakkuApplicationScope {
-                    override val applicationScope    = this@MainWindow
+                    override val applicationScope = this@MainWindow
                     override val decoratedWindowScope = this@JewelDecoratedWindow
                 },
                 windowState,

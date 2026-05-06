@@ -16,16 +16,16 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @Composable
 fun AddProjectsDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
-    model: AppModel,
+    model: ModpackModel,
 ) {
-    val lockFile = model.modpack.lockFile?.get() ?: return
+    val lockFile = model.lockFile?.get() ?: return
 
     val projectProvider = lockFile.getProjectProvider().getOrElse { return }
 

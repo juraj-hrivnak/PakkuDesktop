@@ -6,11 +6,14 @@ package teksturepako.pakkuDesktop.app.ui
 
 import androidx.compose.runtime.*
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
+import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.NewModpackDialog
+import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.SettingsDialog
 import teksturepako.pakkuDesktop.elm.component
 
 // ---------------------------------------------------------------------------
-// Composition Local — lets deeply nested views publish without prop-drilling
+// Composition Locals
 // ---------------------------------------------------------------------------
 
 val LocalAppPublish = compositionLocalOf<(AppMsg) -> Unit> { {} }
@@ -20,27 +23,25 @@ val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
 }
 
 // ---------------------------------------------------------------------------
-// Pure update function
+// appUpdate — pure fractal update
 // ---------------------------------------------------------------------------
 
 fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
 
-    // -- Profile --
+    // -- Profile (driver callbacks) --
 
     is AppMsg.ProfileLoaded -> {
-        val newModel = model.copy(
-            profile = model.profile.copy(data = msg.data, loaded = true, pendingPath = null)
-        )
-        // If a profile is already set, navigate directly to Modpack
+        val newProfile = model.profile.copy(data = msg.data, loaded = true, pendingPath = null)
+        val syncedWelcome = model.welcome.copy(profileData = msg.data)
+        val base = model.copy(profile = newProfile, welcome = syncedWelcome)
         if (msg.data.currentProfile != null && model.screen == AppScreen.Welcome) {
-            newModel.copy(screen = AppScreen.Modpack, modpack = ModpackModel())
-        } else newModel
+            base.copy(screen = AppScreen.Modpack, modpack = ModpackModel())
+        } else base
     }
 
     is AppMsg.DirectoryPicked -> {
-        // Record intent — profile disk driver will resolve name + save
+        // From OS file-picker driver (app-level)
         if (model.modpack.actionName != null) {
-            // Action is running — show close dialog instead
             model.copy(closeDialog = CloseDialogRequest.OpenDirectory(msg.path))
         } else {
             model.copy(profile = model.profile.copy(pendingPath = msg.path))
@@ -48,46 +49,35 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     }
 
     is AppMsg.ProfileCurrentResolved -> {
+        val syncedWelcome = model.welcome.copy(profileData = msg.data)
         model.copy(
             profile = model.profile.copy(data = msg.data, pendingPath = null),
             screen = if (msg.data.currentProfile != null) AppScreen.Modpack else AppScreen.Welcome,
             modpack = ModpackModel(),
+            welcome = syncedWelcome,
         )
     }
 
     is AppMsg.ThemeChangeRequested -> model // driver handles the write, then publishes ThemeChanged
 
-    is AppMsg.ThemeChanged -> model.copy(
-        profile = model.profile.copy(data = msg.data)
-    )
+    is AppMsg.ThemeChanged -> {
+        val syncedWelcome = model.welcome.copy(profileData = msg.data)
+        model.copy(profile = model.profile.copy(data = msg.data), welcome = syncedWelcome)
+    }
 
     // -- Window --
 
-    is AppMsg.WindowLoaded -> model.copy(
-        window = model.window.copy(data = msg.data, loaded = true)
-    )
+    is AppMsg.WindowLoaded -> model.copy(window = model.window.copy(data = msg.data, loaded = true))
 
-    // -- Navigation --
+    // -- Dialog dismissals (from AppView lambdas) --
 
-    AppMsg.NavigateToWelcome -> model.copy(
-        screen = AppScreen.Welcome,
-        modpack = ModpackModel(),
-        profile = model.profile.copy(
-            data = model.profile.data.copy(currentProfile = null),
-            pendingPath = null,
-        )
-    )
-
-    AppMsg.ShowSettings -> model.copy(showSettings = true)
-    AppMsg.HideSettings -> model.copy(showSettings = false)
-    AppMsg.ShowNewModpack -> model.copy(showNewModpack = true)
+    AppMsg.HideSettings  -> model.copy(showSettings = false)
     AppMsg.HideNewModpack -> model.copy(showNewModpack = false)
 
     // -- Close / Quit dialog --
 
     is AppMsg.RequestCloseDialog -> model.copy(closeDialog = msg.request)
-
-    AppMsg.DismissCloseDialog -> model.copy(closeDialog = null)
+    AppMsg.DismissCloseDialog    -> model.copy(closeDialog = null)
 
     AppMsg.ConfirmCloseDialog -> when (val req = model.closeDialog) {
         is CloseDialogRequest.Quit -> model.copy(closeDialog = null, wantsQuit = true)
@@ -95,7 +85,8 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
             closeDialog = null,
             screen = AppScreen.Welcome,
             modpack = ModpackModel(),
-            profile = model.profile.copy(data = model.profile.data.copy(currentProfile = null))
+            profile = model.profile.copy(data = model.profile.data.copy(currentProfile = null)),
+            welcome = model.welcome.copy(profileData = model.profile.data.copy(currentProfile = null)),
         )
         is CloseDialogRequest.OpenDirectory -> model.copy(
             closeDialog = null,
@@ -104,74 +95,72 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         null -> model.copy(closeDialog = null)
     }
 
-    AppMsg.QuitReady -> model.copy(wantsQuit = false) // driver already called exitApplication()
+    AppMsg.QuitReady -> model.copy(wantsQuit = false)
 
     // -- Pro --
 
     is AppMsg.ProActivationChecked -> model.copy(isProActivated = msg.activated)
 
-    // -- Modpack --
+    // -----------------------------------------------------------------------
+    // Fractal child delegation
+    // -----------------------------------------------------------------------
 
-    is AppMsg.Modpack -> appUpdateModpack(msg, model)
-}
-
-private fun appUpdateModpack(msg: AppMsg.Modpack, model: AppModel): AppModel {
-    val modpack = model.modpack
-    return when (msg) {
-        is AppMsg.Modpack.Loaded -> {
-            val updatedSelectedProject = if (modpack.selectedProject != null && msg.lockFile.component1() != null) {
-                msg.lockFile.component1()?.getAllProjects()?.find { p ->
-                    p.pakkuId == modpack.selectedProject.pakkuId
+    is AppMsg.Welcome -> {
+        // 1. delegate to child update
+        val newWelcome = welcomeComponent.update(msg.msg, model.welcome)
+        // 2. parent handles cross-cutting effects
+        when (msg.msg) {
+            WelcomeMsg.ShowSettings   -> model.copy(welcome = newWelcome, showSettings = true)
+            WelcomeMsg.ShowNewModpack -> model.copy(welcome = newWelcome, showNewModpack = true)
+            is WelcomeMsg.DirectoryPicked -> {
+                if (model.modpack.actionName != null) {
+                    model.copy(welcome = newWelcome, closeDialog = CloseDialogRequest.OpenDirectory(msg.msg.path))
+                } else {
+                    model.copy(welcome = newWelcome, profile = model.profile.copy(pendingPath = msg.msg.path))
                 }
-            } else null
-            model.copy(
-                modpack = modpack.copy(
-                    lockFile = msg.lockFile,
-                    configFile = msg.configFile,
-                    loaded = true,
-                    selectedProject = updatedSelectedProject,
-                )
-            )
+            }
         }
-        AppMsg.Modpack.Reset -> model.copy(modpack = ModpackModel())
-        is AppMsg.Modpack.TabSelected -> model.copy(modpack = modpack.copy(selectedTab = msg.tab))
-        is AppMsg.Modpack.ProjectSelected -> model.copy(modpack = modpack.copy(
-            selectedProject = msg.project,
-            editingProject = false,
-        ))
-        is AppMsg.Modpack.ProjectEditing -> model.copy(modpack = modpack.copy(editingProject = msg.editing))
-        is AppMsg.Modpack.ProjectsSelected -> model.copy(modpack = modpack.copy(
-            selectedPakkuIds = modpack.selectedPakkuIds + msg.pakkuIds
-        ))
-        is AppMsg.Modpack.ProjectsDeselected -> model.copy(modpack = modpack.copy(
-            selectedPakkuIds = modpack.selectedPakkuIds - msg.pakkuIds
-        ))
-        is AppMsg.Modpack.ProjectsCleared -> model.copy(modpack = modpack.copy(selectedPakkuIds = emptySet()))
-        is AppMsg.Modpack.SortOrderChanged -> model.copy(modpack = modpack.copy(sortOrder = msg.order))
-        is AppMsg.Modpack.FilterTextChanged -> model.copy(modpack = modpack.copy(projectsFilterText = msg.text))
-        AppMsg.Modpack.ExportRequested -> model.copy(modpack = modpack.copy(wantsExport = true))
-        is AppMsg.Modpack.ActionStarted -> model.copy(modpack = modpack.copy(
-            actionName = msg.name,
-            wantsExport = false,
-            wantsTerminateAction = false,
-        ))
-        AppMsg.Modpack.ActionFinished -> model.copy(modpack = modpack.copy(
-            actionName = null,
-            wantsTerminateAction = false,
-            wantsExport = false,
-        ))
-        AppMsg.Modpack.TerminateAction -> model.copy(modpack = modpack.copy(wantsTerminateAction = true))
-        is AppMsg.Modpack.ToastAdded -> model.copy(modpack = modpack.copy(
-            toasts = modpack.toasts + msg.toast
-        ))
-        is AppMsg.Modpack.ToastDismissed -> model.copy(modpack = modpack.copy(
-            toasts = modpack.toasts.filterNot { it.id == msg.id }
-        ))
+    }
+
+    is AppMsg.Modpack -> {
+        // 1. delegate to child update
+        val newModpack = modpackComponent.update(msg.msg, model.modpack)
+        // 2. parent handles cross-cutting effects
+        when (msg.msg) {
+            ModpackMsg.ShowSettings  -> model.copy(modpack = newModpack, showSettings = true)
+            ModpackMsg.ShowNewModpack -> model.copy(modpack = newModpack, showNewModpack = true)
+
+            is ModpackMsg.CloseRequested -> {
+                if (model.modpack.actionName != null && !msg.msg.forceClose) {
+                    // action running — ask
+                    model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.CloseModpack())
+                } else {
+                    // navigate away
+                    val clearedProfileData = model.profile.data.copy(currentProfile = null)
+                    model.copy(
+                        modpack = ModpackModel(),
+                        screen = AppScreen.Welcome,
+                        profile = model.profile.copy(data = clearedProfileData),
+                        welcome = model.welcome.copy(profileData = clearedProfileData),
+                    )
+                }
+            }
+
+            is ModpackMsg.DirectoryPicked -> {
+                if (model.modpack.actionName != null) {
+                    model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.OpenDirectory(msg.msg.path))
+                } else {
+                    model.copy(modpack = newModpack, profile = model.profile.copy(pendingPath = msg.msg.path))
+                }
+            }
+
+            else -> model.copy(modpack = newModpack)
+        }
     }
 }
 
 // ---------------------------------------------------------------------------
-// App component definition (view is declared inline below)
+// appComponent — top-level component
 // ---------------------------------------------------------------------------
 
 val appComponent = component(
@@ -182,10 +171,23 @@ val appComponent = component(
             LocalAppPublish provides publish,
             LocalAppModel provides model,
         ) {
-            val scope = LocalPakkuApplicationScope.current
-            with(scope) { AppView(publish, model) }
+            CloseDialog(publish, model)
+
+            if (model.showSettings) {
+                SettingsDialog(onDismiss = { publish(AppMsg.HideSettings) })
+            }
+
+            if (model.showNewModpack) {
+                NewModpackDialog(
+                    profileData = model.profile.data,
+                    onDismiss = { publish(AppMsg.HideNewModpack) }
+                )
+            }
+
+            when (model.screen) {
+                AppScreen.Welcome -> welcomeComponent.view({ publish(AppMsg.Welcome(it)) }, model.welcome)
+                AppScreen.Modpack -> modpackComponent.view({ publish(AppMsg.Modpack(it)) }, model.modpack,)
+            }
         }
     }
 )
-
-

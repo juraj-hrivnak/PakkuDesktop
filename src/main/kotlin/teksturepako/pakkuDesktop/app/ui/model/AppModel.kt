@@ -11,6 +11,8 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.ui.modpackComponent
+import teksturepako.pakkuDesktop.app.ui.welcomeComponent
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,9 @@ data class AppModel(
     val profile: ProfileModel = ProfileModel(),
     val window: WindowModel = WindowModel(),
     val screen: AppScreen = AppScreen.Welcome,
-    val modpack: ModpackModel = ModpackModel(),
+    // child component models — init mirrors childComponent.init()
+    val welcome: WelcomeModel = welcomeComponent.init(),
+    val modpack: ModpackModel = modpackComponent.init(),
     val showSettings: Boolean = false,
     val showNewModpack: Boolean = false,
     val closeDialog: CloseDialogRequest? = null,
@@ -37,6 +41,14 @@ sealed interface AppScreen {
     data object Welcome : AppScreen
     data object Modpack : AppScreen
 }
+
+// ---------------------------------------------------------------------------
+// Welcome sub-model
+// ---------------------------------------------------------------------------
+
+data class WelcomeModel(
+    val profileData: ProfileData = ProfileData(),
+)
 
 // ---------------------------------------------------------------------------
 // Profile sub-model

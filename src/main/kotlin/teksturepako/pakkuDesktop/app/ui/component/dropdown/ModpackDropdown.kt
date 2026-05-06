@@ -13,21 +13,21 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
-import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 
 @Composable
 fun ModpackDropdown(
-    publish: (AppMsg) -> Unit,
-    model: AppModel,
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
     onOpenDirectory: () -> Unit,
     enabled: Boolean = true,
 ) {
-    val profileData = model.profile.data
-    val modpack = model.modpack
+    // Profile data comes from the app-level LocalAppModel (provided by appComponent.view)
+    val profileData = LocalAppModel.current.profile.data
 
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
@@ -59,14 +59,9 @@ fun ModpackDropdown(
                 }
             }
 
-            // -- CLOSE --
-            selectableItem(false, onClick = {
-                if (modpack.actionName != null) {
-                    publish(AppMsg.RequestCloseDialog(CloseDialogRequest.CloseModpack()))
-                } else {
-                    publish(AppMsg.NavigateToWelcome)
-                }
-            }) {
+            // -- CLOSE —
+            // parent handles: if action running → close dialog; else → navigate
+            selectableItem(false, onClick = { publish(ModpackMsg.CloseRequested()) }) {
                 Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) { }
                     Column { Text("Close", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
@@ -78,8 +73,8 @@ fun ModpackDropdown(
             // -- EXPORT --
             selectableItem(
                 selected = false,
-                onClick = { publish(AppMsg.Modpack.ExportRequested) },
-                enabled = modpack.actionName == null,
+                onClick = { publish(ModpackMsg.ExportRequested) },
+                enabled = model.actionName == null,
             ) {
                 Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
@@ -122,11 +117,8 @@ fun ModpackDropdown(
 
                 profileData.recentProfilesFiltered.forEach { profile ->
                     selectableItem(false, onClick = {
-                        if (modpack.actionName != null) {
-                            publish(AppMsg.RequestCloseDialog(CloseDialogRequest.OpenDirectory(profile.path)))
-                        } else {
-                            publish(AppMsg.DirectoryPicked(profile.path))
-                        }
+                        // parent handles: if action running → close dialog; else → set pendingPath
+                        publish(ModpackMsg.DirectoryPicked(profile.path))
                     }) {
                         Row(Modifier.padding(2.dp)) {
                             Column(Modifier.fillMaxWidth(0.2f)) {}

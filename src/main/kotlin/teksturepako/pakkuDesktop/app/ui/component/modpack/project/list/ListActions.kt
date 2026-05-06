@@ -17,22 +17,22 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ListActions(publish: (AppMsg) -> Unit, model: AppModel) {
-    val modpack = model.modpack
-    val isDark = model.profile.data.intUiTheme.isDark()
+fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val isDark = LocalAppModel.current.profile.data.intUiTheme.isDark()
 
-    val selectedCount = modpack.selectedPakkuIds.size
-    val allProjects   = modpack.lockFile?.get()?.getAllProjects() ?: emptyList()
-    val selectedProjects = allProjects.filter { it.pakkuId in modpack.selectedPakkuIds }
+    val selectedCount = model.selectedPakkuIds.size
+    val allProjects   = model.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val selectedProjects = allProjects.filter { it.pakkuId in model.selectedPakkuIds }
 
     Row(
         modifier = Modifier

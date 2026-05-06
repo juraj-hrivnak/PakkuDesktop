@@ -15,13 +15,15 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectDisplay(publish: (AppMsg) -> Unit, model: AppModel) {
-    val project = model.modpack.selectedProject ?: return
+fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val project = model.selectedProject ?: return
+    val isDark = LocalAppModel.current.profile.data.intUiTheme.isDark()
     val scrollState = rememberScrollState()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -32,7 +34,7 @@ fun ProjectDisplay(publish: (AppMsg) -> Unit, model: AppModel) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ProjectCard(project, isDark = model.profile.data.intUiTheme.isDark()) {
+            ProjectCard(project, isDark = isDark) {
                 GradientHeader(it)
             }
 

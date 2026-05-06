@@ -19,12 +19,12 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSel
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.NullableProjectStringSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectBooleanSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectEnumSelection
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectProperties(publish: (AppMsg) -> Unit, model: AppModel) {
-    val modpack = model.modpack
+fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val modpack = model
 
     Column(verticalArrangement = Arrangement.SpaceBetween) {
         Row(
@@ -41,9 +41,9 @@ fun ProjectProperties(publish: (AppMsg) -> Unit, model: AppModel) {
                         checked = modpack.editingProject,
                         onCheckedChange = {
                             if (!modpack.editingProject) {
-                                publish(AppMsg.Modpack.ProjectEditing(true))
+                                publish(ModpackMsg.ProjectEditing(true))
                             } else {
-                                publish(AppMsg.Modpack.ProjectEditing(false))
+                                publish(ModpackMsg.ProjectEditing(false))
                                 // Trigger reload — modpack disk driver will re-read files
                                 // In fractal model: the driver periodically reloads on screen change
                                 // For explicit reload: we'd need a dedicated message

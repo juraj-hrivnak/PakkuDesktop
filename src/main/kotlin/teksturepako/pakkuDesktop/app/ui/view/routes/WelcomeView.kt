@@ -33,18 +33,18 @@ import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
+import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
 fun PakkuApplicationScope.WelcomeView(
-    publish: (AppMsg) -> Unit,
-    model: AppModel,
+    publish: (WelcomeMsg) -> Unit,
+    model: WelcomeModel,
 ) {
-    val profileData = model.profile.data
+    val profileData = model.profileData
     val titleBarHeight = 40.dp
     val pickDirectory = LocalPickDirectory.current
 
@@ -53,11 +53,12 @@ fun PakkuApplicationScope.WelcomeView(
             Text("Welcome to $appName!")
             WelcomeViewDropdown(
                 onOpenDirectory = { pickDirectory() },
-                onNewModpack = { publish(AppMsg.ShowNewModpack) },
+                onNewModpack = { publish(WelcomeMsg.ShowNewModpack) },
+                onRecentProfile = { path -> publish(WelcomeMsg.DirectoryPicked(path)) },
             )
         }
         AlignedTitleBarContent(alignment = Alignment.End) {
-            SettingsButton(onClick = { publish(AppMsg.ShowSettings) })
+            SettingsButton(onClick = { publish(WelcomeMsg.ShowSettings) })
         }
     }
 
@@ -105,7 +106,7 @@ fun PakkuApplicationScope.WelcomeView(
                                 Modifier.padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             ) {
-                                OutlinedButton(onClick = { publish(AppMsg.ShowNewModpack) }) {
+                                OutlinedButton(onClick = { publish(WelcomeMsg.ShowNewModpack) }) {
                                     FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalArrangement = Arrangement.Center
@@ -169,7 +170,7 @@ fun PakkuApplicationScope.WelcomeView(
                             ) {
                                 profileData.recentProfilesFiltered.forEach { profile ->
                                     HoverablePanel(
-                                        onClick = { publish(AppMsg.DirectoryPicked(profile.path)) }
+                                        onClick = { publish(WelcomeMsg.DirectoryPicked(profile.path)) }
                                     ) {
                                         FlowColumn(
                                             Modifier.padding(16.dp),

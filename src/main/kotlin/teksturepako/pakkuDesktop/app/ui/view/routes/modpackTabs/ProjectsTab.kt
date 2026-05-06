@@ -15,11 +15,11 @@ import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectDisplay
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectsList
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectsTab(publish: (AppMsg) -> Unit, model: AppModel) {
+fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     val splitState = remember { SplitLayoutState(0.2F) }
 
     Column(Modifier.fillMaxSize()) {

@@ -19,23 +19,23 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
 @Composable
 fun ListImpl(
-    publish: (AppMsg) -> Unit,
-    model: AppModel,
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
     lastClickedIndex: MutableState<Int?>,
     shiftPressed: MutableState<Boolean>,
 ) {
-    val modpack = model.modpack
-    val lockFile = modpack.lockFile?.get() ?: return
-    val isDark = model.profile.data.intUiTheme.isDark()
+    val lockFile = model.lockFile?.get() ?: return
+    val isDark = LocalAppModel.current.profile.data.intUiTheme.isDark()
 
     val scrollState = remember { LazyListState(0, 0) }
     val offsetDp = 10.dp
@@ -43,15 +43,15 @@ fun ListImpl(
     val offsetPx = remember(offsetDp) { density.run { offsetDp.roundToPx() } }
 
     val filteredProjects = lockFile.getAllProjects().filter { p ->
-        modpack.projectsFilterText.isEmpty() ||
-            p.name.values.any { modpack.projectsFilterText.lowercase() in it.lowercase() } ||
-            modpack.projectsFilterText in p
+        model.projectsFilterText.isEmpty() ||
+            p.name.values.any { model.projectsFilterText.lowercase() in it.lowercase() } ||
+            model.projectsFilterText in p
     }.let { projects ->
-        when (modpack.sortOrder) {
-            is SortOrder.Name        -> if (modpack.sortOrder.ascending)
+        when (model.sortOrder) {
+            is SortOrder.Name        -> if (model.sortOrder.ascending)
                 projects.sortedBy { it.name.values.firstOrNull() }
             else projects.sortedByDescending { it.name.values.firstOrNull() }
-            is SortOrder.LastUpdated -> if (modpack.sortOrder.ascending)
+            is SortOrder.LastUpdated -> if (model.sortOrder.ascending)
                 projects.sortedBy { it.getLatestFile(Provider.providers)?.datePublished }
             else projects.sortedByDescending { it.getLatestFile(Provider.providers)?.datePublished }
         }
@@ -92,18 +92,18 @@ fun ListImpl(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
-                                    checked = project.pakkuId in modpack.selectedPakkuIds,
+                                    checked = project.pakkuId in model.selectedPakkuIds,
                                     onCheckedChange = { checked ->
                                         if (shiftPressed.value && lastClickedIndex.value != null) {
                                             val start = minOf(lastClickedIndex.value!!, index)
                                             val end   = maxOf(lastClickedIndex.value!!, index)
                                             val ids   = filteredProjects.slice(start..end).mapNotNull(Project::pakkuId).toSet()
-                                            if (checked) publish(AppMsg.Modpack.ProjectsSelected(ids))
-                                            else         publish(AppMsg.Modpack.ProjectsDeselected(ids))
+                                            if (checked) publish(ModpackMsg.ProjectsSelected(ids))
+                                            else         publish(ModpackMsg.ProjectsDeselected(ids))
                                         } else {
                                             val id = project.pakkuId ?: return@Checkbox
-                                            if (checked) publish(AppMsg.Modpack.ProjectsSelected(setOf(id)))
-                                            else         publish(AppMsg.Modpack.ProjectsDeselected(setOf(id)))
+                                            if (checked) publish(ModpackMsg.ProjectsSelected(setOf(id)))
+                                            else         publish(ModpackMsg.ProjectsDeselected(setOf(id)))
                                             lastClickedIndex.value = index
                                         }
                                     },
@@ -119,10 +119,10 @@ fun ListImpl(
                             modifier = Modifier
                                 .weight(1f)
                                 .clickableHover(
-                                    pressed = if (modpack.selectedProject == project) true else null,
-                                    enabled = modpack.selectedProject != project
+                                    pressed = if (model.selectedProject == project) true else null,
+                                    enabled = model.selectedProject != project
                                 ) {
-                                    publish(AppMsg.Modpack.ProjectSelected(project))
+                                    publish(ModpackMsg.ProjectSelected(project))
                                 }
                         )
                     }

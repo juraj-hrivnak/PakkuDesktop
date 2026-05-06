@@ -17,14 +17,14 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
-fun ModpackSideBar(publish: (AppMsg) -> Unit, modpack: ModpackModel) {
+fun ModpackSideBar(publish: (ModpackMsg) -> Unit, modpack: ModpackModel) {
     Row {
         Column(
             Modifier
@@ -37,7 +37,7 @@ fun ModpackSideBar(publish: (AppMsg) -> Unit, modpack: ModpackModel) {
         ) {
             PkUiTooltip({ Text("Projects") }) {
                 IconButton(
-                    onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.PROJECTS)) },
+                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
                     Modifier.size(30.dp),
                     enabled = modpack.selectedTab != SelectedTab.PROJECTS,
                 ) {
@@ -51,7 +51,7 @@ fun ModpackSideBar(publish: (AppMsg) -> Unit, modpack: ModpackModel) {
             }
             PkUiTooltip({ Text("Modpack") }) {
                 IconButton(
-                    onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.MODPACK)) },
+                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
                     Modifier.size(30.dp),
                     enabled = modpack.selectedTab != SelectedTab.MODPACK,
                 ) {
@@ -66,7 +66,7 @@ fun ModpackSideBar(publish: (AppMsg) -> Unit, modpack: ModpackModel) {
             Pro {
                 PkUiTooltip({ Text("Commit") }) {
                     IconButton(
-                        onClick = { publish(AppMsg.Modpack.TabSelected(SelectedTab.COMMIT)) },
+                        onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
                         Modifier.size(30.dp),
                         enabled = modpack.selectedTab != SelectedTab.COMMIT,
                     ) {

@@ -12,6 +12,7 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
 // ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ val modpackDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val lockFile   = withContext(Dispatchers.IO) { LockFile.readToResult() }
         val configFile = withContext(Dispatchers.IO) { ConfigFile.readToResult() }
 
-        publish(AppMsg.Modpack.Loaded(lockFile, configFile))
+        publish(AppMsg.Modpack(ModpackMsg.Loaded(lockFile, configFile)))
     }
 
     content()

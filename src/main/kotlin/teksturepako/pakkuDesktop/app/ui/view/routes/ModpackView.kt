@@ -21,8 +21,8 @@ import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
@@ -34,23 +34,21 @@ import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
 fun PakkuApplicationScope.ModpackView(
-    publish: (AppMsg) -> Unit,
-    model: AppModel,
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
 ) {
     val titleBarHeight = 40.dp
-    val modpack = model.modpack
     val pickDirectory = LocalPickDirectory.current
 
     // React to FileNotFound error — show NewModpack dialog
-    LaunchedEffect(modpack.lockFile) {
-        if (modpack.lockFile?.getError() is FileNotFound) {
-            publish(AppMsg.ShowNewModpack)
+    LaunchedEffect(model.lockFile) {
+        if (model.lockFile?.getError() is FileNotFound) {
+            publish(ModpackMsg.ShowNewModpack)
         }
     }
 
-    // React to other errors
-    val hasNonFileNotFoundError = modpack.lockFile?.isErr == true &&
-        modpack.lockFile.getError() !is FileNotFound
+    val hasNonFileNotFoundError = model.lockFile?.isErr == true &&
+        model.lockFile.getError() !is FileNotFound
 
     val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
@@ -58,37 +56,34 @@ fun PakkuApplicationScope.ModpackView(
         AlignedTitleBarContent(alignment = Alignment.Start) {
             ModpackDropdown(publish, model, onOpenDirectory = { pickDirectory() })
             Pro { GitDropdown() }
-            if (modpack.actionName != null) {
+            if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(modpack.actionName)
+                        Text(model.actionName)
                         CircularProgressIndicator()
                     }
                 }
             }
         }
         AlignedTitleBarContent(alignment = Alignment.End) {
-            SettingsButton(onClick = { publish(AppMsg.ShowSettings) })
+            SettingsButton(onClick = { publish(ModpackMsg.ShowSettings) })
         }
     }
 
-    if (hasNonFileNotFoundError) {
-        // Error dialog will be shown by AppView
-        return
-    }
+    if (hasNonFileNotFoundError) return
 
-    val toastState = remember { mutableStateOf(modpack.toasts) }
-    LaunchedEffect(modpack.toasts) { toastState.value = modpack.toasts }
+    val toastState = remember { mutableStateOf(model.toasts) }
+    LaunchedEffect(model.toasts) { toastState.value = model.toasts }
 
     Row(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
-        ModpackSideBar(publish, modpack)
+        ModpackSideBar(publish, model)
 
         VerticalSplitLayout(
             state = actionSplitState,
             first = {
                 Column {
                     Row {
-                        when (modpack.selectedTab) {
+                        when (model.selectedTab) {
                             SelectedTab.PROJECTS -> ProjectsTab(publish, model)
                             SelectedTab.MODPACK  -> ModpackTab()
                             SelectedTab.COMMIT   -> GitTab()
@@ -111,7 +106,7 @@ fun PakkuApplicationScope.ModpackView(
         modifier = Modifier.fillMaxSize().subtractTopHeight(titleBarHeight),
         alignment = Alignment.TopEnd,
         spacing = 8.dp,
-        onDismiss = { id -> publish(AppMsg.Modpack.ToastDismissed(id)) },
+        onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
     )
 
 }

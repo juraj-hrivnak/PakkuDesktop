@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.actions.exportSuspend
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
 // ---------------------------------------------------------------------------
@@ -44,12 +45,12 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         { name, block ->
             if (currentJob.value?.isActive != true) {
                 currentJob.value = coroutineScope.launch {
-                    latestPublish(AppMsg.Modpack.ActionStarted(name))
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ActionStarted(name)))
                     try {
                         withContext(Dispatchers.IO) { block() }
                     } finally {
                         currentJob.value = null
-                        latestPublish(AppMsg.Modpack.ActionFinished)
+                        latestPublish(AppMsg.Modpack(ModpackMsg.ActionFinished))
                     }
                 }
             }
@@ -64,7 +65,7 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         launchAction("Exporting") {
             exportSuspend(lockFile, configFile) { toast ->
                 withContext(Dispatchers.Main) {
-                    latestPublish(AppMsg.Modpack.ToastAdded(toast))
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                 }
             }
         }
@@ -75,7 +76,7 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsTerminateAction) return@LaunchedEffect
         currentJob.value?.cancelAndJoin()
         currentJob.value = null
-        latestPublish(AppMsg.Modpack.ActionFinished)
+        latestPublish(AppMsg.Modpack(ModpackMsg.ActionFinished))
     }
 
     CompositionLocalProvider(LocalLaunchAction provides launchAction) {
