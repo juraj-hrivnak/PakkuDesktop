@@ -34,6 +34,11 @@ object ProfileViewModel
     private var _profileData = MutableStateFlow(ProfileData())
     val profileData: StateFlow<ProfileData> = _profileData.asStateFlow()
 
+    /** Lightweight in-memory theme update (no disk I/O). Used by profileDiskDriver to bridge ELM → ThemedApplication. */
+    fun setTheme(theme: String) {
+        _profileData.update { it.copy(theme = theme) }
+    }
+
     suspend fun loadFromDisk(updateWorkingPath: Boolean = true) = coroutineScope {
 
         val updatedProfileData = ProfileData.readOrNew()

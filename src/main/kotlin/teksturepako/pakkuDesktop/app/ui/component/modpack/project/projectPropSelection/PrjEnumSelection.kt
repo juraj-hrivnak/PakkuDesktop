@@ -9,13 +9,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.PropertyWrite
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import kotlin.enums.EnumEntries
@@ -28,70 +29,38 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
     enumEntries: EnumEntries<T>,
     projectRef: KMutableProperty1<Project, T?>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, T?>,
-)
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    if (modpackUiState.editingProject)
-    {
-        var buttonState by remember { mutableStateOf(modpackUiState.selectedProject?.let { projectRef(it) }) }
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    if (model.editingProject) {
+        var buttonState by remember { mutableStateOf(model.selectedProject?.let { projectRef(it) }) }
 
         val buttons = enumEntries.map { entry ->
             SegmentedControlButtonData(
                 selected = buttonState == entry,
-                content = { _ ->
-                    Text(entry.name)
-                },
+                content = { _ -> Text(entry.name) },
                 onSelect = {
                     buttonState = entry
-
-                    coroutineScope.launch {
-                        ModpackViewModel.writeEditingProjectToDisk {
-                            projectConfigRef.set(this, entry)
-                        }
-                        ModpackViewModel.loadFromDisk()
-                    }
+                    publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, entry) }))
                 }
             )
         }
 
-        // Use Column to center align vertically
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            // Use Row to center align horizontally
-            Row(
-                verticalAlignment = Alignment.Top // Center align vertically
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row {
-                        ContentBox(Modifier.padding(2.dp)) {
-                            Text(label)
-                        }
-                    }
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row { ContentBox(Modifier.padding(2.dp)) { Text(label) } }
                     Row {
                         PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch {
-                                        ModpackViewModel.writeEditingProjectToDisk {
-                                            projectConfigRef.set(this, null)
-                                        }
-                                        ModpackViewModel.loadFromDisk()
-                                        buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
-                                    }
+                                    publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, null) }))
+                                    buttonState = model.selectedProject?.let { projectRef(it) }
                                 },
                                 modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
                             ) {
                                 Icon(
-                                    PakkuDesktopIcons.rollback,
-                                    "reset",
+                                    PakkuDesktopIcons.rollback, "reset",
                                     tint = JewelTheme.contentColor,
                                     modifier = Modifier.padding(horizontal = 4.dp)
                                 )
@@ -99,38 +68,15 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
                         }
                     }
                 }
-
-                // Wrap the buttons in a FlowRow to ensure wrapping on small displays
-                FlowRow(
-                    modifier = Modifier.padding(2.dp)
-                ) {
-                    buttons.forEach { button ->
-                        SegmentedControl(
-                            listOf(button),
-                            Modifier.padding(2.dp)
-                        )
-                    }
+                FlowRow(modifier = Modifier.padding(2.dp)) {
+                    buttons.forEach { button -> SegmentedControl(listOf(button), Modifier.padding(2.dp)) }
                 }
             }
         }
-    }
-    else if (modpackUiState.selectedProject?.let { projectRef(it) } != null)
-    {
-        FlowRow(
-            Modifier.padding(vertical = 6.dp),
-            verticalArrangement = Arrangement.Center // Center align vertically
-        ) {
-            ContentBox(
-                Modifier.padding(2.dp)
-            ) {
-                Text(label)
-            }
-
-            ContentBox(
-                Modifier.padding(2.dp)
-            ) {
-                Text(projectRef(modpackUiState.selectedProject!!)!!.name)
-            }
+    } else if (model.selectedProject?.let { projectRef(it) } != null) {
+        FlowRow(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
+            ContentBox(Modifier.padding(2.dp)) { Text(label) }
+            ContentBox(Modifier.padding(2.dp)) { Text(projectRef(model.selectedProject)!!.name) }
         }
     }
 }
@@ -142,67 +88,38 @@ fun <T : Enum<T>> ProjectEnumSelection(
     enumEntries: EnumEntries<T>,
     projectRef: KMutableProperty1<Project, T>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, T?>,
-)
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    if (modpackUiState.editingProject)
-    {
-        var buttonState by remember { mutableStateOf(modpackUiState.selectedProject?.let { projectRef(it) }) }
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    if (model.editingProject) {
+        var buttonState by remember { mutableStateOf(model.selectedProject?.let { projectRef(it) }) }
 
         val buttons = enumEntries.map { entry ->
             SegmentedControlButtonData(
                 selected = buttonState == entry,
-                content = { _ ->
-                    Text(entry.name)
-                },
+                content = { _ -> Text(entry.name) },
                 onSelect = {
                     buttonState = entry
-
-                    coroutineScope.launch {
-                        ModpackViewModel.writeEditingProjectToDisk {
-                            projectConfigRef.set(this, entry)
-                        }
-                        ModpackViewModel.loadFromDisk()
-                    }
+                    publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, entry) }))
                 }
             )
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row {
-                        ContentBox(Modifier.padding(2.dp)) {
-                            Text(label)
-                        }
-                    }
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row { ContentBox(Modifier.padding(2.dp)) { Text(label) } }
                     Row {
                         PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch {
-                                        ModpackViewModel.writeEditingProjectToDisk {
-                                            projectConfigRef.set(this, null)
-                                        }
-                                        ModpackViewModel.loadFromDisk()
-                                        buttonState = modpackUiState.selectedProject?.let { projectRef(it) }
-                                    }
-                                }, modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
+                                    publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, null) }))
+                                    buttonState = model.selectedProject?.let { projectRef(it) }
+                                },
+                                modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
                             ) {
                                 Icon(
-                                    PakkuDesktopIcons.rollback,
-                                    "reset",
+                                    PakkuDesktopIcons.rollback, "reset",
                                     tint = JewelTheme.contentColor,
                                     modifier = Modifier.padding(horizontal = 4.dp)
                                 )
@@ -210,37 +127,15 @@ fun <T : Enum<T>> ProjectEnumSelection(
                         }
                     }
                 }
-
-                FlowRow(
-                    modifier = Modifier.padding(2.dp)
-                ) {
-                    buttons.forEach { button ->
-                        SegmentedControl(
-                            listOf(button),
-                            Modifier.padding(2.dp)
-                        )
-                    }
+                FlowRow(modifier = Modifier.padding(2.dp)) {
+                    buttons.forEach { button -> SegmentedControl(listOf(button), Modifier.padding(2.dp)) }
                 }
             }
         }
-    }
-    else if (modpackUiState.selectedProject?.let { projectRef(it) } != null)
-    {
-        FlowRow(
-            Modifier.padding(vertical = 6.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            ContentBox(
-                Modifier.padding(2.dp)
-            ) {
-                Text(label)
-            }
-
-            ContentBox(
-                Modifier.padding(2.dp)
-            ) {
-                Text(projectRef(modpackUiState.selectedProject!!).name)
-            }
+    } else if (model.selectedProject?.let { projectRef(it) } != null) {
+        FlowRow(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
+            ContentBox(Modifier.padding(2.dp)) { Text(label) }
+            ContentBox(Modifier.padding(2.dp)) { Text(projectRef(model.selectedProject!!).name) }
         }
     }
 }

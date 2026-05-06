@@ -16,7 +16,6 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
@@ -26,7 +25,9 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.PropertyWrite
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import kotlin.reflect.KFunction1
@@ -38,115 +39,54 @@ fun NullableProjectStringSelection(
     label: String,
     projectRef: KFunction1<Project, Result<String, ActionError>?>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, String?>,
-)
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    if (modpackUiState.editingProject)
-    {
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    if (model.editingProject) {
         val textFieldState = rememberTextFieldState(
-            modpackUiState.selectedProject?.let { projectRef(it) }?.get() ?: ""
+            model.selectedProject?.let { projectRef(it) }?.get() ?: ""
         )
 
-        LaunchedEffect(textFieldState.text)
-        {
-            coroutineScope.launch {
-                if (textFieldState.text.toString().isNotBlank())
-                {
-                    ModpackViewModel.writeEditingProjectToDisk {
-                        projectConfigRef.set(this, textFieldState.text.toString())
-                    }
-                }
-                else
-                {
-                    ModpackViewModel.writeEditingProjectToDisk {
-                        projectConfigRef.set(this, null)
-                    }
-                }
-                ModpackViewModel.loadFromDisk()
+        LaunchedEffect(textFieldState.text) {
+            val text = textFieldState.text.toString()
+            if (text.isNotBlank()) {
+                publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, text) }))
+            } else {
+                publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, null) }))
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row {
-                        ContentBox(Modifier.padding(2.dp)) {
-                            Text(label)
-                        }
-                    }
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row { ContentBox(Modifier.padding(2.dp)) { Text(label) } }
                     Row {
                         PkUiTooltip({ Text("Reset to default") }) {
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch {
-                                        ModpackViewModel.writeEditingProjectToDisk {
-                                            projectConfigRef.set(this, null)
-                                        }
-                                        ModpackViewModel.loadFromDisk()
-                                        textFieldState.edit { this.delete(0, this.length) }
-                                    }
+                                    publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, null) }))
+                                    textFieldState.edit { delete(0, length) }
                                 },
                                 modifier = Modifier.padding(horizontal = 4.dp).size(25.dp)
                             ) {
                                 Icon(
-                                    PakkuDesktopIcons.rollback,
-                                    "reset",
+                                    PakkuDesktopIcons.rollback, "reset",
                                     tint = JewelTheme.contentColor,
                                     modifier = Modifier.padding(horizontal = 4.dp)
                                 )
                             }
                         }
-
                     }
                 }
-
-                FlowRow(
-                    modifier = Modifier.padding(4.dp)
-                ) {
-                    TextField(textFieldState)
-                }
+                FlowRow(modifier = Modifier.padding(4.dp)) { TextField(textFieldState) }
             }
         }
-    }
-    else if (modpackUiState.selectedProject?.let { projectRef(it) } != null)
-    {
-        FlowRow(
-            Modifier.padding(vertical = 6.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            ContentBox(
-                Modifier.padding(2.dp)
-            ) {
-                Text(label)
-            }
-
-            projectRef(modpackUiState.selectedProject!!)
-                ?.onSuccess {
-                    ContentBox(
-                        Modifier.padding(2.dp)
-                    ) {
-                        Text(it)
-                    }
-                }
-                ?.onFailure {
-                    ContentBox(
-                        Modifier.padding(2.dp),
-                        color = Color.Red
-                    ) {
-                        Text("Error: " + it.rawMessage)
-                    }
-                }
+    } else if (model.selectedProject?.let { projectRef(it) } != null) {
+        FlowRow(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
+            ContentBox(Modifier.padding(2.dp)) { Text(label) }
+            projectRef(model.selectedProject!!)
+                ?.onSuccess { ContentBox(Modifier.padding(2.dp)) { Text(it) } }
+                ?.onFailure { ContentBox(Modifier.padding(2.dp), color = Color.Red) { Text("Error: " + it.rawMessage) } }
         }
     }
 }

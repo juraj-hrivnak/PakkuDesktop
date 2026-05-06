@@ -4,7 +4,6 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
-import androidx.compose.runtime.Composable
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
@@ -57,6 +56,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         actionName = null, wantsTerminateAction = false, wantsExport = false
     )
     ModpackMsg.TerminateAction      -> model.copy(wantsTerminateAction = true)
+
+    is ModpackMsg.PropertyWriteRequested -> model.copy(pendingPropertyWrite = msg.request)
+    ModpackMsg.PropertyWriteCompleted    -> model.copy(pendingPropertyWrite = null)
 
     is ModpackMsg.ToastAdded        -> model.copy(toasts = model.toasts + msg.toast)
     is ModpackMsg.ToastDismissed    -> model.copy(toasts = model.toasts.filterNot { it.id == msg.id })

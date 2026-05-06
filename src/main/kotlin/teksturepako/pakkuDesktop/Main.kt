@@ -80,6 +80,7 @@ fun main() {
                         directoryPickerDriver(),
                         licenseDriver,
                         actionDriver,
+                        projectEditDriver,
                     )
                 )
             }

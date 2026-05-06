@@ -9,25 +9,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.button.CopyToClipboardButton
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 
 @Composable
 fun ProjectFileCard(projectFile: ProjectFile)
 {
-    val profileData by ProfileViewModel.profileData.collectAsState()
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -62,7 +58,7 @@ fun ProjectFileCard(projectFile: ProjectFile)
                             PakkuDesktopIcons.Platforms.gitHub,
                             projectFile.type,
                             modifier = Modifier.size(25.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            tint = JewelTheme.contentColor
                         )
                     }
                     "modrinth"   ->

@@ -50,6 +50,7 @@ fun CloseDialog(publish: (AppMsg) -> Unit, model: AppModel) {
                             onClick = { publish(AppMsg.ConfirmCloseDialog) },
                             modifier = Modifier.padding(vertical = 4.dp)
                         ) { Text("Yes") }
+
                         DefaultButton(
                             onClick = { publish(AppMsg.DismissCloseDialog) },
                             modifier = Modifier.padding(vertical = 4.dp)

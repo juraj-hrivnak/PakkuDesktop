@@ -16,16 +16,14 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
 
 @Composable
-fun GitDropdown()
+fun GitDropdown(publish: (ModpackMsg) -> Unit)
 {
-    val profileData by ProfileViewModel.profileData.collectAsState()
     val gitState by GitViewModel.gitState.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
@@ -66,47 +64,35 @@ fun GitDropdown()
                     GitViewModel.pull()
                 }
             }) {
-                Row(
-                    Modifier.padding(2.dp)
-                ) {
+                Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Actions.CheckOut,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            tint = JewelTheme.contentColor
                         )
                     }
                     Column {
-                        Text(
-                            "Pull...",
-                            Modifier,
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
+                        Text("Pull...", Modifier, color = JewelTheme.contentColor)
                     }
                 }
             }
 
             selectableItem(false, onClick = {
-                ModpackViewModel.selectTab(SelectedTab.COMMIT)
+                publish(ModpackMsg.TabSelected(SelectedTab.COMMIT))
             }) {
-                Row(
-                    Modifier.padding(2.dp)
-                ) {
+                Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Actions.Commit,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            tint = JewelTheme.contentColor
                         )
                     }
                     Column {
-                        Text(
-                            "Commit...",
-                            Modifier,
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
+                        Text("Commit...", Modifier, color = JewelTheme.contentColor)
                     }
                 }
             }
@@ -116,24 +102,18 @@ fun GitDropdown()
                     GitViewModel.push()
                 }
             }) {
-                Row(
-                    Modifier.padding(2.dp)
-                ) {
+                Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
                         Icon(
                             key = AllIconsKeys.Vcs.Push,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
+                            tint = JewelTheme.contentColor
                         )
                     }
                     Column {
                         val outgoingCommits = gitState.outgoingCommits.size
-                        Text(
-                            "Push... $outgoingCommits",
-                            Modifier,
-                            color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
+                        Text("Push... $outgoingCommits", Modifier, color = JewelTheme.contentColor)
                     }
                 }
             }
@@ -141,62 +121,38 @@ fun GitDropdown()
             separator()
 
             passiveItem {
-                Row(
-                    Modifier.padding(start = 10.dp),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        "Local Branches",
-                        color = Color.Gray,
-                    )
+                Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
+                    Text("Local Branches", color = Color.Gray)
                 }
             }
 
             gitState.branches.filterNot { it.isRemote }.forEach { branch ->
                 selectableItem(false, onClick = {
-                    coroutineScope.launch {
-                        GitViewModel.checkout(branch)
-                    }
+                    coroutineScope.launch { GitViewModel.checkout(branch) }
                 }) {
                     Row {
                         Column(Modifier.fillMaxWidth(0.2f)) {}
                         Column {
-                            Text(
-                                branch.name,
-                                Modifier,
-                                color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                            )
+                            Text(branch.name, Modifier, color = JewelTheme.contentColor)
                         }
                     }
                 }
             }
 
             passiveItem {
-                Row(
-                    Modifier.padding(start = 10.dp),
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Text(
-                        "Remote Branches",
-                        color = Color.Gray,
-                    )
+                Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
+                    Text("Remote Branches", color = Color.Gray)
                 }
             }
 
             gitState.branches.filter { it.isRemote }.forEach { branch ->
                 selectableItem(false, onClick = {
-                    coroutineScope.launch {
-                        GitViewModel.checkout(branch)
-                    }
+                    coroutineScope.launch { GitViewModel.checkout(branch) }
                 }) {
                     Row {
                         Column(Modifier.fillMaxWidth(0.2f)) {}
                         Column {
-                            Text(
-                                branch.name,
-                                Modifier,
-                                color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                            )
+                            Text(branch.name, Modifier, color = JewelTheme.contentColor)
                         }
                     }
                 }

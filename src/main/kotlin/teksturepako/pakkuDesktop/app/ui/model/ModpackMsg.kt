@@ -11,6 +11,11 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 
+/** Wraps a pending project property write so the driver can fulfil it as a side effect. */
+data class PropertyWrite(
+    val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
+)
+
 sealed interface ModpackMsg {
 
     // -----------------------------------------------------------------------
@@ -75,6 +80,15 @@ sealed interface ModpackMsg {
     data class ActionStarted(val name: String) : ModpackMsg
     data object ActionFinished : ModpackMsg
     data object TerminateAction : ModpackMsg
+
+    // -----------------------------------------------------------------------
+    // Project property editing — fulfilled by projectEditDriver
+    // -----------------------------------------------------------------------
+
+    /** View dispatches this; projectEditDriver writes to disk then publishes Loaded. */
+    data class PropertyWriteRequested(val request: PropertyWrite) : ModpackMsg
+    /** projectEditDriver dispatches this after the write + reload are complete. */
+    data object PropertyWriteCompleted : ModpackMsg
 
     // -----------------------------------------------------------------------
     // Toasts

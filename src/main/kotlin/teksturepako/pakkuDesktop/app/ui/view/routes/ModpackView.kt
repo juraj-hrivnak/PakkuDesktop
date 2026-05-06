@@ -5,7 +5,9 @@
 package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,13 +42,7 @@ fun PakkuApplicationScope.ModpackView(
     val titleBarHeight = 40.dp
     val pickDirectory = LocalPickDirectory.current
 
-    // React to FileNotFound error — show NewModpack dialog
-    LaunchedEffect(model.lockFile) {
-        if (model.lockFile?.getError() is FileNotFound) {
-            publish(ModpackMsg.ShowNewModpack)
-        }
-    }
-
+    // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
     val hasNonFileNotFoundError = model.lockFile?.isErr == true &&
         model.lockFile.getError() !is FileNotFound
 
@@ -55,7 +51,7 @@ fun PakkuApplicationScope.ModpackView(
     MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
             ModpackDropdown(publish, model, onOpenDirectory = { pickDirectory() })
-            Pro { GitDropdown() }
+            Pro { GitDropdown(publish) }
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -71,9 +67,6 @@ fun PakkuApplicationScope.ModpackView(
     }
 
     if (hasNonFileNotFoundError) return
-
-    val toastState = remember { mutableStateOf(model.toasts) }
-    LaunchedEffect(model.toasts) { toastState.value = model.toasts }
 
     Row(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
         ModpackSideBar(publish, model)
@@ -101,6 +94,9 @@ fun PakkuApplicationScope.ModpackView(
         )
     }
 
+    val toastState = remember { mutableStateOf(model.toasts) }
+    toastState.value = model.toasts
+
     ToastHost(
         toasts = toastState,
         modifier = Modifier.fillMaxSize().subtractTopHeight(titleBarHeight),
@@ -108,5 +104,4 @@ fun PakkuApplicationScope.ModpackView(
         spacing = 8.dp,
         onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
     )
-
 }

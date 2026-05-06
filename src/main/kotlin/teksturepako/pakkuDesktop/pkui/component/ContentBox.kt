@@ -21,7 +21,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
 import org.jetbrains.jewel.ui.theme.tooltipStyle
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 
 @Composable
 fun ContentBox(
@@ -31,21 +31,17 @@ fun ContentBox(
     content: @Composable BoxScope.() -> Unit,
 )
 {
-    val profileData by ProfileViewModel.profileData.collectAsState()
+    val theme = LocalAppModel.current.profile.data.intUiTheme
 
-    val themeDefinition = if (profileData.intUiTheme.isDark())
-    {
-        JewelTheme.darkThemeDefinition()
-    }
-    else
-    {
-        JewelTheme.lightThemeDefinition()
-    }
+    val themeDefinition = if (theme.isDark()) JewelTheme.darkThemeDefinition()
+                          else JewelTheme.lightThemeDefinition()
 
-    val background = remember { Animatable(themeDefinition.globalColors.panelBackground) }
+    val panelBackground = themeDefinition.globalColors.panelBackground
 
-    LaunchedEffect(profileData.intUiTheme) {
-        background.animateTo(themeDefinition.globalColors.panelBackground, animationSpec = tween(200))
+    val background = remember { Animatable(panelBackground) }
+
+    LaunchedEffect(theme) {
+        background.animateTo(panelBackground, animationSpec = tween(200))
     }
 
     Box(

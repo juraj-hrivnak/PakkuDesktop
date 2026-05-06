@@ -16,8 +16,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.workingPath
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.pkui.component.toast.showToast
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pro.git.*
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
@@ -38,6 +37,16 @@ object GitViewModel
 
     private val _eventProgress = MutableStateFlow<GitEvent.Progress?>(null)
     val eventProgress = _eventProgress.asStateFlow()
+
+    /** Toasts emitted here are collected by GitTab and forwarded into the ELM publish loop. */
+    private val _toastFlow = MutableSharedFlow<ToastData>(replay = 0, extraBufferCapacity = 16)
+    val toastFlow: SharedFlow<ToastData> = _toastFlow.asSharedFlow()
+
+    private suspend fun emitToast(message: String) = withContext(Dispatchers.Main) {
+        _toastFlow.emit(ToastData {
+            Box(modifier = Modifier.padding(16.dp).width(300.dp)) { Text(message) }
+        })
+    }
 
     suspend fun load()
     {
@@ -107,32 +116,8 @@ object GitViewModel
         {
             (gitRepoOf(workingPath) exec "checkout ${branch.name}")
         }.output(
-            success = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            },
-            failure = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            }
+            success = { emitToast(it) },
+            failure = { emitToast(it) }
         )
 
         load()
@@ -164,67 +149,15 @@ object GitViewModel
         if (remoteBranch != currentBranch) return
 
         (gitRepoOf(workingPath) exec "fetch $remoteName --progress").output(
-            progress = { event ->
-                _eventProgress.update { event }
-            },
-            success = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            },
-            failure = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            }
+            progress = { event -> _eventProgress.update { event } },
+            success = { emitToast(it) },
+            failure = { emitToast(it) }
         )
 
         (gitRepoOf(workingPath) exec "pull $remoteName $remoteBranch --progress").output(
-            progress = { event ->
-                _eventProgress.update { event }
-            },
-            success = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            },
-            failure = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            }
+            progress = { event -> _eventProgress.update { event } },
+            success = { emitToast(it) },
+            failure = { emitToast(it) }
         )
 
         load()
@@ -235,35 +168,9 @@ object GitViewModel
     suspend fun push()
     {
         (gitRepoOf(workingPath) exec "push --progress origin HEAD").output(
-            progress = { event ->
-                _eventProgress.update { event }
-            },
-            success = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            },
-            failure = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            }
+            progress = { event -> _eventProgress.update { event } },
+            success = { emitToast(it) },
+            failure = { emitToast(it) }
         )
 
         load()
@@ -282,49 +189,19 @@ object GitViewModel
         if (addFilesResult.isNotEmpty())
         {
             withContext(Dispatchers.Main) {
-                ModpackViewModel.toasts.showToast {
-                    Box(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .width(300.dp)
-                    ) {
-                        addFilesResult.map {
-                            Text(it.message)
-                        }
+                _toastFlow.emit(ToastData {
+                    Box(modifier = Modifier.padding(16.dp).width(300.dp)) {
+                        addFilesResult.forEach { Text(it.message) }
                     }
-                }
+                })
             }
             (gitRepoOf(workingPath) exec "reset")
             return
         }
 
         (gitRepoOf(workingPath) exec "commit -m \"${_gitState.value.commitMessage}\"").output(
-            success = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            },
-            failure = {
-                withContext(Dispatchers.Main) {
-                    ModpackViewModel.toasts.showToast {
-                        Box(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .width(300.dp)
-                        ) {
-                            Text(it)
-                        }
-                    }
-                }
-            }
+            success = { emitToast(it) },
+            failure = { emitToast(it) }
         )
 
         load()
@@ -344,14 +221,10 @@ object GitViewModel
             currentState.selectedFiles - gitFile
         }
 
-        currentState.copy(
-            selectedFiles = newSelectedFiles,
-        )
+        currentState.copy(selectedFiles = newSelectedFiles)
     }
 
     fun updateCommitMessage(updatedMessage: String) = _gitState.update { currentState ->
-        currentState.copy(
-            commitMessage = updatedMessage
-        )
+        currentState.copy(commitMessage = updatedMessage)
     }
 }

@@ -58,7 +58,11 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         )
     }
 
-    is AppMsg.ThemeChangeRequested -> model // driver handles the write, then publishes ThemeChanged
+    is AppMsg.ThemeChangeRequested -> {
+        val newData = model.profile.data.copy(theme = msg.theme.toString())
+        val syncedWelcome = model.welcome.copy(profileData = newData)
+        model.copy(profile = model.profile.copy(data = newData), welcome = syncedWelcome)
+    }
 
     is AppMsg.ThemeChanged -> {
         val syncedWelcome = model.welcome.copy(profileData = msg.data)
@@ -127,7 +131,7 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         val newModpack = modpackComponent.update(msg.msg, model.modpack)
         // 2. parent handles cross-cutting effects
         when (msg.msg) {
-            ModpackMsg.ShowSettings  -> model.copy(modpack = newModpack, showSettings = true)
+            ModpackMsg.ShowSettings -> model.copy(modpack = newModpack, showSettings = true)
             ModpackMsg.ShowNewModpack -> model.copy(modpack = newModpack, showNewModpack = true)
 
             is ModpackMsg.CloseRequested -> {
@@ -186,7 +190,7 @@ val appComponent = component(
 
             when (model.screen) {
                 AppScreen.Welcome -> welcomeComponent.view({ publish(AppMsg.Welcome(it)) }, model.welcome)
-                AppScreen.Modpack -> modpackComponent.view({ publish(AppMsg.Modpack(it)) }, model.modpack,)
+                AppScreen.Modpack -> modpackComponent.view({ publish(AppMsg.Modpack(it)) }, model.modpack)
             }
         }
     }

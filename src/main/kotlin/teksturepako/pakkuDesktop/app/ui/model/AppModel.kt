@@ -110,6 +110,9 @@ data class ModpackModel(
     val wantsExport: Boolean = false,
 
     val toasts: List<ToastData> = emptyList(),
+
+    /** Non-null while a property write is pending; cleared by projectEditDriver on completion. */
+    val pendingPropertyWrite: PropertyWrite? = null,
 )
 
 // ---------------------------------------------------------------------------

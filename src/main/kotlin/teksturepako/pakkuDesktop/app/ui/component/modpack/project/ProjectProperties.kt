@@ -24,8 +24,6 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
 fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val modpack = model
-
     Column(verticalArrangement = Arrangement.SpaceBetween) {
         Row(
             Modifier.fillMaxWidth(),
@@ -38,9 +36,9 @@ fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Edit: ")
                     Switch(
-                        checked = modpack.editingProject,
+                        checked = model.editingProject,
                         onCheckedChange = {
-                            if (!modpack.editingProject) {
+                            if (!model.editingProject) {
                                 publish(ModpackMsg.ProjectEditing(true))
                             } else {
                                 publish(ModpackMsg.ProjectEditing(false))
@@ -58,29 +56,39 @@ fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
             label = "Type:",
             enumEntries = ProjectType.entries,
             projectRef = Project::type,
-            projectConfigRef = ConfigFile.ProjectConfig::type
+            projectConfigRef = ConfigFile.ProjectConfig::type,
+            publish = publish,
+            model = model,
         )
         NullableProjectEnumSelection(
             label = "Side:",
             enumEntries = ProjectSide.entries,
             projectRef = Project::side,
-            projectConfigRef = ConfigFile.ProjectConfig::side
+            projectConfigRef = ConfigFile.ProjectConfig::side,
+            publish = publish,
+            model = model,
         )
         ProjectEnumSelection(
             label = "Update Strategy:",
             enumEntries = UpdateStrategy.entries,
             projectRef = Project::updateStrategy,
-            projectConfigRef = ConfigFile.ProjectConfig::updateStrategy
+            projectConfigRef = ConfigFile.ProjectConfig::updateStrategy,
+            publish = publish,
+            model = model,
         )
         ProjectBooleanSelection(
             label = "Redistributable:",
             projectRef = Project::redistributable,
-            projectConfigRef = ConfigFile.ProjectConfig::redistributable
+            projectConfigRef = ConfigFile.ProjectConfig::redistributable,
+            publish = publish,
+            model = model,
         )
         NullableProjectStringSelection(
             label = "Subpath:",
             projectRef = Project::getSubpath,
-            projectConfigRef = ConfigFile.ProjectConfig::subpath
+            projectConfigRef = ConfigFile.ProjectConfig::subpath,
+            publish = publish,
+            model = model,
         )
     }
 }

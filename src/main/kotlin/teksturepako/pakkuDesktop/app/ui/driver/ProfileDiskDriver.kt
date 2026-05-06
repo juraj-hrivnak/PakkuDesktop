@@ -17,6 +17,7 @@ import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
+import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.elm.Driver
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -32,6 +33,12 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // Load once on startup
     LaunchedEffect(Unit) {
         val data = withContext(Dispatchers.IO) { ProfileData.readOrNew() }
+        // Restore workingPath for the already-selected profile so that
+        // modpackDiskDriver reads files from the correct directory.
+        data.currentProfile?.path?.let { path ->
+            workingPath = path
+            logger.info { "workingPath restored to [$workingPath] from saved profile" }
+        }
         publish(AppMsg.ProfileLoaded(data))
     }
 
@@ -95,9 +102,10 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    // Persist theme changes
+    // Persist theme changes & sync to ProfileViewModel (which ThemedApplication reads)
     LaunchedEffect(model.profile.data.theme, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
+        ProfileViewModel.setTheme(model.profile.data.theme)
         withContext(Dispatchers.IO) {
             model.profile.data.write()
         }

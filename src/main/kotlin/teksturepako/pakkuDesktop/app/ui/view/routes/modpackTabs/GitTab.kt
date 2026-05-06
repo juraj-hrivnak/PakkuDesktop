@@ -20,8 +20,10 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.workingPath
+import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitDiffViewModel
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
@@ -35,17 +37,27 @@ fun GitTab()
 {
     val diffState by GitDiffViewModel.state.collectAsState()
     val gitState by GitViewModel.gitState.collectAsState()
+    val appPublish = LocalAppPublish.current
 
     val coroutineScope = rememberCoroutineScope()
+
+    // Drain GitViewModel toasts into the ELM publish loop
+    LaunchedEffect(Unit) {
+        GitViewModel.toastFlow.collect { toast ->
+            appPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+        }
+    }
 
     LaunchedEffect(gitState)
     {
         GitDiffViewModel.init(Path(workingPath))
     }
 
+    val splitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(0.2F) }
+
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
-            state = ModpackViewModel.projectsTabSplitState,
+            state = splitState,
             first = {
                 Column {
                     HorizontalBar {
@@ -219,4 +231,3 @@ private fun CommitPanel(
         }
     }
 }
-
