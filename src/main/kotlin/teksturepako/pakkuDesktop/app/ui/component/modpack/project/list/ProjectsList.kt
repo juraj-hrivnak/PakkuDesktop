@@ -16,9 +16,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilter
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun ProjectsList(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     // For shift+click functionality
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
     val shiftPressed = remember { mutableStateOf(false) }
@@ -41,7 +43,7 @@ fun ProjectsList(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         }
 
         Spacer(
-            Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth()
+            Modifier.background(borderColor).height(1.dp).fillMaxWidth()
         )
 
         // Main content with scrollbar
@@ -50,7 +52,7 @@ fun ProjectsList(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         }
 
         // Bottom border
-        Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+        Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
 
         // Actions at bottom
         ListActions(publish, model)

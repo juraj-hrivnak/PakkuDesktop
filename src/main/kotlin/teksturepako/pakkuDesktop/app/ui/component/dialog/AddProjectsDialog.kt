@@ -17,6 +17,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @Composable
@@ -26,16 +27,15 @@ fun AddProjectsDialog(
     model: ModpackModel,
 ) {
     val lockFile = model.lockFile?.get() ?: return
-
     val projectProvider = lockFile.getProjectProvider().getOrElse { return }
-
     val textFieldState = rememberTextFieldState()
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
 
     PkUiDialog(visible = visible, onDismiss = onDismiss) {
         FlowColumn(Modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Header("Add Projects")
             Spacer(Modifier.height(8.dp))
-            Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+            Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Text("Enter the projects to add")
             Spacer(Modifier.height(8.dp))

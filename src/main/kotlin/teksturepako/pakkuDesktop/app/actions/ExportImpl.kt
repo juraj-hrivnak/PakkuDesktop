@@ -9,9 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.getOrElse
-import kotlinx.coroutines.Dispatchers
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitOpenFileSettings
+import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
+import io.klogging.logger
 import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.withContext
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
@@ -28,9 +31,12 @@ import teksturepako.pakkuDesktop.app.io.RevealFileAction
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import java.nio.file.Path
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.fileSize
 import kotlin.io.path.pathString
 import kotlin.time.Duration
+
+val logger = logger("ExportImpl")
 
 /**
  * Pure suspend export implementation — no ViewModels, no global state.
@@ -50,14 +56,14 @@ suspend fun exportSuspend(
         onError = { profile: ExportProfile, error: ActionError ->
             if (error !is IOExportingError) {
                 val message = "[${profile.name} profile] ${error.rawMessage}"
-                println(message)
+                logger.error(message)
                 onToast(errorToast("[${profile.name} profile]\n${error.rawMessage}"))
             }
         },
         onSuccess = { profile: ExportProfile, path: Path, duration: Duration ->
             val fileSize = path.fileSize().toHumanReadableSize()
             val filePath = Path(workingPath).relativize(path).pathString
-            println("[${profile.name} profile] exported to '$filePath' ($fileSize) in ${duration.shortForm()}")
+            logger.info { "[${profile.name} profile] exported to '$filePath' ($fileSize) in ${duration.shortForm()}" }
 
             onToast(ToastData(content = {
                 Box(Modifier.padding(16.dp).width(300.dp)) {
@@ -67,7 +73,10 @@ suspend fun exportSuspend(
                         Text("exported to '$filePath'", style = JewelTheme.consoleTextStyle)
                         Text(" ($fileSize) in ${duration.shortForm()}")
                         Spacer(Modifier.height(8.dp))
-                        DefaultButton(onClick = { RevealFileAction.openFile(path) }) {
+                        DefaultButton(onClick = {
+                            val file = PlatformFile(path.parent.absolutePathString())
+                            FileKit.openFileWithDefaultApplication(file)
+                        }) {
                             Text("Open")
                         }
                     }

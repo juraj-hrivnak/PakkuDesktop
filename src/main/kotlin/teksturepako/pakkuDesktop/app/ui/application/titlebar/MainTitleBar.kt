@@ -19,6 +19,7 @@ import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun PakkuApplicationScope.MainTitleBar(
@@ -27,6 +28,7 @@ fun PakkuApplicationScope.MainTitleBar(
     content: @Composable TitleBarScope.() -> Unit = { }
 )
 {
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Column {
         Row {
         this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
@@ -50,7 +52,7 @@ fun PakkuApplicationScope.MainTitleBar(
             }
         }
         Row {
-            Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+            Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
         }
     }
 }

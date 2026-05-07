@@ -30,6 +30,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun Switch(
@@ -41,6 +42,8 @@ fun Switch(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    val panelBackground = animatedColor(JewelTheme.globalColors.panelBackground)
 
     var mousePosition by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(Offset.Zero) }
@@ -126,7 +129,7 @@ fun Switch(
                 }
                 .clip(RoundedCornerShape(16.dp))
                 .background(
-                    color = JewelTheme.globalColors.panelBackground.copy(alpha = 0.3f),
+                    color = panelBackground.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(16.dp)
                 )
                 .background(
@@ -170,7 +173,7 @@ fun Switch(
                     .align(Alignment.CenterStart)
                     .clip(CircleShape)
                     .background(
-                        color = JewelTheme.globalColors.panelBackground,
+                        color = panelBackground,
                         shape = CircleShape
                     )
             )

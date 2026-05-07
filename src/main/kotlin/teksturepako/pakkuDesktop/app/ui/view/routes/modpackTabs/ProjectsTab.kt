@@ -17,6 +17,7 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectDisplay
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectsList
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
 @Composable
 fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
@@ -25,6 +26,7 @@ fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
             state = splitState,
+            dividerStyle = animatedDividerStyle(),
             first = {
                 Column {
                     HorizontalBar {

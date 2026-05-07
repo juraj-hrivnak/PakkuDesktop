@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.window.WindowState
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
+import io.github.vinceglb.filekit.FileKit
 import io.klogging.config.ANSI_CONSOLE
 import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
@@ -35,6 +36,8 @@ fun main() {
             STDOUT
         )
     }
+
+    FileKit.init(appId = "PakkuDesktop")
 
     val credentials = runBlocking { CredentialsFile.readToResult() }
         .onFailure { error -> debug { println(error.rawMessage) } }
@@ -68,6 +71,7 @@ fun main() {
                     drivers = listOf(
                         publishBridgeDriver { appPublish = it },
                         themeDriver,
+                        themedBoxDriver,
                         profileDiskDriver,
                         modpackDiskDriver,
                         windowDiskDriver(

@@ -25,7 +25,12 @@ fun themedApplication(
 
     val themeDefinition = if (profileData.intUiTheme.isDark())
     {
-        JewelTheme.darkThemeDefinition(defaultTextStyle = textStyle, disabledAppearanceValues = DisabledAppearanceValues.dark())
+        JewelTheme.darkThemeDefinition(
+            colors = PakkuDarkGlobalColors,
+            palette = PakkuDarkColorPalette,
+            defaultTextStyle = textStyle,
+            disabledAppearanceValues = DisabledAppearanceValues.dark()
+        )
     }
     else
     {

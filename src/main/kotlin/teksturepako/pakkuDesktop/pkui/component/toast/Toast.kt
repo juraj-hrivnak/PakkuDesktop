@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.elm.animatedColor
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -55,6 +56,9 @@ fun Toast(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    val panelBackground = animatedColor(JewelTheme.globalColors.panelBackground)
+    val shadowColor = animatedColor(JewelTheme.globalColors.borders.disabled)
 
     var mousePosition by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(Offset.Zero) }
@@ -119,11 +123,11 @@ fun Toast(
             .shadow(
                 elevation = shadowSize,
                 shape = RoundedCornerShape(cornerRadius),
-                ambientColor = JewelTheme.globalColors.borders.disabled,
+                ambientColor = shadowColor,
                 spotColor = Color.Transparent,
             )
             .clip(RoundedCornerShape(cornerRadius))
-            .background(JewelTheme.globalColors.panelBackground)
+            .background(panelBackground)
             .drawBehind {
                 drawRoundRect(
                     color = PakkuDesktopConstants.highlightColor.copy(

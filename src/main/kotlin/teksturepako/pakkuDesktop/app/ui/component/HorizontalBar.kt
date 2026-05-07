@@ -11,10 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun HorizontalBar(content: @Composable ColumnScope.() -> Unit = { })
 {
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Column {
         Row(
             Modifier
@@ -26,6 +28,6 @@ fun HorizontalBar(content: @Composable ColumnScope.() -> Unit = { })
         ) {
             content(this@Column)
         }
-        Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+        Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
     }
 }

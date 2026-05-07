@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.model
 
+import androidx.compose.runtime.Immutable
 import com.github.michaelbull.result.Result
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
@@ -19,6 +20,7 @@ import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 // Top-level app model
 // ---------------------------------------------------------------------------
 
+@Immutable
 data class AppModel(
     val profile: ProfileModel = ProfileModel(),
     val window: WindowModel = WindowModel(),
@@ -46,6 +48,7 @@ sealed interface AppScreen {
 // Welcome sub-model
 // ---------------------------------------------------------------------------
 
+@Immutable
 data class WelcomeModel(
     val profileData: ProfileData = ProfileData(),
 )
@@ -86,6 +89,7 @@ sealed interface CloseDialogRequest {
 // Modpack sub-model
 // ---------------------------------------------------------------------------
 
+@Immutable
 data class ModpackModel(
     val lockFile: Result<LockFile, ActionError>? = null,
     val configFile: Result<ConfigFile, ActionError>? = null,

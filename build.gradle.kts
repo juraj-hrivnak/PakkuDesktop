@@ -105,8 +105,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     // File Kit
-    implementation("io.github.vinceglb:filekit-core:0.8.7")
-    implementation("io.github.vinceglb:filekit-compose:0.8.7")
+    implementation("io.github.vinceglb:filekit-core:0.14.1")
+    implementation("io.github.vinceglb:filekit-dialogs-compose:0.14.1")
 
     // Logging
     implementation("io.klogging:klogging-jvm:0.8.0")

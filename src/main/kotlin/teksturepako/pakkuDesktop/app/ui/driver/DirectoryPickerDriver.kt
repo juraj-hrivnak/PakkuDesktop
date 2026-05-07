@@ -6,7 +6,9 @@ package teksturepako.pakkuDesktop.app.ui.driver
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
+import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
+import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
+import io.github.vinceglb.filekit.path
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
@@ -24,7 +26,9 @@ val LocalPickDirectory = compositionLocalOf { {} }
 
 fun directoryPickerDriver(): Driver<AppModel, AppMsg> = { publish, _, content ->
     val launcher = rememberDirectoryPickerLauncher(
-        title = "Open modpack directory",
+        dialogSettings = FileKitDialogSettings(
+            title = "Open modpack directory",
+        ),
     ) { directory ->
         directory?.path?.let { publish(AppMsg.DirectoryPicked(it)) }
     }

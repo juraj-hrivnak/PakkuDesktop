@@ -30,6 +30,7 @@ import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
@@ -73,6 +74,7 @@ fun PakkuApplicationScope.ModpackView(
 
         VerticalSplitLayout(
             state = actionSplitState,
+            dividerStyle = animatedDividerStyle(),
             first = {
                 Column {
                     Row {

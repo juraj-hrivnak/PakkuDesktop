@@ -17,18 +17,18 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val isDark = LocalAppModel.current.profile.data.intUiTheme.isDark()
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.disabled)
 
     val selectedCount = model.selectedPakkuIds.size
     val allProjects   = model.lockFile?.get()?.getAllProjects() ?: emptyList()
@@ -66,7 +66,7 @@ fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
             }
 
             Spacer(
-                Modifier.background(JewelTheme.globalColors.borders.disabled)
+                Modifier.background(borderColor)
                     .width(1.dp).padding(horizontal = 8.dp).fillMaxHeight()
             )
 
@@ -93,7 +93,7 @@ fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                         FlowColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Header("Do you want to remove this project?")
                             Spacer(Modifier.height(8.dp))
-                            selectedProjects.forEach { ProjectCard(it, isDark = isDark) }
+                            selectedProjects.forEach { ProjectCard(it) }
                         }
                     }
 

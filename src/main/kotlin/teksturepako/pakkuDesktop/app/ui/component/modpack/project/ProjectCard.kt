@@ -14,18 +14,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun ProjectCard(
     project: Project,
-    isDark: Boolean = true,
     modifier: Modifier = Modifier,
     name: @Composable (String) -> Unit = { Text(it) },
 ) {
+    val contentColor = animatedColor(JewelTheme.contentColor)
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -56,8 +58,7 @@ fun ProjectCard(
                         providers.forEach { provider ->
                             when (provider.serialName) {
                                 "curseforge" -> Icon(PakkuDesktopIcons.Platforms.curseForge, provider.name, Modifier.size(25.dp))
-                                "github"     -> Icon(PakkuDesktopIcons.Platforms.gitHub, provider.name, Modifier.size(25.dp),
-                                    tint = if (isDark) Color.White else Color.Black)
+                                "github"     -> Icon(PakkuDesktopIcons.Platforms.gitHub, provider.name, Modifier.size(25.dp), tint = contentColor)
                                 "modrinth"   -> Icon(PakkuDesktopIcons.Platforms.modrinth, provider.name, Modifier.size(25.dp))
                                 else         -> Text(provider.name)
                             }

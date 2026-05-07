@@ -9,6 +9,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.styling.DividerStyle
+import org.jetbrains.jewel.ui.theme.dividerStyle
 
 // ---------------------------------------------------------------------------
 // ELM-safe animation helpers
@@ -57,3 +60,20 @@ fun animatedDp(
     target: Dp,
     animationSpec: AnimationSpec<Dp> = spring(),
 ): Dp = animated(target, Dp.VectorConverter, animationSpec)
+
+/**
+ * Returns a [DividerStyle] whose color animates whenever the theme changes.
+ * Defaults to [JewelTheme.globalColors].borders.normal so custom GlobalColors
+ * (e.g. PakkuDarkGlobalColors) are correctly applied. Metrics come from
+ * the theme's default divider style.
+ */
+@Composable
+fun animatedDividerStyle(
+    style: DividerStyle = JewelTheme.dividerStyle,
+    color: Color = JewelTheme.globalColors.borders.normal,
+    animationSpec: AnimationSpec<Color> = tween(durationMillis = 300),
+): DividerStyle {
+    val animatedColor = animateColorAsState(color, animationSpec).value
+    return DividerStyle(color = animatedColor, metrics = style.metrics)
+}
+

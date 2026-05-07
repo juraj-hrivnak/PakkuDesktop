@@ -20,18 +20,21 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
+import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
 fun ModpackSideBar(publish: (ModpackMsg) -> Unit, modpack: ModpackModel) {
+    val panelBackground = animatedColor(JewelTheme.globalColors.panelBackground)
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Row {
         Column(
             Modifier
                 .fillMaxHeight()
                 .width(40.dp)
                 .padding(vertical = 4.dp)
-                .background(JewelTheme.globalColors.panelBackground),
+                .background(panelBackground),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -81,7 +84,7 @@ fun ModpackSideBar(publish: (ModpackMsg) -> Unit, modpack: ModpackModel) {
             }
         }
         Column {
-            Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).width(1.dp).fillMaxHeight())
+            Spacer(Modifier.background(borderColor).width(1.dp).fillMaxHeight())
         }
     }
 }

@@ -4,10 +4,8 @@
 
 package teksturepako.pakkuDesktop.app.ui.application.window
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.WindowPosition
@@ -19,8 +17,6 @@ import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
-import teksturepako.pakkuDesktop.app.ui.application.theme.ThemedBox
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import java.awt.Dimension
 
 /**
@@ -58,14 +54,12 @@ fun ApplicationScope.MainWindow(
     ) {
         this.window.minimumSize = Dimension(600, 400)
 
-        ThemedBox(Modifier.fillMaxSize()) {
-            content(
-                object : PakkuApplicationScope {
-                    override val applicationScope = this@MainWindow
-                    override val decoratedWindowScope = this@JewelDecoratedWindow
-                },
-                windowState,
-            )
-        }
+        content(
+            object : PakkuApplicationScope {
+                override val applicationScope = this@MainWindow
+                override val decoratedWindowScope = this@JewelDecoratedWindow
+            },
+            windowState,
+        )
     }
 }

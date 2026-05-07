@@ -23,6 +23,7 @@ import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
 import org.jetbrains.jewel.ui.component.styling.DividerMetrics
 import org.jetbrains.jewel.ui.component.styling.DividerStyle
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 
 @Composable
@@ -60,8 +61,8 @@ fun DiffViewer(
 
     Box(modifier = modifier) {
         HorizontalSplitLayout(
-            dividerStyle = DividerStyle(
-                color = JewelTheme.globalColors.borders.normal, metrics = DividerMetrics(20.dp, 10.dp)
+            dividerStyle = animatedDividerStyle(
+                DividerStyle(color = JewelTheme.globalColors.borders.normal, metrics = DividerMetrics(20.dp, 10.dp))
             ),
             draggableWidth = 20.dp,
             state = splitLayoutState,

@@ -17,7 +17,7 @@ import teksturepako.pakkuDesktop.elm.component
 // ---------------------------------------------------------------------------
 
 val LocalAppPublish = compositionLocalOf<(AppMsg) -> Unit> { {} }
-val LocalAppModel   = compositionLocalOf<AppModel> { AppModel() }
+val LocalAppModel   = compositionLocalOf { AppModel() }
 val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
     error("No PakkuApplicationScope provided")
 }
