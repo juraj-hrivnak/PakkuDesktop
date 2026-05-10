@@ -8,14 +8,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.Repository
-
-data class GitDiffState(
-    val currentDiff: DiffContent? = null,
-    val repository: Repository? = null,
-    val git: Git? = null,
-)
 
 sealed interface GitChange
 {
