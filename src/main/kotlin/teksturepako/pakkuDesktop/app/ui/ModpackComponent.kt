@@ -85,6 +85,22 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             }
         model.copy(git = g.copy(selectedFiles = sel))
     }
+    is ModpackMsg.GitFolderSelectionToggled -> {
+        val g = model.git
+        val prefix = msg.folderPath
+        val under = g.gitFiles.filter { f ->
+            f.path == prefix || f.path.startsWith("$prefix/")
+        }.toSet()
+        if (under.isEmpty()) model
+        else {
+            val selectedPaths = g.selectedFiles.map { it.path }.toSet()
+            val allSelected = under.all { it.path in selectedPaths }
+            val sel =
+                if (allSelected) g.selectedFiles - under
+                else g.selectedFiles + under
+            model.copy(git = g.copy(selectedFiles = sel))
+        }
+    }
     ModpackMsg.GitSelectAllChangedFiles    -> model.copy(
         git = model.git.copy(selectedFiles = model.git.gitFiles.toSet()),
     )

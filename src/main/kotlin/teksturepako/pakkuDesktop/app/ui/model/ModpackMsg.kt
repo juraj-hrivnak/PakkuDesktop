@@ -108,6 +108,8 @@ sealed interface ModpackMsg {
 
     data class GitStateUpdated(val state: GitState) : ModpackMsg
     data class GitFileSelectionToggled(val file: GitFile) : ModpackMsg
+    /** Toggle inclusion for every changed file under [folderPath] (path prefix, `/`-separated). */
+    data class GitFolderSelectionToggled(val folderPath: String) : ModpackMsg
     /** Select every changed file for the next commit (working tree → index via `git add` on commit). */
     data object GitSelectAllChangedFiles : ModpackMsg
     /** Clear the inclusion set; nothing is staged until the user checks files again. */
