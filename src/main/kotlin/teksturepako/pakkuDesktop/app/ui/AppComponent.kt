@@ -16,10 +16,14 @@ import teksturepako.pakkuDesktop.elm.component
 // Composition Locals
 // ---------------------------------------------------------------------------
 
-val LocalAppPublish = compositionLocalOf<(AppMsg) -> Unit> { {} }
-val LocalAppModel   = compositionLocalOf { AppModel() }
+val LocalAppPublish = compositionLocalOf<(AppMsg) -> Unit> {
+    error("LocalAppPublish not provided — must be inside appComponent.view")
+}
+val LocalAppModel = compositionLocalOf<AppModel> {
+    error("LocalAppModel not provided — must be inside appComponent.view")
+}
 val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
-    error("No PakkuApplicationScope provided")
+    error("LocalPakkuApplicationScope not provided — mainWindowDriver must wrap the tree")
 }
 
 // ---------------------------------------------------------------------------

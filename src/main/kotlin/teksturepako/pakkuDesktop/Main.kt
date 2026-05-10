@@ -4,7 +4,6 @@
 
 package teksturepako.pakkuDesktop
 
-import androidx.compose.runtime.*
 import androidx.compose.ui.window.application
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
@@ -17,12 +16,9 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
-import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
-import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
 import teksturepako.pakkuDesktop.elm.run
 
 fun main() {
@@ -46,27 +42,12 @@ fun main() {
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
-    val initialWindowData = runBlocking { WindowData.readOrNew() }
-
-    var appPublish by mutableStateOf<((AppMsg) -> Unit)?>(null)
-
     application {
         run(
             appComponent,
             drivers = listOf(
-                // IntUiTheme must wrap JewelDecoratedWindow — same as old themedApplication { MainWindow { } }
                 themeDriver,
-                mainWindowDriver(
-                    applicationScope = this@application,
-                    initialWindowData = initialWindowData,
-                    onCloseRequest = {
-                        appPublish?.invoke(AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)))
-                            ?: run {
-                                kotlin.system.exitProcess(0)
-                            }
-                    },
-                ),
-                publishBridgeDriver { appPublish = it },
+                mainWindowDriver(applicationScope = this@application),
                 themedBoxDriver,
                 profileDiskDriver,
                 modpackDiskDriver,

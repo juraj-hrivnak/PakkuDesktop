@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import com.github.michaelbull.result.get
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import teksturepako.pakku.api.actions.errors.ActionError
@@ -35,6 +36,9 @@ data class WindowData(
 
         suspend fun readOrNew(): WindowData =
             decodeToResult<WindowData>(Path(FILE_NAME), format = _json).get() ?: WindowData()
+
+        /** Blocking read for desktop bootstrap before `application { }` (window sizing). */
+        fun readOrNewBlocking(): WindowData = runBlocking { readOrNew() }
     }
 
     suspend fun write(): ActionError? = writeToFile<WindowData>(this, FILE_NAME, format = _json)

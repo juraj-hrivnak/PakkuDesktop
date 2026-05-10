@@ -4,7 +4,10 @@
 
 package teksturepako.pakkuDesktop.app.ui.application.window
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.WindowPosition
@@ -13,15 +16,14 @@ import androidx.compose.ui.window.rememberWindowState
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
 import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
 import teksturepako.pakkuDesktop.elm.Driver
 import java.awt.Dimension
-import androidx.compose.ui.Alignment
-import androidx.compose.runtime.CompositionLocalProvider
-import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
 
 /**
  * Window state for placement persistence — provided by [mainWindowDriver] for descendants (e.g. windowDiskDriver).
@@ -39,13 +41,14 @@ fun snapshotWindowData(windowState: WindowState) = WindowData(
 )
 
 /**
- * Outermost UI driver: decorated window, title from [AppModel], [LocalPakkuApplicationScope] and [LocalWindowState].
+ * Decorated main window: loads saved [WindowData] once, provides [LocalPakkuApplicationScope] / [LocalWindowState],
+ * and forwards native close to the ELM [publish] (same thread as the window; Compose Desktop dispatches on the EDT).
  */
 fun mainWindowDriver(
     applicationScope: ApplicationScope,
-    initialWindowData: WindowData,
-    onCloseRequest: () -> Unit,
-): Driver<AppModel, AppMsg> = { _, model, content ->
+    windowCloseMessage: AppMsg = AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)),
+): Driver<AppModel, AppMsg> = { publish, model, content ->
+    val initialWindowData = remember { WindowData.readOrNewBlocking() }
     val windowState = rememberWindowState(
         placement = initialWindowData.placement,
         isMinimized = false,
@@ -62,7 +65,7 @@ fun mainWindowDriver(
 
     JewelDecoratedWindow(
         state = windowState,
-        onCloseRequest = onCloseRequest,
+        onCloseRequest = { publish(windowCloseMessage) },
         title = title,
         icon = painterResource("icons/pakku.svg"),
     ) {
