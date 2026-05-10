@@ -11,6 +11,8 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
 import teksturepako.pakkuDesktop.elm.component
+import teksturepako.pakkuDesktop.pro.git.gitFolderIds
+import teksturepako.pakkuDesktop.pro.git.mergeChangelistExpandedFolders
 
 // ---------------------------------------------------------------------------
 // modpackUpdate — pure update for ModpackModel.
@@ -73,7 +75,12 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         val incoming = msg.state
         val selectedPaths = model.git.selectedFiles.map { it.path }.toSet()
         val remapped = incoming.gitFiles.filter { it.path in selectedPaths }.toSet()
-        model.copy(git = incoming.copy(selectedFiles = remapped))
+        val expanded = mergeChangelistExpandedFolders(
+            model.git.expandedFolderPaths,
+            model.git.gitFiles,
+            incoming.gitFiles,
+        )
+        model.copy(git = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded))
     }
     is ModpackMsg.GitFileSelectionToggled  -> {
         val g = model.git
@@ -101,6 +108,23 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             model.copy(git = g.copy(selectedFiles = sel))
         }
     }
+    is ModpackMsg.GitChangelistFolderExpansionToggled -> {
+        val g = model.git
+        val ids = gitFolderIds(g.gitFiles)
+        if (msg.folderPath !in ids) model
+        else {
+            val open = g.expandedFolderPaths
+            val next = if (msg.folderPath in open) open - msg.folderPath else open + msg.folderPath
+            model.copy(git = g.copy(expandedFolderPaths = next))
+        }
+    }
+    ModpackMsg.GitChangelistExpandAllFolders -> {
+        val g = model.git
+        model.copy(git = g.copy(expandedFolderPaths = gitFolderIds(g.gitFiles)))
+    }
+    ModpackMsg.GitChangelistCollapseAllFolders -> model.copy(
+        git = model.git.copy(expandedFolderPaths = emptySet()),
+    )
     ModpackMsg.GitSelectAllChangedFiles    -> model.copy(
         git = model.git.copy(selectedFiles = model.git.gitFiles.toSet()),
     )
