@@ -15,43 +15,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
-import teksturepako.pakku.api.data.workingPath
-import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitDiffViewModel
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
-import kotlin.io.path.Path
 
 @Composable
-fun GitTab()
-{
-    val diffState by GitDiffViewModel.state.collectAsState()
-    val gitState by GitViewModel.gitState.collectAsState()
-    val appPublish = LocalAppPublish.current
-
-    val coroutineScope = rememberCoroutineScope()
-
-    // Drain GitViewModel toasts into the ELM publish loop
-    LaunchedEffect(Unit) {
-        GitViewModel.toastFlow.collect { toast ->
-            appPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
-        }
-    }
-
-    LaunchedEffect(gitState)
-    {
-        GitDiffViewModel.init(Path(workingPath))
-    }
+fun GitTab(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    val gitState = model.git
+    val diffContent = model.gitCurrentDiff
 
     val splitState = remember { SplitLayoutState(0.2F) }
 
@@ -68,20 +48,13 @@ fun GitTab()
                         ChangesPanel(
                             files = gitState.gitFiles,
                             selectedFiles = gitState.selectedFiles,
-                            currentDiff = diffState.currentDiff,
-                            onFileSelect = {
-                                coroutineScope.launch(Dispatchers.Main) {
-                                    GitViewModel.toggleFileSelection(it)
-                                }
-                            },
-                            onFileView = {
-                                coroutineScope.launch(Dispatchers.Main) {
-                                    GitDiffViewModel.selectDiff(it)
-                                }
-                            },
+                            currentDiff = diffContent,
+                            onFileSelect = { publish(ModpackMsg.GitFileSelectionToggled(it)) },
+                            onFileView = { publish(ModpackMsg.GitDiffFileSelected(it)) },
+                            publish = publish,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight()
+                                .fillMaxHeight(),
                         )
                     }
                 }
@@ -90,7 +63,8 @@ fun GitTab()
                 Column {
                     Row {
                         DiffViewer(
-                            diffState.currentDiff, modifier = Modifier.weight(1f)
+                            diffContent,
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -100,7 +74,7 @@ fun GitTab()
                 .weight(1f),
             firstPaneMinWidth = 200.dp,
             secondPaneMinWidth = 200.dp,
-            draggableWidth = 16.dp
+            draggableWidth = 16.dp,
         )
     }
 }
@@ -113,13 +87,11 @@ private fun ChangesPanel(
     currentDiff: DiffContent?,
     onFileSelect: (GitFile) -> Unit,
     onFileView: (GitFile) -> Unit,
+    publish: (ModpackMsg) -> Unit,
     modifier: Modifier = Modifier,
-)
-{
-    val coroutineScope = rememberCoroutineScope()
-
+) {
     FlowColumn(
-        modifier = modifier
+        modifier = modifier,
     ) {
         Column {
             Text(
@@ -134,23 +106,19 @@ private fun ChangesPanel(
                         isSelected = selectedFiles.contains(file),
                         isViewed = currentDiff?.newPath == file.status.path,
                         onSelect = { onFileSelect(file) },
-                        onView = { onFileView(file) }
+                        onView = { onFileView(file) },
                     )
                 }
             }
         }
 
         Column(
-            verticalArrangement = Arrangement.Bottom
+            verticalArrangement = Arrangement.Bottom,
         ) {
             CommitPanel(
-                onCommit = {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        GitViewModel.commit()
-                    }
-                },
+                publish = publish,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
             )
         }
     }
@@ -163,8 +131,7 @@ private fun FileRow(
     isViewed: Boolean,
     onSelect: () -> Unit,
     onView: () -> Unit,
-)
-{
+) {
     Row(
         modifier =
             Modifier
@@ -172,43 +139,42 @@ private fun FileRow(
                 .background(if (isViewed) Color(0xFF2F65CA) else Color.Transparent)
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clickable { onView() },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
             checked = isSelected,
-            onCheckedChange = { onSelect() }
+            onCheckedChange = { onSelect() },
         )
 
         Text(
-            text = file.status.displayName, color = when (file.status)
-            {
-                is GitChange.Added     -> Color(0xFF50FA7B)
-                is GitChange.Modified  -> Color(0xFFFFB86C)
-                is GitChange.Deleted   -> Color(0xFFFF5555)
+            text = file.status.displayName,
+            color = when (file.status) {
+                is GitChange.Added -> Color(0xFF50FA7B)
+                is GitChange.Modified -> Color(0xFFFFB86C)
+                is GitChange.Deleted -> Color(0xFFFF5555)
                 is GitChange.Untracked -> JewelTheme.contentColor
-            }
+            },
         )
     }
 }
 
 @Composable
 private fun CommitPanel(
-    onCommit: () -> Unit,
+    publish: (ModpackMsg) -> Unit,
     modifier: Modifier = Modifier,
-)
-{
+) {
     Column(
-        modifier = modifier.padding(16.dp)
+        modifier = modifier.padding(16.dp),
     ) {
         Text(
-            text = "Commit Message", color = Color(0xFFBBBBBB)
+            text = "Commit Message",
+            color = Color(0xFFBBBBBB),
         )
 
         val textFieldState = rememberTextFieldState()
 
-        LaunchedEffect(textFieldState.text)
-        {
-            GitViewModel.updateCommitMessage(textFieldState.text.toString())
+        LaunchedEffect(textFieldState.text) {
+            publish(ModpackMsg.GitCommitMessageChanged(textFieldState.text.toString()))
         }
 
         TextField(
@@ -217,16 +183,17 @@ private fun CommitPanel(
                 .fillMaxWidth()
                 .height(50.dp)
                 .padding(vertical = 8.dp),
-            placeholder = { Text("Enter commit message...") }
+            placeholder = { Text("Enter commit message...") },
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
         ) {
             DefaultButton(
-                onClick = onCommit,
+                onClick = { publish(ModpackMsg.GitCommitRequested) },
             ) {
-                Text( "Commit")
+                Text("Commit")
             }
         }
     }

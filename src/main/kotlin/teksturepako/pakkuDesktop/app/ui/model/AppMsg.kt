@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.model
 
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
@@ -51,6 +52,14 @@ sealed interface AppMsg {
     // -----------------------------------------------------------------------
 
     data class ProActivationChecked(val activated: Boolean?) : AppMsg
+
+    /** Dispatched from the activation UI; fulfilled by licenseDriver. */
+    data class LicenseKeySubmit(val key: String) : AppMsg
+
+    data class LicenseKeyHandled(
+        val activated: Boolean?,
+        val error: ActionError?,
+    ) : AppMsg
 
     // -----------------------------------------------------------------------
     // Child component message wrappers (fractal delegation)

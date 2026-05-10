@@ -8,6 +8,8 @@ import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.ui.application.window.LocalWindowState
+import teksturepako.pakkuDesktop.app.ui.application.window.snapshotWindowData
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
@@ -17,9 +19,10 @@ import teksturepako.pakkuDesktop.elm.Driver
 // ---------------------------------------------------------------------------
 
 fun windowDiskDriver(
-    getWindowData: () -> WindowData,
     onQuit: () -> Unit,
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
+    val windowState = LocalWindowState.current
+
     LaunchedEffect(Unit) {
         val data = withContext(Dispatchers.IO) { WindowData.readOrNew() }
         publish(AppMsg.WindowLoaded(data))
@@ -27,7 +30,8 @@ fun windowDiskDriver(
 
     LaunchedEffect(model.wantsQuit) {
         if (!model.wantsQuit) return@LaunchedEffect
-        withContext(Dispatchers.IO) { getWindowData().write() }
+        val data = snapshotWindowData(windowState)
+        withContext(Dispatchers.IO) { data.write() }
         onQuit()
         publish(AppMsg.QuitReady)
     }

@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.application
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
 import io.github.vinceglb.filekit.FileKit
@@ -18,10 +18,8 @@ import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
 import teksturepako.pakkuDesktop.app.data.WindowData
-import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.application.window.MainWindow
 import teksturepako.pakkuDesktop.app.ui.appComponent
-import teksturepako.pakkuDesktop.app.ui.application.theme.themedApplication
+import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
@@ -48,55 +46,42 @@ fun main() {
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
-    // Load window data synchronously so the window can be sized correctly from the start
     val initialWindowData = runBlocking { WindowData.readOrNew() }
 
-    // Bridge: lets onCloseRequest (outside composable tree) dispatch into the ELM loop
     var appPublish by mutableStateOf<((AppMsg) -> Unit)?>(null)
 
-    themedApplication {
-        MainWindow(
-            initialWindowData = initialWindowData,
-            onCloseRequest = {
-                appPublish?.invoke(AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)))
-                    ?: run {
-                        // Fallback if publish not yet wired — just quit
-                        kotlin.system.exitProcess(0)
-                    }
-            },
-        ) { windowState ->
-            CompositionLocalProvider(LocalPakkuApplicationScope provides this) {
-                run(
-                    appComponent,
-                    drivers = listOf(
-                        publishBridgeDriver { appPublish = it },
-                        themeDriver,
-                        themedBoxDriver,
-                        profileDiskDriver,
-                        modpackDiskDriver,
-                        windowDiskDriver(
-                            getWindowData = { snapshotWindowData(windowState) },
-                            onQuit = {
-                                exitApplication()
+    application {
+        run(
+            appComponent,
+            drivers = listOf(
+                // IntUiTheme must wrap JewelDecoratedWindow — same as old themedApplication { MainWindow { } }
+                themeDriver,
+                mainWindowDriver(
+                    applicationScope = this@application,
+                    initialWindowData = initialWindowData,
+                    onCloseRequest = {
+                        appPublish?.invoke(AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)))
+                            ?: run {
                                 kotlin.system.exitProcess(0)
-                            },
-                        ),
-                        directoryPickerDriver(),
-                        licenseDriver,
-                        actionDriver,
-                        projectEditDriver,
-                    )
-                )
-            }
-        }
+                            }
+                    },
+                ),
+                publishBridgeDriver { appPublish = it },
+                themedBoxDriver,
+                profileDiskDriver,
+                modpackDiskDriver,
+                gitDriver,
+                windowDiskDriver(
+                    onQuit = {
+                        exitApplication()
+                        kotlin.system.exitProcess(0)
+                    },
+                ),
+                directoryPickerDriver(),
+                licenseDriver,
+                actionDriver,
+                projectEditDriver,
+            ),
+        )
     }
 }
-
-private fun snapshotWindowData(windowState: WindowState) = WindowData(
-    placement = windowState.placement,
-    x = windowState.position.x.value.takeUnless { it.isNaN() },
-    y = windowState.position.y.value.takeUnless { it.isNaN() },
-    width = windowState.size.width.value,
-    height = windowState.size.height.value,
-)
-

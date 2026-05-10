@@ -10,6 +10,11 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
+import teksturepako.pakkuDesktop.pro.git.GitEvent
+import teksturepako.pakkuDesktop.pro.git.GitState
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 
 /** Wraps a pending project property write so the driver can fulfil it as a side effect. */
 data class PropertyWrite(
@@ -96,6 +101,26 @@ sealed interface ModpackMsg {
 
     data class ToastAdded(val toast: ToastData) : ModpackMsg
     data class ToastDismissed(val id: String) : ModpackMsg
+
+    // -----------------------------------------------------------------------
+    // Git (Pro) — intents & driver completions
+    // -----------------------------------------------------------------------
+
+    data class GitStateUpdated(val state: GitState) : ModpackMsg
+    data class GitFileSelectionToggled(val file: GitFile) : ModpackMsg
+    data class GitCommitMessageChanged(val message: String) : ModpackMsg
+    data class GitDiffFileSelected(val file: GitFile) : ModpackMsg
+    data class GitDiffComputed(val diff: DiffContent?) : ModpackMsg
+    data class GitEventProgressUpdated(val progress: GitEvent.Progress?) : ModpackMsg
+
+    data object GitPullRequested : ModpackMsg
+    data object GitPullFinished : ModpackMsg
+    data object GitPushRequested : ModpackMsg
+    data object GitPushFinished : ModpackMsg
+    data object GitCommitRequested : ModpackMsg
+    data object GitCommitFinished : ModpackMsg
+    data class GitCheckoutRequested(val branch: GitBranch) : ModpackMsg
+    data object GitCheckoutFinished : ModpackMsg
 }
 
 

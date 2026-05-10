@@ -5,53 +5,54 @@
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
 
 @Composable
-fun GitDropdown(publish: (ModpackMsg) -> Unit)
-{
-    val gitState by GitViewModel.gitState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    // -- DIALOGS --
+fun GitDropdown(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    val gitState = model.git
 
     var pushDialogVisible by remember { mutableStateOf(false) }
 
     GitPushDialog(
-        pushDialogVisible,
-        onDismiss = { pushDialogVisible = false }
+        publish = publish,
+        model = model,
+        visible = pushDialogVisible,
+        onDismiss = { pushDialogVisible = false },
     )
-
-    // -- DROPDOWN --
 
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         content = {
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
                     key = AllIconsKeys.General.Vcs,
                     contentDescription = "Clone Repository Icon",
                     tint = JewelTheme.contentColor,
                     hints = arrayOf(),
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(15.dp),
                 )
                 Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git")
             }
@@ -60,9 +61,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
             .width(300.dp),
         menuContent = {
             selectableItem(false, onClick = {
-                coroutineScope.launch {
-                    GitViewModel.pull()
-                }
+                publish(ModpackMsg.GitPullRequested)
             }) {
                 Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
@@ -70,7 +69,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
                             key = AllIconsKeys.Actions.CheckOut,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = JewelTheme.contentColor
+                            tint = JewelTheme.contentColor,
                         )
                     }
                     Column {
@@ -88,7 +87,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
                             key = AllIconsKeys.Actions.Commit,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = JewelTheme.contentColor
+                            tint = JewelTheme.contentColor,
                         )
                     }
                     Column {
@@ -98,9 +97,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
             }
 
             selectableItem(false, onClick = {
-                coroutineScope.launch {
-                    GitViewModel.push()
-                }
+                publish(ModpackMsg.GitPushRequested)
             }) {
                 Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
@@ -108,7 +105,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
                             key = AllIconsKeys.Vcs.Push,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = JewelTheme.contentColor
+                            tint = JewelTheme.contentColor,
                         )
                     }
                     Column {
@@ -128,7 +125,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
 
             gitState.branches.filterNot { it.isRemote }.forEach { branch ->
                 selectableItem(false, onClick = {
-                    coroutineScope.launch { GitViewModel.checkout(branch) }
+                    publish(ModpackMsg.GitCheckoutRequested(branch))
                 }) {
                     Row {
                         Column(Modifier.fillMaxWidth(0.2f)) {}
@@ -147,7 +144,7 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
 
             gitState.branches.filter { it.isRemote }.forEach { branch ->
                 selectableItem(false, onClick = {
-                    coroutineScope.launch { GitViewModel.checkout(branch) }
+                    publish(ModpackMsg.GitCheckoutRequested(branch))
                 }) {
                     Row {
                         Column(Modifier.fillMaxWidth(0.2f)) {}
@@ -157,12 +154,10 @@ fun GitDropdown(publish: (ModpackMsg) -> Unit)
                     }
                 }
             }
-        }
+        },
     )
 
-    val gitEventProgress by GitViewModel.eventProgress.collectAsState()
-
-    gitEventProgress?.let { event ->
+    model.gitEventProgress?.let { event ->
         Text(event.operation)
         HorizontalProgressBar(event.percentage, Modifier.width(60.dp))
     }

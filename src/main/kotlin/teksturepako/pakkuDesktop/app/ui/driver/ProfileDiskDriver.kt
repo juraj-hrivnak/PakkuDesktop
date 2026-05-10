@@ -17,7 +17,6 @@ import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
 import teksturepako.pakkuDesktop.elm.Driver
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -102,10 +101,8 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    // Persist theme changes & sync to ProfileViewModel (which ThemedApplication reads)
     LaunchedEffect(model.profile.data.theme, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
-        ProfileViewModel.setTheme(model.profile.data.theme)
         withContext(Dispatchers.IO) {
             model.profile.data.write()
         }

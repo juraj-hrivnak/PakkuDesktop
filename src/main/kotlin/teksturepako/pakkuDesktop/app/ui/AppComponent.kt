@@ -158,8 +158,16 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     // -- Quit --
     AppMsg.QuitReady                 -> model.copy(wantsQuit = false)
 
-    // -- Pro --
+    // -- Pro / license --
     is AppMsg.ProActivationChecked   -> model.copy(isProActivated = msg.activated)
+
+    is AppMsg.LicenseKeySubmit -> model.copy(pendingLicenseKey = msg.key, licenseKeyError = null)
+
+    is AppMsg.LicenseKeyHandled -> model.copy(
+        pendingLicenseKey = null,
+        isProActivated = msg.activated ?: model.isProActivated,
+        licenseKeyError = msg.error,
+    )
 
     // -- Child components --
     is AppMsg.Welcome                -> handleWelcomeMsg(msg, model)

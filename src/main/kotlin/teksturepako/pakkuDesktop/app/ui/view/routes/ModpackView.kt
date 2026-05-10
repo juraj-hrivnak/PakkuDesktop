@@ -52,7 +52,7 @@ fun PakkuApplicationScope.ModpackView(
     MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
             ModpackDropdown(publish, model, onOpenDirectory = { pickDirectory() })
-            Pro { GitDropdown(publish) }
+            Pro { GitDropdown(publish, model) }
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -81,7 +81,7 @@ fun PakkuApplicationScope.ModpackView(
                         when (model.selectedTab) {
                             SelectedTab.PROJECTS -> ProjectsTab(publish, model)
                             SelectedTab.MODPACK  -> ModpackTab()
-                            SelectedTab.COMMIT   -> GitTab()
+                            SelectedTab.COMMIT   -> GitTab(publish, model)
                         }
                     }
                 }

@@ -66,6 +66,26 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     is ModpackMsg.ToastAdded     -> model.copy(toasts = model.toasts + msg.toast)
     is ModpackMsg.ToastDismissed -> model.copy(toasts = model.toasts.filterNot { it.id == msg.id })
+
+    is ModpackMsg.GitStateUpdated          -> model.copy(git = msg.state)
+    is ModpackMsg.GitFileSelectionToggled  -> {
+        val g = model.git
+        val sel = if (msg.file in g.selectedFiles) g.selectedFiles - msg.file else g.selectedFiles + msg.file
+        model.copy(git = g.copy(selectedFiles = sel))
+    }
+    is ModpackMsg.GitCommitMessageChanged  -> model.copy(git = model.git.copy(commitMessage = msg.message))
+    is ModpackMsg.GitDiffFileSelected      -> model.copy(gitDiffPendingFile = msg.file)
+    is ModpackMsg.GitDiffComputed          -> model.copy(gitCurrentDiff = msg.diff, gitDiffPendingFile = null)
+    is ModpackMsg.GitEventProgressUpdated  -> model.copy(gitEventProgress = msg.progress)
+
+    ModpackMsg.GitPullRequested     -> model.copy(wantsGitPull = true)
+    ModpackMsg.GitPullFinished      -> model.copy(wantsGitPull = false, gitEventProgress = null)
+    ModpackMsg.GitPushRequested     -> model.copy(wantsGitPush = true)
+    ModpackMsg.GitPushFinished      -> model.copy(wantsGitPush = false, gitEventProgress = null)
+    ModpackMsg.GitCommitRequested   -> model.copy(wantsGitCommit = true)
+    ModpackMsg.GitCommitFinished    -> model.copy(wantsGitCommit = false, gitEventProgress = null)
+    is ModpackMsg.GitCheckoutRequested -> model.copy(gitCheckoutBranch = msg.branch)
+    ModpackMsg.GitCheckoutFinished  -> model.copy(gitCheckoutBranch = null, gitEventProgress = null)
 }
 
 // ---------------------------------------------------------------------------

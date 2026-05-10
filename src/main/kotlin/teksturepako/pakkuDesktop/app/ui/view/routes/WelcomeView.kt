@@ -23,6 +23,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.application.appName
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
@@ -47,10 +48,11 @@ fun PakkuApplicationScope.WelcomeView(
     val profileData = model.profileData
     val titleBarHeight = 40.dp
     val pickDirectory = LocalPickDirectory.current
+    val displayName = appName(LocalAppModel.current.isProActivated)
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            Text("Welcome to $appName!")
+            Text("Welcome to $displayName!")
             WelcomeViewDropdown(
                 onOpenDirectory = { pickDirectory() },
                 onNewModpack = { publish(WelcomeMsg.ShowNewModpack) },
@@ -76,7 +78,7 @@ fun PakkuApplicationScope.WelcomeView(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            GradientHeader("Welcome to $appName!")
+            GradientHeader("Welcome to $displayName!")
         }
 
         // Modpacks Box

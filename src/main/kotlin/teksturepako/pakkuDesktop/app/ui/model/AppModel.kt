@@ -15,6 +15,11 @@ import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.modpackComponent
 import teksturepako.pakkuDesktop.app.ui.welcomeComponent
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
+import teksturepako.pakkuDesktop.pro.git.GitEvent
+import teksturepako.pakkuDesktop.pro.git.GitState
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
+import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 
 // ---------------------------------------------------------------------------
 // Top-level app model
@@ -32,6 +37,9 @@ data class AppModel(
     val showNewModpack: Boolean = false,
     val closeDialog: CloseDialogRequest? = null,
     val isProActivated: Boolean? = null,
+    /** Set when the user submits a license key; cleared by licenseDriver. */
+    val pendingLicenseKey: String? = null,
+    val licenseKeyError: ActionError? = null,
     val wantsQuit: Boolean = false,
 )
 
@@ -117,6 +125,16 @@ data class ModpackModel(
 
     /** Non-null while a property write is pending; cleared by projectEditDriver on completion. */
     val pendingPropertyWrite: PropertyWrite? = null,
+
+    // -- Git (Pro) — fulfilled by gitDriver
+    val git: GitState = GitState(),
+    val gitCurrentDiff: DiffContent? = null,
+    val gitDiffPendingFile: GitFile? = null,
+    val gitEventProgress: GitEvent.Progress? = null,
+    val wantsGitPull: Boolean = false,
+    val wantsGitPush: Boolean = false,
+    val wantsGitCommit: Boolean = false,
+    val gitCheckoutBranch: GitBranch? = null,
 )
 
 // ---------------------------------------------------------------------------

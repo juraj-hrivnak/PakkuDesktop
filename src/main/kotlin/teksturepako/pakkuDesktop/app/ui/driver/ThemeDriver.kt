@@ -29,7 +29,7 @@ val themeDriver: Driver<AppModel, AppMsg> = { _, model, content ->
         JewelTheme.darkThemeDefinition(
             colors = PakkuDarkGlobalColors,
             palette = PakkuDarkColorPalette,
-            defaultTextStyle = textStyle
+            defaultTextStyle = textStyle,
         )
     } else {
         JewelTheme.lightThemeDefinition(defaultTextStyle = textStyle)

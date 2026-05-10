@@ -10,7 +10,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
+import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
@@ -21,6 +24,8 @@ import teksturepako.pakkuDesktop.pro.ui.component.license.LicenseKeyField
 fun PakkuApplicationScope.ActivationView()
 {
     val titleBarHeight = 40.dp
+    val appModel = LocalAppModel.current
+    val appPublish = LocalAppPublish.current
 
     MainTitleBar(Modifier.height(titleBarHeight)) {
         FadeIn {
@@ -57,7 +62,11 @@ fun PakkuApplicationScope.ActivationView()
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.Top
         ) {
-            LicenseKeyField()
+            LicenseKeyField(
+                isProActivated = appModel.isProActivated,
+                licenseKeyError = appModel.licenseKeyError,
+                onSubmitLicenseKey = { key -> appPublish(AppMsg.LicenseKeySubmit(key)) },
+            )
         }
     }
 }
