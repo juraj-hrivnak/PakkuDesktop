@@ -1,4 +1,5 @@
 
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.CompressionLevel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 import java.io.FileInputStream
 import java.util.*
@@ -115,6 +116,18 @@ dependencies {
 nucleus.application {
     mainClass = "teksturepako.pakkuDesktop.MainKt"
 
+    buildTypes {
+        release {
+            proguard {
+                isEnabled = false
+                optimize = true
+                obfuscate.set(true)
+                configurationFiles.from(project.file("proguard-rules.pro"))
+                joinOutputJars.set(false)
+            }
+        }
+    }
+
     nativeDistributions {
         packageName = "Pakku Desktop"
         packageVersion = "1.0.0"
@@ -124,9 +137,12 @@ nucleus.application {
         // Nucleus supports 16 formats; keep parity with previous setup:
         targetFormats(
             TargetFormat.Dmg,   // macOS
-            TargetFormat.Nsis,  // Windows (replaces Exe)
+            TargetFormat.Nsis,  // NSIS produces a traditional Windows installer (.exe) with full customization.
             TargetFormat.Deb    // Linux
         )
+
+        enableAotCache = true
+        compressionLevel = CompressionLevel.Maximum
 
         // JVM modules carry over as-is
         modules(
@@ -161,6 +177,8 @@ nucleus.application {
         linux {
             iconFile.set(project.file("icon.png"))
             packageName = "pakku-desktop"
+
+            startupWMClass = "teksturepako-PakkuDesktop"
         }
     }
 }

@@ -23,13 +23,10 @@ val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
 }
 
 // ---------------------------------------------------------------------------
-// appUpdate — pure fractal update
+// appUpdate handlers — grouped by concern
 // ---------------------------------------------------------------------------
 
-fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
-
-    // -- Profile (driver callbacks) --
-
+private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.ProfileLoaded -> {
         val newProfile = model.profile.copy(data = msg.data, loaded = true, pendingPath = null)
         val syncedWelcome = model.welcome.copy(profileData = msg.data)
@@ -37,15 +34,6 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         if (msg.data.currentProfile != null && model.screen == AppScreen.Welcome) {
             base.copy(screen = AppScreen.Modpack, modpack = ModpackModel())
         } else base
-    }
-
-    is AppMsg.DirectoryPicked -> {
-        // From OS file-picker driver (app-level)
-        if (model.modpack.actionName != null) {
-            model.copy(closeDialog = CloseDialogRequest.OpenDirectory(msg.path))
-        } else {
-            model.copy(profile = model.profile.copy(pendingPath = msg.path))
-        }
     }
 
     is AppMsg.ProfileCurrentResolved -> {
@@ -69,22 +57,22 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         model.copy(profile = model.profile.copy(data = msg.data), welcome = syncedWelcome)
     }
 
-    // -- Window --
+    else -> model
+}
 
-    is AppMsg.WindowLoaded -> model.copy(window = model.window.copy(data = msg.data, loaded = true))
+private fun handleDirectoryPicked(path: String, model: AppModel): AppModel =
+    if (model.modpack.actionName != null) {
+        model.copy(closeDialog = CloseDialogRequest.OpenDirectory(path))
+    } else {
+        model.copy(profile = model.profile.copy(pendingPath = path))
+    }
 
-    // -- Dialog dismissals (from AppView lambdas) --
-
-    AppMsg.HideSettings  -> model.copy(showSettings = false)
-    AppMsg.HideNewModpack -> model.copy(showNewModpack = false)
-
-    // -- Close / Quit dialog --
-
+private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.RequestCloseDialog -> model.copy(closeDialog = msg.request)
     AppMsg.DismissCloseDialog    -> model.copy(closeDialog = null)
 
     AppMsg.ConfirmCloseDialog -> when (val req = model.closeDialog) {
-        is CloseDialogRequest.Quit -> model.copy(closeDialog = null, wantsQuit = true)
+        is CloseDialogRequest.Quit         -> model.copy(closeDialog = null, wantsQuit = true)
         is CloseDialogRequest.CloseModpack -> model.copy(
             closeDialog = null,
             screen = AppScreen.Welcome,
@@ -99,68 +87,83 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
         null -> model.copy(closeDialog = null)
     }
 
-    AppMsg.QuitReady -> model.copy(wantsQuit = false)
+    else -> model
+}
+
+private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
+    val newWelcome = welcomeComponent.update(msg.msg, model.welcome)
+    return when (msg.msg) {
+        WelcomeMsg.ShowSettings   -> model.copy(welcome = newWelcome, showSettings = true)
+        WelcomeMsg.ShowNewModpack -> model.copy(welcome = newWelcome, showNewModpack = true)
+        is WelcomeMsg.DirectoryPicked ->
+            handleDirectoryPicked(msg.msg.path, model).copy(welcome = newWelcome)
+    }
+}
+
+private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
+    val newModpack = modpackComponent.update(msg.msg, model.modpack)
+    return when (msg.msg) {
+        ModpackMsg.ShowSettings   -> model.copy(modpack = newModpack, showSettings = true)
+        ModpackMsg.ShowNewModpack -> model.copy(modpack = newModpack, showNewModpack = true)
+
+        is ModpackMsg.CloseRequested -> {
+            if (model.modpack.actionName != null && !msg.msg.forceClose) {
+                model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.CloseModpack())
+            } else {
+                val clearedProfileData = model.profile.data.copy(currentProfile = null)
+                model.copy(
+                    modpack = ModpackModel(),
+                    screen = AppScreen.Welcome,
+                    profile = model.profile.copy(data = clearedProfileData),
+                    welcome = model.welcome.copy(profileData = clearedProfileData),
+                )
+            }
+        }
+
+        is ModpackMsg.DirectoryPicked ->
+            handleDirectoryPicked(msg.msg.path, model).copy(modpack = newModpack)
+
+        // All other messages are fully handled by modpackUpdate — just commit the new child model
+        else -> model.copy(modpack = newModpack)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// appUpdate — pure fractal update
+// ---------------------------------------------------------------------------
+
+fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
+
+    // -- Profile --
+    is AppMsg.ProfileLoaded,
+    is AppMsg.ProfileCurrentResolved,
+    is AppMsg.ThemeChangeRequested,
+    is AppMsg.ThemeChanged           -> handleProfileMsg(msg, model)
+
+    // -- Directory picker (app-level) --
+    is AppMsg.DirectoryPicked        -> handleDirectoryPicked(msg.path, model)
+
+    // -- Window --
+    is AppMsg.WindowLoaded           -> model.copy(window = model.window.copy(data = msg.data, loaded = true))
+
+    // -- Dialog dismissals --
+    AppMsg.HideSettings              -> model.copy(showSettings = false)
+    AppMsg.HideNewModpack            -> model.copy(showNewModpack = false)
+
+    // -- Close dialog --
+    is AppMsg.RequestCloseDialog,
+    AppMsg.DismissCloseDialog,
+    AppMsg.ConfirmCloseDialog        -> handleCloseDialogMsg(msg, model)
+
+    // -- Quit --
+    AppMsg.QuitReady                 -> model.copy(wantsQuit = false)
 
     // -- Pro --
+    is AppMsg.ProActivationChecked   -> model.copy(isProActivated = msg.activated)
 
-    is AppMsg.ProActivationChecked -> model.copy(isProActivated = msg.activated)
-
-    // -----------------------------------------------------------------------
-    // Fractal child delegation
-    // -----------------------------------------------------------------------
-
-    is AppMsg.Welcome -> {
-        // 1. delegate to child update
-        val newWelcome = welcomeComponent.update(msg.msg, model.welcome)
-        // 2. parent handles cross-cutting effects
-        when (msg.msg) {
-            WelcomeMsg.ShowSettings   -> model.copy(welcome = newWelcome, showSettings = true)
-            WelcomeMsg.ShowNewModpack -> model.copy(welcome = newWelcome, showNewModpack = true)
-            is WelcomeMsg.DirectoryPicked -> {
-                if (model.modpack.actionName != null) {
-                    model.copy(welcome = newWelcome, closeDialog = CloseDialogRequest.OpenDirectory(msg.msg.path))
-                } else {
-                    model.copy(welcome = newWelcome, profile = model.profile.copy(pendingPath = msg.msg.path))
-                }
-            }
-        }
-    }
-
-    is AppMsg.Modpack -> {
-        // 1. delegate to child update
-        val newModpack = modpackComponent.update(msg.msg, model.modpack)
-        // 2. parent handles cross-cutting effects
-        when (msg.msg) {
-            ModpackMsg.ShowSettings -> model.copy(modpack = newModpack, showSettings = true)
-            ModpackMsg.ShowNewModpack -> model.copy(modpack = newModpack, showNewModpack = true)
-
-            is ModpackMsg.CloseRequested -> {
-                if (model.modpack.actionName != null && !msg.msg.forceClose) {
-                    // action running — ask
-                    model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.CloseModpack())
-                } else {
-                    // navigate away
-                    val clearedProfileData = model.profile.data.copy(currentProfile = null)
-                    model.copy(
-                        modpack = ModpackModel(),
-                        screen = AppScreen.Welcome,
-                        profile = model.profile.copy(data = clearedProfileData),
-                        welcome = model.welcome.copy(profileData = clearedProfileData),
-                    )
-                }
-            }
-
-            is ModpackMsg.DirectoryPicked -> {
-                if (model.modpack.actionName != null) {
-                    model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.OpenDirectory(msg.msg.path))
-                } else {
-                    model.copy(modpack = newModpack, profile = model.profile.copy(pendingPath = msg.msg.path))
-                }
-            }
-
-            else -> model.copy(modpack = newModpack)
-        }
-    }
+    // -- Child components --
+    is AppMsg.Welcome                -> handleWelcomeMsg(msg, model)
+    is AppMsg.Modpack                -> handleModpackMsg(msg, model)
 }
 
 // ---------------------------------------------------------------------------

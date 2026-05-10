@@ -53,7 +53,7 @@ fun GitTab()
         GitDiffViewModel.init(Path(workingPath))
     }
 
-    val splitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(0.2F) }
+    val splitState = remember { SplitLayoutState(0.2F) }
 
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
