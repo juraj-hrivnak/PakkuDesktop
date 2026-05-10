@@ -5,7 +5,15 @@
 package teksturepako.pakkuDesktop.app.ui.application.titlebar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,14 +26,14 @@ import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
 import io.github.kdroidfilter.nucleus.window.newFullscreenControls
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun PakkuApplicationScope.MainTitleBar(
     modifier: Modifier,
     withGradient: Boolean = false,
-    content: @Composable TitleBarScope.() -> Unit = { }
+    themeTrailingActions: @Composable RowScope.() -> Unit = { },
+    content: @Composable TitleBarScope.() -> Unit = { },
 )
 {
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
@@ -44,7 +52,7 @@ fun PakkuApplicationScope.MainTitleBar(
                 }
 
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {
-                    ThemeButton()
+                    themeTrailingActions()
                     AlphaLabel()
                 }
 

@@ -13,18 +13,17 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 
 @Composable
 fun WelcomeViewDropdown(
+    profileData: ProfileData,
     onOpenDirectory: () -> Unit,
     onNewModpack: () -> Unit,
     onRecentProfile: (String) -> Unit,
 ) {
-    val profileData = LocalAppModel.current.profile.data
-
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         content = {

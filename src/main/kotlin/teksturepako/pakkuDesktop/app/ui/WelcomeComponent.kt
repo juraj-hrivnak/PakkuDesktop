@@ -4,7 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
@@ -24,9 +26,7 @@ fun welcomeUpdate(msg: WelcomeMsg, model: WelcomeModel): WelcomeModel = model
 val welcomeComponent = component(
     init = WelcomeModel(),
     update = ::welcomeUpdate,
-    view = { publish, model ->
-        val scope = LocalPakkuApplicationScope.current
-        with(scope) { WelcomeView(publish, model) }
-    }
+    // Real UI is composed from AppComponent (needs app-level AppMsg publish + PakkuApplicationScope).
+    view = { _, _ -> Spacer(Modifier) },
 )
 

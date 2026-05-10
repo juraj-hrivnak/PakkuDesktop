@@ -5,12 +5,11 @@
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.runtime.Composable
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
 
 @Composable
-fun Pro(content: @Composable () -> Unit) {
-    val model = LocalAppModel.current
-    if (model.isProActivated == true) {
+fun Pro(appModel: AppModel, content: @Composable () -> Unit) {
+    if (appModel.isProActivated == true) {
         content()
     }
 }

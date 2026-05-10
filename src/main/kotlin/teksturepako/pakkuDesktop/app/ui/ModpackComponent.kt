@@ -4,6 +4,8 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.Modifier
 import com.github.michaelbull.result.get
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -95,8 +97,6 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 val modpackComponent = component(
     init = ModpackModel(),
     update = ::modpackUpdate,
-    view = { publish, model ->
-        val scope = LocalPakkuApplicationScope.current
-        with(scope) { ModpackView(publish, model) }
-    }
+    // Real UI is composed from AppComponent (needs app-level AppMsg publish + PakkuApplicationScope).
+    view = { _, _ -> Spacer(Modifier) },
 )

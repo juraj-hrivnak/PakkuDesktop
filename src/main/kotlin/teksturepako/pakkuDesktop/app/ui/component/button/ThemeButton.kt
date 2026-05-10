@@ -10,28 +10,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
-import teksturepako.pakkuDesktop.app.ui.LocalAppPublish
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 
 @Composable
-fun ThemeButton() {
-    val model   = LocalAppModel.current
-    val publish = LocalAppPublish.current
-    val currentTheme = model.profile.data.intUiTheme
-
-    if (currentTheme.isDark()) {
+fun ThemeButton(
+    appPublish: (AppMsg) -> Unit,
+    intUiTheme: IntUiThemes,
+) {
+    if (intUiTheme.isDark()) {
         IconButton(
-            onClick = { publish(AppMsg.ThemeChangeRequested(IntUiThemes.Light)) },
+            onClick = { appPublish(AppMsg.ThemeChangeRequested(IntUiThemes.Light)) },
             Modifier.size(30.dp),
         ) {
             Icon(PakkuDesktopIcons.darkTheme, "dark_theme")
         }
     } else {
         IconButton(
-            onClick = { publish(AppMsg.ThemeChangeRequested(IntUiThemes.Dark)) },
+            onClick = { appPublish(AppMsg.ThemeChangeRequested(IntUiThemes.Dark)) },
             Modifier.size(30.dp),
         ) {
             Icon(PakkuDesktopIcons.lightTheme, "light_theme")

@@ -23,8 +23,8 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
 import teksturepako.pakkuDesktop.app.ui.application.appName
+import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
@@ -34,6 +34,8 @@ import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
@@ -44,16 +46,24 @@ import teksturepako.pakkuDesktop.pro.ui.component.Pro
 fun PakkuApplicationScope.WelcomeView(
     publish: (WelcomeMsg) -> Unit,
     model: WelcomeModel,
+    appModel: AppModel,
+    appPublish: (AppMsg) -> Unit,
 ) {
     val profileData = model.profileData
     val titleBarHeight = 40.dp
     val pickDirectory = LocalPickDirectory.current
-    val displayName = appName(LocalAppModel.current.isProActivated)
+    val displayName = appName(appModel.isProActivated)
 
-    MainTitleBar(Modifier.height(titleBarHeight)) {
+    MainTitleBar(
+        Modifier.height(titleBarHeight),
+        themeTrailingActions = {
+            ThemeButton(appPublish, appModel.profile.data.intUiTheme)
+        },
+    ) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
             Text("Welcome to $displayName!")
             WelcomeViewDropdown(
+                profileData = profileData,
                 onOpenDirectory = { pickDirectory() },
                 onNewModpack = { publish(WelcomeMsg.ShowNewModpack) },
                 onRecentProfile = { path -> publish(WelcomeMsg.DirectoryPicked(path)) },
@@ -138,7 +148,7 @@ fun PakkuApplicationScope.WelcomeView(
                                         Text("Open...")
                                     }
                                 }
-                                Pro {
+                                Pro(appModel) {
                                     OutlinedButton(onClick = { }) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),

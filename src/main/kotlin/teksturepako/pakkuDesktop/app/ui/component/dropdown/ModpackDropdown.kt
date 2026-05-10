@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import teksturepako.pakkuDesktop.app.ui.LocalAppModel
+import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -23,12 +23,10 @@ import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 fun ModpackDropdown(
     publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
+    profileData: ProfileData,
     onOpenDirectory: () -> Unit,
     enabled: Boolean = true,
 ) {
-    // Profile data comes from the app-level LocalAppModel (provided by appComponent.view)
-    val profileData = LocalAppModel.current.profile.data
-
     PkUiDropdown(
         Modifier.padding(vertical = 4.dp),
         enabled = enabled,

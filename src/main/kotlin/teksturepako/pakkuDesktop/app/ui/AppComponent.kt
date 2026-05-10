@@ -4,27 +4,14 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
-import androidx.compose.runtime.*
-import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import androidx.compose.runtime.Composable
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
+import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
+import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.NewModpackDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.SettingsDialog
 import teksturepako.pakkuDesktop.elm.component
-
-// ---------------------------------------------------------------------------
-// Composition Locals
-// ---------------------------------------------------------------------------
-
-val LocalAppPublish = compositionLocalOf<(AppMsg) -> Unit> {
-    error("LocalAppPublish not provided — must be inside appComponent.view")
-}
-val LocalAppModel = compositionLocalOf<AppModel> {
-    error("LocalAppModel not provided — must be inside appComponent.view")
-}
-val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
-    error("LocalPakkuApplicationScope not provided — mainWindowDriver must wrap the tree")
-}
 
 // ---------------------------------------------------------------------------
 // appUpdate handlers — grouped by concern
@@ -186,26 +173,36 @@ val appComponent = component(
     init = AppModel(),
     update = ::appUpdate,
     view = { publish, model ->
-        CompositionLocalProvider(
-            LocalAppPublish provides publish,
-            LocalAppModel provides model,
-        ) {
-            CloseDialog(publish, model)
+        CloseDialog(publish, model)
 
-            if (model.showSettings) {
-                SettingsDialog(onDismiss = { publish(AppMsg.HideSettings) })
-            }
+        if (model.showSettings) {
+            SettingsDialog(onDismiss = { publish(AppMsg.HideSettings) })
+        }
 
-            if (model.showNewModpack) {
-                NewModpackDialog(
-                    profileData = model.profile.data,
-                    onDismiss = { publish(AppMsg.HideNewModpack) }
+        if (model.showNewModpack) {
+            NewModpackDialog(
+                profileData = model.profile.data,
+                onDismiss = { publish(AppMsg.HideNewModpack) },
+            )
+        }
+
+        val scope = LocalPakkuApplicationScope.current
+        when (model.screen) {
+            AppScreen.Welcome -> with(scope) {
+                WelcomeView(
+                    publish = { publish(AppMsg.Welcome(it)) },
+                    model = model.welcome,
+                    appModel = model,
+                    appPublish = publish,
                 )
             }
-
-            when (model.screen) {
-                AppScreen.Welcome -> welcomeComponent.view({ publish(AppMsg.Welcome(it)) }, model.welcome)
-                AppScreen.Modpack -> modpackComponent.view({ publish(AppMsg.Modpack(it)) }, model.modpack)
+            AppScreen.Modpack -> with(scope) {
+                ModpackView(
+                    publish = { publish(AppMsg.Modpack(it)) },
+                    model = model.modpack,
+                    appModel = model,
+                    appPublish = publish,
+                )
             }
         }
     }

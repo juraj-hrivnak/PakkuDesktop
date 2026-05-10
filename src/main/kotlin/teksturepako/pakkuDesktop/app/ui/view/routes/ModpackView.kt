@@ -17,12 +17,15 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
@@ -39,7 +42,10 @@ import teksturepako.pakkuDesktop.pro.ui.component.Pro
 fun PakkuApplicationScope.ModpackView(
     publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
+    appModel: AppModel,
+    appPublish: (AppMsg) -> Unit,
 ) {
+    val profileData = appModel.profile.data
     val titleBarHeight = 40.dp
     val pickDirectory = LocalPickDirectory.current
 
@@ -49,10 +55,21 @@ fun PakkuApplicationScope.ModpackView(
 
     val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
-    MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
+    MainTitleBar(
+        Modifier.height(titleBarHeight),
+        withGradient = true,
+        themeTrailingActions = {
+            ThemeButton(appPublish, profileData.intUiTheme)
+        },
+    ) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            ModpackDropdown(publish, model, onOpenDirectory = { pickDirectory() })
-            Pro { GitDropdown(publish, model) }
+            ModpackDropdown(
+                publish,
+                model,
+                profileData = profileData,
+                onOpenDirectory = { pickDirectory() },
+            )
+            Pro(appModel) { GitDropdown(publish, model) }
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -70,7 +87,7 @@ fun PakkuApplicationScope.ModpackView(
     if (hasNonFileNotFoundError) return
 
     Row(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
-        ModpackSideBar(publish, model)
+        ModpackSideBar(publish, model, appModel)
 
         VerticalSplitLayout(
             state = actionSplitState,

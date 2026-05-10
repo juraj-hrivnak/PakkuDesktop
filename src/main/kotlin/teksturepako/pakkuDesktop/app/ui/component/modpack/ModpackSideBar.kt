@@ -17,6 +17,7 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
@@ -25,7 +26,11 @@ import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 @Composable
-fun ModpackSideBar(publish: (ModpackMsg) -> Unit, modpack: ModpackModel) {
+fun ModpackSideBar(
+    publish: (ModpackMsg) -> Unit,
+    modpack: ModpackModel,
+    appModel: AppModel,
+) {
     val panelBackground = animatedColor(JewelTheme.globalColors.panelBackground)
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Row {
@@ -66,7 +71,7 @@ fun ModpackSideBar(publish: (ModpackMsg) -> Unit, modpack: ModpackModel) {
                     )
                 }
             }
-            Pro {
+            Pro(appModel) {
                 PkUiTooltip({ Text("Commit") }) {
                     IconButton(
                         onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
