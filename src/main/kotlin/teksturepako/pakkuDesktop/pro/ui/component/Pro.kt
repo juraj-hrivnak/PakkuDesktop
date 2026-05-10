@@ -9,7 +9,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 
 @Composable
 fun Pro(appModel: AppModel, content: @Composable () -> Unit) {
-    if (appModel.isProActivated == true) {
+//    if (appModel.isProActivated == true) {
         content()
-    }
+//    }
 }

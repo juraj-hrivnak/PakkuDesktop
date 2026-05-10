@@ -9,17 +9,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.michaelbull.result.fold
-import com.github.michaelbull.result.getError
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import teksturepako.pakkuDesktop.pro.git.GitError
-import teksturepako.pakkuDesktop.pro.git.GitEvent
+import org.eclipse.jgit.api.CreateBranchCommand
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.ResetCommand
+import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.lib.Repository
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.workingPath
@@ -30,15 +29,12 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pro.git.GitDiffComputer
+import teksturepako.pakkuDesktop.pro.git.GitEvent
 import teksturepako.pakkuDesktop.pro.git.GitState
-import teksturepako.pakkuDesktop.pro.git.exec
-import teksturepako.pakkuDesktop.pro.git.gitRepoOf
-import teksturepako.pakkuDesktop.pro.git.output
-import teksturepako.pakkuDesktop.pro.git.parseCommitLog
-import teksturepako.pakkuDesktop.pro.git.parseGitBranches
-import teksturepako.pakkuDesktop.pro.git.parsePorcelainStatus
+import teksturepako.pakkuDesktop.pro.git.buildGitState
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import kotlin.io.path.Path
+import kotlinx.coroutines.CoroutineScope
 
 private class GitRepoHolder {
     var path: String? = null
@@ -78,141 +74,112 @@ private suspend fun gitToast(publish: (AppMsg) -> Unit, message: String) {
     }
 }
 
-private suspend fun refreshGitState(publish: (AppMsg) -> Unit, preserve: GitState) {
-    val branches = (gitRepoOf(workingPath) exec "branch -a")
-        .toList()
-        .mapNotNull { line: com.github.michaelbull.result.Result<GitEvent, GitError> ->
-            line.fold(
-                success = { event -> event.output()?.message },
-                failure = { null },
-            )
+private fun jgitProgressMonitor(scope: CoroutineScope, publish: (AppMsg) -> Unit): ProgressMonitor {
+    var task = ""
+    var total = 0
+    var work = 0
+    return object : ProgressMonitor {
+        override fun start(totalTasks: Int) {}
+        override fun beginTask(title: String, totalWork: Int) {
+            task = title
+            total = totalWork
+            work = 0
         }
-        .let { parseGitBranches(it) }
-        .toSet()
 
-    val currentBranch = branches.firstOrNull { it.isCurrent }?.name
-    val outgoingCommits = (gitRepoOf(workingPath) exec "log $currentBranch --not --remotes --oneline")
-        .toList()
-        .mapNotNull { line: com.github.michaelbull.result.Result<GitEvent, GitError> ->
-            line.fold(
-                success = { event -> event.output()?.message },
-                failure = { null },
+        override fun update(completed: Int) {
+            work += completed
+            if (total <= 0) return
+            val p = GitEvent.Progress(
+                operation = task,
+                current = work.coerceAtMost(total),
+                total = total,
+                message = null,
             )
+            scope.launch {
+                publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(p)))
+            }
         }
-        .let { parseCommitLog(it) }
-        .toSet()
 
-    val gitFiles = (gitRepoOf(workingPath) exec "status --porcelain")
-        .toList()
-        .mapNotNull { line: com.github.michaelbull.result.Result<GitEvent, GitError> ->
-            line.fold(
-                success = { event -> event.output()?.message },
-                failure = { null },
-            )
+        override fun endTask() {
+            scope.launch {
+                publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(null)))
+            }
         }
-        .let { parsePorcelainStatus(it) }
 
-    val newState = preserve.copy(
-        branches = branches,
-        outgoingCommits = outgoingCommits,
-        gitFiles = gitFiles,
-    )
+        override fun isCancelled() = false
+    }
+}
+
+private suspend fun refreshGitState(
+    publish: (AppMsg) -> Unit,
+    git: Git,
+    repository: Repository,
+    preserve: GitState,
+) {
+    val newState = buildGitState(git, repository, preserve)
     withContext(Dispatchers.Main) {
         publish(AppMsg.Modpack(ModpackMsg.GitStateUpdated(newState)))
     }
 }
 
-private suspend fun runPull(publish: (AppMsg) -> Unit, gitState: GitState) {
-    val currentBranch = gitState.branches.firstOrNull { it.isCurrent }?.name
-    val (remoteName, remoteBranch) = gitState.branches
-        .filter { it.isRemote }
-        .mapNotNull { remote ->
-            remote.name.split('/', limit = 2).let {
-                val rn = it.getOrNull(0) ?: return@mapNotNull null
-                val rb = it.getOrNull(1) ?: return@mapNotNull null
-                rn to rb
-            }
-        }
-        .find { (_, rb) -> currentBranch == rb }
-        ?: return
-
-    if (remoteBranch != currentBranch) return
-
-    (gitRepoOf(workingPath) exec "fetch $remoteName --progress").output(
-        progress = { event ->
-            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
-        },
-        success = { gitToast(publish, it) },
-        failure = { gitToast(publish, it) },
-    )
-
-    (gitRepoOf(workingPath) exec "pull $remoteName $remoteBranch --progress").output(
-        progress = { event ->
-            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
-        },
-        success = { gitToast(publish, it) },
-        failure = { gitToast(publish, it) },
-    )
-}
-
-private suspend fun runPush(publish: (AppMsg) -> Unit) {
-    (gitRepoOf(workingPath) exec "push --progress origin HEAD").output(
-        progress = { event ->
-            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
-        },
-        success = { gitToast(publish, it) },
-        failure = { gitToast(publish, it) },
-    )
-}
-
-private suspend fun runCommit(publish: (AppMsg) -> Unit, gitState: GitState) {
-    if (gitState.commitMessage.isBlank()) return
-
-    val addFilesResult = gitState.selectedFiles.flatMap { file ->
-        (gitRepoOf(workingPath) exec "add \"${file.path}\"")
-            .mapNotNull { line -> line.getError() }
-            .toList()
+private suspend fun runPull(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git) {
+    try {
+        git.pull()
+            .setProgressMonitor(jgitProgressMonitor(scope, publish))
+            .call()
+    } catch (e: Exception) {
+        gitToast(publish, e.message ?: "Pull failed")
     }
-
-    if (addFilesResult.isNotEmpty()) {
-        withContext(Dispatchers.Main) {
-            publish(
-                AppMsg.Modpack(
-                    ModpackMsg.ToastAdded(
-                        ToastData {
-                            Box(modifier = Modifier.padding(16.dp).width(300.dp)) {
-                                addFilesResult.forEach { Text(it.message) }
-                            }
-                        },
-                    ),
-                ),
-            )
-        }
-        (gitRepoOf(workingPath) exec "reset").toList()
-        return
-    }
-
-    (gitRepoOf(workingPath) exec "commit -m \"${gitState.commitMessage}\"").output(
-        success = { gitToast(publish, it) },
-        failure = { gitToast(publish, it) },
-    )
 }
 
-private suspend fun runCheckout(publish: (AppMsg) -> Unit, branch: GitBranch) {
-    val remoteBranchName by lazy { branch.name.split('/', limit = 2).getOrNull(1) }
+private suspend fun runPush(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git) {
+    try {
+        git.push()
+            .setProgressMonitor(jgitProgressMonitor(scope, publish))
+            .call()
+    } catch (e: Exception) {
+        gitToast(publish, e.message ?: "Push failed")
+    }
+}
 
-    if (branch.isRemote && remoteBranchName != null) {
-        (gitRepoOf(workingPath) exec "checkout -b $remoteBranchName ${branch.name} --")
-    } else {
-        (gitRepoOf(workingPath) exec "checkout ${branch.name}")
-    }.output(
-        success = { gitToast(publish, it) },
-        failure = { gitToast(publish, it) },
-    )
+private suspend fun runCommit(publish: (AppMsg) -> Unit, git: Git, gitState: GitState): Boolean {
+    if (gitState.commitMessage.isBlank()) return false
+    return try {
+        for (file in gitState.selectedFiles) {
+            git.add().addFilepattern(file.path).call()
+        }
+        git.commit().setMessage(gitState.commitMessage).call()
+        true
+    } catch (e: Exception) {
+        runCatching {
+            git.reset().setMode(ResetCommand.ResetType.MIXED).call()
+        }
+        gitToast(publish, e.message ?: "Commit failed")
+        false
+    }
+}
+
+private suspend fun runCheckout(publish: (AppMsg) -> Unit, git: Git, branch: GitBranch) {
+    try {
+        if (branch.isRemote) {
+            val localName = branch.name.substringAfter('/', missingDelimiterValue = branch.name)
+            git.checkout()
+                .setCreateBranch(true)
+                .setName(localName)
+                .setStartPoint(branch.name)
+                .setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK)
+                .call()
+        } else {
+            git.checkout().setName(branch.name).call()
+        }
+    } catch (e: Exception) {
+        gitToast(publish, e.message ?: "Checkout failed")
+    }
 }
 
 val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val holder = remember { GitRepoHolder() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(model.screen, model.modpack.loaded, workingPath) {
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) {
@@ -220,8 +187,10 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             return@LaunchedEffect
         }
         holder.open(workingPath)
+        val g = holder.git ?: return@LaunchedEffect
+        val r = holder.repository ?: return@LaunchedEffect
         withContext(Dispatchers.IO) {
-            refreshGitState(publish, model.modpack.git)
+            refreshGitState(publish, g, r, model.modpack.git)
         }
     }
 
@@ -239,10 +208,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.modpack.wantsGitPull, model.screen, model.modpack.loaded) {
         if (!model.modpack.wantsGitPull) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val g = holder.git ?: return@LaunchedEffect
+        val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
         withContext(Dispatchers.IO) {
-            runPull(publish, preserve)
-            refreshGitState(publish, preserve)
+            runPull(scope, publish, g)
+            refreshGitState(publish, g, r, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPullFinished))
     }
@@ -250,10 +221,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.modpack.wantsGitPush, model.screen, model.modpack.loaded) {
         if (!model.modpack.wantsGitPush) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val g = holder.git ?: return@LaunchedEffect
+        val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
         withContext(Dispatchers.IO) {
-            runPush(publish)
-            refreshGitState(publish, preserve)
+            runPush(scope, publish, g)
+            refreshGitState(publish, g, r, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPushFinished))
     }
@@ -261,21 +234,26 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.modpack.wantsGitCommit, model.screen, model.modpack.loaded) {
         if (!model.modpack.wantsGitCommit) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val g = holder.git ?: return@LaunchedEffect
+        val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
-        withContext(Dispatchers.IO) {
-            runCommit(publish, preserve)
-            refreshGitState(publish, preserve)
+        val commitOk = withContext(Dispatchers.IO) {
+            val ok = runCommit(publish, g, preserve)
+            refreshGitState(publish, g, r, preserve)
+            ok
         }
-        publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished))
+        publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished(commitOk)))
     }
 
     LaunchedEffect(model.modpack.gitCheckoutBranch, model.screen, model.modpack.loaded) {
         val branch = model.modpack.gitCheckoutBranch ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val g = holder.git ?: return@LaunchedEffect
+        val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
         withContext(Dispatchers.IO) {
-            runCheckout(publish, branch)
-            refreshGitState(publish, preserve)
+            runCheckout(publish, g, branch)
+            refreshGitState(publish, g, r, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitCheckoutFinished))
     }

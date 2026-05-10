@@ -108,6 +108,10 @@ sealed interface ModpackMsg {
 
     data class GitStateUpdated(val state: GitState) : ModpackMsg
     data class GitFileSelectionToggled(val file: GitFile) : ModpackMsg
+    /** Select every changed file for the next commit (working tree → index via `git add` on commit). */
+    data object GitSelectAllChangedFiles : ModpackMsg
+    /** Clear the inclusion set; nothing is staged until the user checks files again. */
+    data object GitClearChangedFileSelection : ModpackMsg
     data class GitCommitMessageChanged(val message: String) : ModpackMsg
     data class GitDiffFileSelected(val file: GitFile) : ModpackMsg
     data class GitDiffComputed(val diff: DiffContent?) : ModpackMsg
@@ -118,7 +122,8 @@ sealed interface ModpackMsg {
     data object GitPushRequested : ModpackMsg
     data object GitPushFinished : ModpackMsg
     data object GitCommitRequested : ModpackMsg
-    data object GitCommitFinished : ModpackMsg
+    /** Published by gitDriver after [GitCommitRequested]; [success] is false if the commit command failed. */
+    data class GitCommitFinished(val success: Boolean) : ModpackMsg
     data class GitCheckoutRequested(val branch: GitBranch) : ModpackMsg
     data object GitCheckoutFinished : ModpackMsg
 }

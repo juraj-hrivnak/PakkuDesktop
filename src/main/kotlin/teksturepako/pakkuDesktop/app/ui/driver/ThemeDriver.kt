@@ -12,6 +12,7 @@ import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
 import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.application.theme.PakkuDarkColorPalette
 import teksturepako.pakkuDesktop.app.ui.application.theme.PakkuDarkGlobalColors
 import teksturepako.pakkuDesktop.app.ui.model.AppModel

@@ -91,13 +91,13 @@ fun GitDropdown(
                         )
                     }
                     Column {
-                        Text("Commit...", Modifier, color = JewelTheme.contentColor)
+                        Text("Source control…", Modifier, color = JewelTheme.contentColor)
                     }
                 }
             }
 
             selectableItem(false, onClick = {
-                publish(ModpackMsg.GitPushRequested)
+                pushDialogVisible = true
             }) {
                 Row(Modifier.padding(2.dp)) {
                     Column(Modifier.fillMaxWidth(0.2f)) {
@@ -110,7 +110,12 @@ fun GitDropdown(
                     }
                     Column {
                         val outgoingCommits = gitState.outgoingCommits.size
-                        Text("Push... $outgoingCommits", Modifier, color = JewelTheme.contentColor)
+                        Text(
+                            if (outgoingCommits > 0) "Push… ($outgoingCommits ahead)"
+                            else "Push…",
+                            Modifier,
+                            color = JewelTheme.contentColor,
+                        )
                     }
                 }
             }

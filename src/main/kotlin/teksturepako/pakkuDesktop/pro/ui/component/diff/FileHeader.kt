@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,7 +24,7 @@ fun FileHeader(diffContent: DiffContent)
     ) {
         Text(
             text = diffContent.newPath,
-            color = Color(0xFF4A7A94),
+            color = diffFileTitleColor(),
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Medium
         )
@@ -35,7 +34,8 @@ fun FileHeader(diffContent: DiffContent)
             Text(
                 text = "(was: ${diffContent.oldPath})",
                 fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                color = diffFileSubtitleColor(),
             )
         }
     }

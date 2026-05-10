@@ -72,7 +72,7 @@ fun ModpackSideBar(
                 }
             }
             Pro(appModel) {
-                PkUiTooltip({ Text("Commit") }) {
+                PkUiTooltip({ Text("Source control") }) {
                     IconButton(
                         onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
                         Modifier.size(30.dp),
