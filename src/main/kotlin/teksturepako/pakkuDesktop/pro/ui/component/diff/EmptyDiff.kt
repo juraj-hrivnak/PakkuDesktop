@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.pro.ui.component.diff
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,15 +19,17 @@ import org.jetbrains.jewel.ui.component.Text
 fun EmptyDiff(
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Select a file to preview the diff.",
-            modifier = Modifier.padding(28.dp),
-            style = JewelTheme.defaultTextStyle,
-            color = diffEmptyHintColor(),
-        )
+    SelectionContainer {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Select a file to preview the diff.",
+                modifier = Modifier.padding(28.dp),
+                style = JewelTheme.defaultTextStyle,
+                color = diffEmptyHintColor(),
+            )
+        }
     }
 }

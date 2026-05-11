@@ -7,7 +7,6 @@ package teksturepako.pakkuDesktop.pro.ui.component
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
@@ -15,6 +14,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.menuStyle
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -42,6 +42,8 @@ val gitDropdownComponent = component(
     },
     view = { publish, model ->
         val gitState = model.gitState
+        // [PkUiDropdown] menuContent is MenuScope.() -> Unit (not @Composable); read menu colors here.
+        val menuItemColors = JewelTheme.menuStyle.colors.itemColors
 
         GitPushDialog(
             gitState = gitState,
@@ -61,40 +63,40 @@ val gitDropdownComponent = component(
                     Icon(
                         key = AllIconsKeys.General.Vcs,
                         contentDescription = "Clone Repository Icon",
-                        tint = JewelTheme.contentColor,
+                        tint = JewelTheme.globalColors.text.normal,
                         hints = arrayOf(),
                         modifier = Modifier.size(15.dp),
                     )
-                    Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git")
+                    Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git", color = JewelTheme.globalColors.text.normal)
                 }
             },
             menuContent = {
                 selectableItem(false, onClick = { publish(GitDropdownMsg.PullRequested) }) {
                     Row(Modifier.padding(2.dp)) {
                         Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Actions.CheckOut, contentDescription = null, modifier = Modifier.size(15.dp), tint = JewelTheme.contentColor)
+                            Icon(key = AllIconsKeys.Actions.CheckOut, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
                         }
-                        Column { Text("Pull...", Modifier, color = JewelTheme.contentColor) }
+                        Column { Text("Pull...", Modifier, color = menuItemColors.content) }
                     }
                 }
 
                 selectableItem(false, onClick = { publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT)) }) {
                     Row(Modifier.padding(2.dp)) {
                         Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Actions.Commit, contentDescription = null, modifier = Modifier.size(15.dp), tint = JewelTheme.contentColor)
+                            Icon(key = AllIconsKeys.Actions.Commit, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
                         }
-                        Column { Text("Source control\u2026", Modifier, color = JewelTheme.contentColor) }
+                        Column { Text("Source control\u2026", Modifier, color = menuItemColors.content) }
                     }
                 }
 
                 selectableItem(false, onClick = { publish(GitDropdownMsg.ShowPushDialog) }) {
                     Row(Modifier.padding(2.dp)) {
                         Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Vcs.Push, contentDescription = null, modifier = Modifier.size(15.dp), tint = JewelTheme.contentColor)
+                            Icon(key = AllIconsKeys.Vcs.Push, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
                         }
                         Column {
                             val outgoing = gitState.outgoingCommits.size
-                            Text(if (outgoing > 0) "Push\u2026 ($outgoing ahead)" else "Push\u2026", Modifier, color = JewelTheme.contentColor)
+                            Text(if (outgoing > 0) "Push\u2026 ($outgoing ahead)" else "Push\u2026", Modifier, color = menuItemColors.content)
                         }
                     }
                 }
@@ -103,7 +105,7 @@ val gitDropdownComponent = component(
 
                 passiveItem {
                     Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
-                        Text("Local Branches", color = Color.Gray)
+                        Text("Local Branches", color = menuItemColors.keybindingTint)
                     }
                 }
 
@@ -111,14 +113,14 @@ val gitDropdownComponent = component(
                     selectableItem(false, onClick = { publish(GitDropdownMsg.CheckoutRequested(branch)) }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
-                            Column { Text(branch.name, Modifier, color = JewelTheme.contentColor) }
+                            Column { Text(branch.name, Modifier, color = menuItemColors.content) }
                         }
                     }
                 }
 
                 passiveItem {
                     Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
-                        Text("Remote Branches", color = Color.Gray)
+                        Text("Remote Branches", color = menuItemColors.keybindingTint)
                     }
                 }
 
@@ -126,7 +128,7 @@ val gitDropdownComponent = component(
                     selectableItem(false, onClick = { publish(GitDropdownMsg.CheckoutRequested(branch)) }) {
                         Row {
                             Column(Modifier.fillMaxWidth(0.2f)) {}
-                            Column { Text(branch.name, Modifier, color = JewelTheme.contentColor) }
+                            Column { Text(branch.name, Modifier, color = menuItemColors.content) }
                         }
                     }
                 }
