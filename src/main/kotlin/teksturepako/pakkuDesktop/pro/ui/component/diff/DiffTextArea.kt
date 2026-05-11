@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
@@ -31,52 +30,23 @@ import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffLine
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
 
-/**
- * Read-only diff viewer built on [BasicTextField] with a [TextFieldDecorator].
- *
- * ## Why this approach is correct
- *
- * The [TextFieldDecorator] lambda receives [innerTextField] — the composable that
- * renders the actual scrollable text.  We wrap it in a plain [Box]:
- *
- * ```
- * Box {
- *     Canvas { /* background + gutter drawn here */ }
- *     innerTextField()          // source text on top
- * }
- * ```
- *
- * Because [innerTextField] fills the [Box] with **zero offset**, the text-layout
- * coordinate system (from [onTextLayout]) and the [Canvas] coordinate system are
- * identical.  No offset compensation, no magic numbers.
- *
- * ## Column layout (left → right)
- *
- * ```
- * | pad | old# | pad | pad | new# | pad | pad | ± | pad | source text … |
- * └──────────────────────────────────────────────┘
- *                   contentIndent (TextIndent)
- * ```
- *
- * Every width is derived from [rememberTextMeasurer] at runtime, so the layout
- * adapts automatically to any font or DPI change.
- */
 @Composable
 internal fun DiffTextArea(
     diff: DiffContent,
     modifier: Modifier = Modifier,
-)
-{
+) {
     val rendered = remember(diff) { buildRenderedDiff(diff) }
     val state    = remember(rendered.sourceText) { TextFieldState(rendered.sourceText) }
     val scrollState = rememberScrollState()
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val textMeasurer = rememberTextMeasurer()
 
-    val editorStyle = JewelTheme.editorTextStyle.copy(fontFamily = FontFamily.Monospace)
+    val editorStyle = JewelTheme.editorTextStyle.copy(
+        fontFamily = FontFamily.Monospace,
+        color      = JewelTheme.contentColor,
+    )
     val gutterFg    = diffGutterLabelColor()
     val gutterStyle = editorStyle.copy(color = gutterFg)
 
@@ -88,165 +58,103 @@ internal fun DiffTextArea(
 
     val density = LocalDensity.current
 
-    // ── Column widths measured from the actual font ───────────────────────────
-    // "99999" = widest 5-digit number in monospace; measuring it once gives the
-    // exact pixel budget for both line-number columns, regardless of font/DPI.
     val lineNumTextWidthPx: Float = remember(gutterStyle) {
         textMeasurer.measure("99999", style = gutterStyle, maxLines = 1).size.width.toFloat()
     }
-    // All prefix glyphs (+, -, space) are one monospace character wide.
     val prefixTextWidthPx: Float = remember(editorStyle) {
         textMeasurer.measure("+", style = editorStyle, maxLines = 1).size.width.toFloat()
     }
 
-    // Breathing room on each side of a column — a design value, not a fudge factor.
-    val colPadPx: Float = with(density) { 6.dp.toPx() }
+    val colPadPx: Float       = with(density) { 6.dp.toPx() }
+    val lineNumColWidthPx     = colPadPx + lineNumTextWidthPx + colPadPx
+    val prefixColWidthPx      = colPadPx + prefixTextWidthPx  + colPadPx
+    val contentIndentPx       = 2f * lineNumColWidthPx + prefixColWidthPx
+    val contentIndent         = with(density) { contentIndentPx.toDp().toSp() }
 
-    // Full column widths (pad + text + pad).
-    val lineNumColWidthPx = colPadPx + lineNumTextWidthPx + colPadPx
-    val prefixColWidthPx  = colPadPx + prefixTextWidthPx  + colPadPx
+    Box(modifier = modifier.fillMaxSize())
+    {
+        Canvas(modifier = Modifier.matchParentSize())
+        {
+            val layout  = textLayoutResult ?: return@Canvas
+            val scrollY = scrollState.value.toFloat()
+            val textLen = layout.layoutInput.text.length
 
-    // Where the source-code content begins (= TextIndent we apply to the text).
-    val contentIndentPx = 2f * lineNumColWidthPx + prefixColWidthPx
-    val contentIndent   = with(density) { contentIndentPx.toDp().toSp() }
-
-    // ── TextField ─────────────────────────────────────────────────────────────
-    BasicTextField(
-        state        = state,
-        readOnly     = true,
-        lineLimits   = TextFieldLineLimits.MultiLine(),
-        scrollState  = scrollState,
-        cursorBrush  = SolidColor(Color.Transparent),
-        onTextLayout = { getResult -> textLayoutResult = getResult() },
-        textStyle    = editorStyle.copy(
-            textIndent = TextIndent(firstLine = contentIndent, restLine = contentIndent),
-        ),
-        modifier = modifier.fillMaxSize(),
-        decorator = TextFieldDecorator { innerTextField ->
-            // This Box is THE coordinate origin shared by the Canvas and the text layout.
-            // innerTextField() fills it with zero offset, so textLayoutResult positions
-            // are usable in the Canvas draw scope without any correction.
-            Box(modifier = Modifier.fillMaxSize())
+            for (line in rendered.lines)
             {
-                Canvas(modifier = Modifier.fillMaxSize())
+                val startOff        = line.startOffset.coerceAtMost(textLen)
+                val startLayoutLine = layout.getLineForOffset(startOff)
+
+                val endOff = (line.endOffsetExclusive - 1)
+                    .coerceAtLeast(line.startOffset)
+                    .coerceAtMost(textLen)
+                val endLayoutLine = layout.getLineForOffset(endOff)
+
+                val top    = layout.getLineTop(startLayoutLine)  - scrollY
+                val bottom = layout.getLineBottom(endLayoutLine) - scrollY
+                if (bottom <= 0f || top >= size.height) continue
+
+                val bg = when (line.kind)
                 {
-                    val layout  = textLayoutResult ?: return@Canvas
-                    val scrollY = scrollState.value.toFloat()
-                    val textLen = layout.layoutInput.text.length
+                    DiffRenderedLineKind.ADDED       -> addedStyle.lineBackground
+                    DiffRenderedLineKind.DELETED     -> deletedStyle.lineBackground
+                    DiffRenderedLineKind.UNCHANGED   -> unchangedStyle.lineBackground
+                    DiffRenderedLineKind.HUNK_HEADER -> hunkBg
+                }
+                drawRect(color = bg, topLeft = Offset(0f, top), size = Size(size.width, bottom - top))
 
-                    for (line in rendered.lines)
+                val baselineY = layout.getLineBaseline(startLayoutLine) - scrollY
+
+                if (line.kind == DiffRenderedLineKind.HUNK_HEADER)
+                {
+                    val l = textMeasurer.measure(line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1)
+                    drawText(l, topLeft = Offset(colPadPx, baselineY - l.getLineBaseline(0)))
+                }
+                else
+                {
+                    val oldText = line.oldNum?.toString() ?: ""
+                    if (oldText.isNotEmpty())
                     {
-                        // Map the logical diff line to visual (layout) lines.
-                        val startOff = line.startOffset.coerceAtMost(textLen)
-                        val startLayoutLine = layout.getLineForOffset(startOff)
+                        val l = textMeasurer.measure(oldText, style = gutterStyle, maxLines = 1)
+                        drawText(l, topLeft = Offset(lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
+                    }
 
-                        val endOff = (line.endOffsetExclusive - 1)
-                            .coerceAtLeast(line.startOffset)
-                            .coerceAtMost(textLen)
-                        val endLayoutLine = layout.getLineForOffset(endOff)
+                    val newText = line.newNum?.toString() ?: ""
+                    if (newText.isNotEmpty())
+                    {
+                        val l = textMeasurer.measure(newText, style = gutterStyle, maxLines = 1)
+                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
+                    }
 
-                        val top    = layout.getLineTop(startLayoutLine)    - scrollY
-                        val bottom = layout.getLineBottom(endLayoutLine)   - scrollY
-                        if (bottom <= 0f || top >= size.height) continue
-
-                        // ── Line background ───────────────────────────────────
-                        val bg = when (line.kind)
+                    if (line.prefix.isNotBlank())
+                    {
+                        val prefixColor = when (line.kind)
                         {
-                            DiffRenderedLineKind.ADDED       -> addedStyle.lineBackground
-                            DiffRenderedLineKind.DELETED     -> deletedStyle.lineBackground
-                            DiffRenderedLineKind.UNCHANGED   -> unchangedStyle.lineBackground
-                            DiffRenderedLineKind.HUNK_HEADER -> hunkBg
+                            DiffRenderedLineKind.ADDED   -> addedStyle.prefixColor
+                            DiffRenderedLineKind.DELETED -> deletedStyle.prefixColor
+                            else                         -> gutterFg
                         }
-                        drawRect(
-                            color   = bg,
-                            topLeft = Offset(0f, top),
-                            size    = Size(size.width, bottom - top),
-                        )
-
-                        // Baseline Y in viewport space — used to align all gutter text.
-                        val baselineY = layout.getLineBaseline(startLayoutLine) - scrollY
-
-                        // ── Gutter overlay ────────────────────────────────────
-                        if (line.kind == DiffRenderedLineKind.HUNK_HEADER)
-                        {
-                            val headerLayout = textMeasurer.measure(
-                                text     = line.hunkHeader,
-                                style    = gutterStyle.copy(color = headerFg),
-                                maxLines = 1,
-                            )
-                            drawText(
-                                textLayoutResult = headerLayout,
-                                topLeft = Offset(
-                                    x = colPadPx,
-                                    y = baselineY - headerLayout.getLineBaseline(0),
-                                ),
-                            )
-                        }
-                        else
-                        {
-                            // Old line number — right-aligned inside column 0.
-                            val oldText = line.oldNum?.toString() ?: ""
-                            if (oldText.isNotEmpty())
-                            {
-                                val l = textMeasurer.measure(oldText, style = gutterStyle, maxLines = 1)
-                                drawText(
-                                    textLayoutResult = l,
-                                    topLeft = Offset(
-                                        x = lineNumColWidthPx - colPadPx - l.size.width,
-                                        y = baselineY - l.getLineBaseline(0),
-                                    ),
-                                )
-                            }
-
-                            // New line number — right-aligned inside column 1.
-                            val newText = line.newNum?.toString() ?: ""
-                            if (newText.isNotEmpty())
-                            {
-                                val l = textMeasurer.measure(newText, style = gutterStyle, maxLines = 1)
-                                drawText(
-                                    textLayoutResult = l,
-                                    topLeft = Offset(
-                                        x = 2f * lineNumColWidthPx - colPadPx - l.size.width,
-                                        y = baselineY - l.getLineBaseline(0),
-                                    ),
-                                )
-                            }
-
-                            // Prefix (+/-) — centred inside the prefix column.
-                            if (line.prefix.isNotBlank())
-                            {
-                                val prefixColor = when (line.kind)
-                                {
-                                    DiffRenderedLineKind.ADDED   -> addedStyle.prefixColor
-                                    DiffRenderedLineKind.DELETED -> deletedStyle.prefixColor
-                                    else                         -> gutterFg
-                                }
-                                val l = textMeasurer.measure(
-                                    text     = line.prefix,
-                                    style    = editorStyle.copy(color = prefixColor),
-                                    maxLines = 1,
-                                )
-                                drawText(
-                                    textLayoutResult = l,
-                                    topLeft = Offset(
-                                        x = 2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f,
-                                        y = baselineY - l.getLineBaseline(0),
-                                    ),
-                                )
-                            }
-                        }
+                        val l = textMeasurer.measure(line.prefix, style = editorStyle.copy(color = prefixColor), maxLines = 1)
+                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f, baselineY - l.getLineBaseline(0)))
                     }
                 }
-
-                // Source text is drawn on top of the Canvas backgrounds/gutter.
-                // It starts at contentIndent, so it never overlaps the gutter area.
-                innerTextField()
             }
-        },
-    )
+        }
+
+        BasicTextField(
+            state        = state,
+            readOnly     = true,
+            lineLimits   = TextFieldLineLimits.MultiLine(),
+            scrollState  = scrollState,
+            cursorBrush  = SolidColor(Color.Transparent),
+            onTextLayout = { getResult -> textLayoutResult = getResult() },
+            textStyle    = editorStyle.copy(
+                textIndent = TextIndent(firstLine = contentIndent, restLine = contentIndent),
+            ),
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }
 
-// ── Data model ────────────────────────────────────────────────────────────────
 
 private enum class DiffRenderedLineKind
 {
@@ -260,9 +168,7 @@ private data class RenderedDiffLine(
     val kind: DiffRenderedLineKind,
     val startOffset: Int,
     val endOffsetExclusive: Int,
-    /** Non-empty only for [DiffRenderedLineKind.HUNK_HEADER] lines. */
     val hunkHeader: String = "",
-    /** Non-null only for non-header lines. */
     val oldNum: Int? = null,
     val newNum: Int? = null,
     val prefix: String = " ",
@@ -273,7 +179,6 @@ private data class RenderedDiff(
     val lines: List<RenderedDiffLine>,
 )
 
-// ── Builder ───────────────────────────────────────────────────────────────────
 
 private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 {
@@ -282,7 +187,6 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 
     for (hunk in diff.hunks)
     {
-        // Hunk header occupies one blank source line so it takes up visual space.
         val hunkStart = sb.length
         sb.append('\n')
         lines += RenderedDiffLine(
@@ -322,3 +226,4 @@ private fun DiffType.toPrefix(): String = when (this) {
     DiffType.DELETED   -> "-"
     DiffType.UNCHANGED -> " "
 }
+
