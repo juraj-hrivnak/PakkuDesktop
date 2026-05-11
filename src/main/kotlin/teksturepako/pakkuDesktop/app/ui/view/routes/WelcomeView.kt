@@ -63,10 +63,8 @@ fun PakkuApplicationScope.WelcomeView(
         AlignedTitleBarContent(alignment = Alignment.Start) {
             Text("Welcome to $displayName!")
             WelcomeViewDropdown(
-                profileData = profileData,
-                onOpenDirectory = { pickDirectory() },
-                onNewModpack = { publish(WelcomeMsg.ShowNewModpack) },
-                onRecentProfile = { path -> publish(WelcomeMsg.DirectoryPicked(path)) },
+                publish = publish,
+                model = model,
             )
         }
         AlignedTitleBarContent(alignment = Alignment.End) {

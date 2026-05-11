@@ -11,10 +11,10 @@ import org.jetbrains.jewel.intui.standalone.theme.createDefaultTextStyle
 import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.application.theme.PakkuDarkColorPalette
 import teksturepako.pakkuDesktop.app.ui.application.theme.PakkuDarkGlobalColors
+import teksturepako.pakkuDesktop.app.ui.application.theme.pakkuMenuComponentStyling
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
@@ -36,7 +36,11 @@ val themeDriver: Driver<AppModel, AppMsg> = { _, model, content ->
         JewelTheme.lightThemeDefinition(defaultTextStyle = textStyle)
     }
 
-    IntUiTheme(themeDefinition, ComponentStyling.default(), swingCompatMode = false) {
+    IntUiTheme(
+        themeDefinition,
+        pakkuMenuComponentStyling(themeDefinition.isDark),
+        swingCompatMode = false,
+    ) {
         content()
     }
 }

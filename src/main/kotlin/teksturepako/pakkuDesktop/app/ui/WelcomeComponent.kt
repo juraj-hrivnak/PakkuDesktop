@@ -5,19 +5,23 @@
 package teksturepako.pakkuDesktop.app.ui
 
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
-import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
 import teksturepako.pakkuDesktop.elm.component
 
 // ---------------------------------------------------------------------------
-// welcomeUpdate — WelcomeModel has no child state to change internally;
-// all side effects (showSettings, pendingPath, etc.) are handled by appUpdate.
+// welcomeUpdate — delegates dropdown state to welcomeDropdownComponent;
+// all cross-cutting effects (showSettings, pendingPath, etc.) handled by appUpdate.
 // ---------------------------------------------------------------------------
 
-fun welcomeUpdate(msg: WelcomeMsg, model: WelcomeModel): WelcomeModel = model
+fun welcomeUpdate(msg: WelcomeMsg, model: WelcomeModel): WelcomeModel = when (msg) {
+    // Cross-cutting — appUpdate handles; child is inert
+    WelcomeMsg.ShowSettings,
+    WelcomeMsg.ShowNewModpack,
+    is WelcomeMsg.DirectoryPicked,
+    is WelcomeMsg.WelcomeDropdown -> model
+}
 
 // ---------------------------------------------------------------------------
 // welcomeComponent
@@ -29,4 +33,3 @@ val welcomeComponent = component(
     // Real UI is composed from AppComponent (needs app-level AppMsg publish + PakkuApplicationScope).
     view = { _, _ -> Spacer(Modifier) },
 )
-

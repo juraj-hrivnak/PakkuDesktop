@@ -122,6 +122,11 @@ fun ListImpl(
             }
         }
 
-        VerticalScrollbar(modifier = Modifier.fillMaxHeight(), scrollState = scrollState)
+        VerticalScrollbar(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(vertical = 8.dp),
+            scrollState = scrollState
+        )
     }
 }

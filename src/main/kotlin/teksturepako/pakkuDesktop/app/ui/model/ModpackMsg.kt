@@ -9,6 +9,7 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pro.git.GitEvent
 import teksturepako.pakkuDesktop.pro.git.GitState
@@ -20,6 +21,46 @@ import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 data class PropertyWrite(
     val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
 )
+
+// ---------------------------------------------------------------------------
+// ModpackDropdown child model & messages
+// ---------------------------------------------------------------------------
+
+data class ModpackDropdownModel(
+    val profileData: ProfileData = ProfileData(),
+    val actionEnabled: Boolean = true,
+    val enabled: Boolean = true,
+)
+
+sealed interface ModpackDropdownMsg {
+    // Cross-cutting — parent handles, child returns model unchanged
+    data class CloseRequested(val force: Boolean = false) : ModpackDropdownMsg
+    data object Export : ModpackDropdownMsg
+    data class DirectoryPicked(val path: String) : ModpackDropdownMsg
+}
+
+// ---------------------------------------------------------------------------
+// GitDropdown child model & messages
+// ---------------------------------------------------------------------------
+
+data class GitDropdownModel(
+    val gitState: GitState = GitState(),
+    val pushDialogVisible: Boolean = false,
+)
+
+sealed interface GitDropdownMsg {
+    data object ShowPushDialog : GitDropdownMsg
+    data object HidePushDialog : GitDropdownMsg
+    // Cross-cutting — parent handles, child returns model unchanged
+    data object PullRequested : GitDropdownMsg
+    data object PushRequested : GitDropdownMsg
+    data class TabSelected(val tab: SelectedTab) : GitDropdownMsg
+    data class CheckoutRequested(val branch: GitBranch) : GitDropdownMsg
+}
+
+// ---------------------------------------------------------------------------
+// ModpackMsg
+// ---------------------------------------------------------------------------
 
 sealed interface ModpackMsg {
 
@@ -132,6 +173,13 @@ sealed interface ModpackMsg {
     data class GitCommitFinished(val success: Boolean) : ModpackMsg
     data class GitCheckoutRequested(val branch: GitBranch) : ModpackMsg
     data object GitCheckoutFinished : ModpackMsg
+
+    // -----------------------------------------------------------------------
+    // Dropdown child messages (fractal delegation)
+    // -----------------------------------------------------------------------
+
+    /** Fractal delegation — wraps all ModpackDropdown child messages. */
+    data class ModpackDropdown(val msg: ModpackDropdownMsg) : ModpackMsg
+    /** Fractal delegation — wraps all GitDropdown child messages. */
+    data class GitDropdown(val msg: GitDropdownMsg) : ModpackMsg
 }
-
-

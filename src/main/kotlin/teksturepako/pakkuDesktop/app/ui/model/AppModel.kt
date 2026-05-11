@@ -59,6 +59,7 @@ sealed interface AppScreen {
 @Immutable
 data class WelcomeModel(
     val profileData: ProfileData = ProfileData(),
+    val dropdown: WelcomeDropdownModel = WelcomeDropdownModel(),
 )
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,10 @@ data class ModpackModel(
     val wantsGitPush: Boolean = false,
     val wantsGitCommit: Boolean = false,
     val gitCheckoutBranch: GitBranch? = null,
+
+    // -- Dropdown child models
+    val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
+    val gitDropdown: GitDropdownModel = GitDropdownModel(),
 )
 
 // ---------------------------------------------------------------------------

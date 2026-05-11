@@ -14,26 +14,23 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
-import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
+import teksturepako.pakkuDesktop.pro.git.GitState
 
 @Composable
 fun GitPushDialog(
-    publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    gitState: GitState,
     visible: Boolean,
     onDismiss: () -> Unit,
+    onPush: () -> Unit,
 ) {
-    val gitState = model.git
-
     PkUiDialog(visible, onDismiss) {
         FlowColumn(
             Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "Commits not yet on the remote (same as “outgoing” in IntelliJ):",
+                "Commits not yet on the remote (same as \u201coutgoing\u201d in IntelliJ):",
                 color = JewelTheme.contentColor.copy(alpha = 0.55f),
             )
             if (gitState.outgoingCommits.isEmpty()) {
@@ -55,7 +52,7 @@ fun GitPushDialog(
                 DefaultButton(
                     enabled = gitState.outgoingCommits.isNotEmpty(),
                     onClick = {
-                        publish(ModpackMsg.GitPushRequested)
+                        onPush()
                         onDismiss()
                     },
                 ) {

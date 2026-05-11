@@ -4,9 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
-import androidx.compose.runtime.Composable
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
+import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg.WelcomeDropdown
 import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
 import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.NewModpackDialog
@@ -17,35 +17,43 @@ import teksturepako.pakkuDesktop.elm.component
 // appUpdate handlers — grouped by concern
 // ---------------------------------------------------------------------------
 
+private fun AppModel.syncDropdownProfileData(data: teksturepako.pakkuDesktop.app.data.ProfileData): AppModel = copy(
+    welcome = welcome.copy(
+        profileData = data,
+        dropdown = welcome.dropdown.copy(profileData = data),
+    ),
+    modpack = modpack.copy(
+        modpackDropdown = modpack.modpackDropdown.copy(profileData = data),
+    ),
+)
+
 private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.ProfileLoaded -> {
         val newProfile = model.profile.copy(data = msg.data, loaded = true, pendingPath = null)
-        val syncedWelcome = model.welcome.copy(profileData = msg.data)
-        val base = model.copy(profile = newProfile, welcome = syncedWelcome)
+        val synced = model.copy(profile = newProfile).syncDropdownProfileData(msg.data)
         if (msg.data.currentProfile != null && model.screen == AppScreen.Welcome) {
-            base.copy(screen = AppScreen.Modpack, modpack = ModpackModel())
-        } else base
+            synced.copy(
+                screen = AppScreen.Modpack,
+                modpack = ModpackModel(modpackDropdown = ModpackDropdownModel(profileData = msg.data)),
+            )
+        } else synced
     }
 
     is AppMsg.ProfileCurrentResolved -> {
-        val syncedWelcome = model.welcome.copy(profileData = msg.data)
         model.copy(
             profile = model.profile.copy(data = msg.data, pendingPath = null),
             screen = if (msg.data.currentProfile != null) AppScreen.Modpack else AppScreen.Welcome,
-            modpack = ModpackModel(),
-            welcome = syncedWelcome,
-        )
+            modpack = ModpackModel(modpackDropdown = ModpackDropdownModel(profileData = msg.data)),
+        ).syncDropdownProfileData(msg.data)
     }
 
     is AppMsg.ThemeChangeRequested -> {
         val newData = model.profile.data.copy(theme = msg.theme.toString())
-        val syncedWelcome = model.welcome.copy(profileData = newData)
-        model.copy(profile = model.profile.copy(data = newData), welcome = syncedWelcome)
+        model.copy(profile = model.profile.copy(data = newData)).syncDropdownProfileData(newData)
     }
 
     is AppMsg.ThemeChanged -> {
-        val syncedWelcome = model.welcome.copy(profileData = msg.data)
-        model.copy(profile = model.profile.copy(data = msg.data), welcome = syncedWelcome)
+        model.copy(profile = model.profile.copy(data = msg.data)).syncDropdownProfileData(msg.data)
     }
 
     else -> model
@@ -64,13 +72,19 @@ private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when 
 
     AppMsg.ConfirmCloseDialog -> when (val req = model.closeDialog) {
         is CloseDialogRequest.Quit         -> model.copy(closeDialog = null, wantsQuit = true)
-        is CloseDialogRequest.CloseModpack -> model.copy(
-            closeDialog = null,
-            screen = AppScreen.Welcome,
-            modpack = ModpackModel(),
-            profile = model.profile.copy(data = model.profile.data.copy(currentProfile = null)),
-            welcome = model.welcome.copy(profileData = model.profile.data.copy(currentProfile = null)),
-        )
+        is CloseDialogRequest.CloseModpack -> {
+            val cleared = model.profile.data.copy(currentProfile = null)
+            model.copy(
+                closeDialog = null,
+                screen = AppScreen.Welcome,
+                modpack = ModpackModel(),
+                profile = model.profile.copy(data = cleared),
+                welcome = model.welcome.copy(
+                    profileData = cleared,
+                    dropdown = model.welcome.dropdown.copy(profileData = cleared),
+                ),
+            )
+        }
         is CloseDialogRequest.OpenDirectory -> model.copy(
             closeDialog = null,
             profile = model.profile.copy(pendingPath = req.path),
@@ -88,6 +102,15 @@ private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
         WelcomeMsg.ShowNewModpack -> model.copy(welcome = newWelcome, showNewModpack = true)
         is WelcomeMsg.DirectoryPicked ->
             handleDirectoryPicked(msg.msg.path, model).copy(welcome = newWelcome)
+        is WelcomeMsg.WelcomeDropdown -> {
+            val base = model.copy(welcome = newWelcome)
+            when (val inner = msg.msg.msg) {
+                WelcomeDropdownMsg.NewModpack ->
+                    base.copy(showNewModpack = true)
+                is WelcomeDropdownMsg.RecentProfile ->
+                    handleDirectoryPicked(inner.path, base)
+            }
+        }
     }
 }
 
@@ -106,13 +129,40 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
                     modpack = ModpackModel(),
                     screen = AppScreen.Welcome,
                     profile = model.profile.copy(data = clearedProfileData),
-                    welcome = model.welcome.copy(profileData = clearedProfileData),
+                    welcome = model.welcome.copy(
+                        profileData = clearedProfileData,
+                        dropdown = model.welcome.dropdown.copy(profileData = clearedProfileData),
+                    ),
                 )
             }
         }
 
         is ModpackMsg.DirectoryPicked ->
             handleDirectoryPicked(msg.msg.path, model).copy(modpack = newModpack)
+
+        // Dropdown cross-cutting: CloseRequested and DirectoryPicked bubble here from the dropdown component
+        is ModpackMsg.ModpackDropdown -> when (val inner = msg.msg.msg) {
+            is ModpackDropdownMsg.CloseRequested -> {
+                if (model.modpack.actionName != null && !inner.force) {
+                    model.copy(modpack = newModpack, closeDialog = CloseDialogRequest.CloseModpack())
+                } else {
+                    val cleared = model.profile.data.copy(currentProfile = null)
+                    model.copy(
+                        modpack = ModpackModel(),
+                        screen = AppScreen.Welcome,
+                        profile = model.profile.copy(data = cleared),
+                        welcome = model.welcome.copy(
+                            profileData = cleared,
+                            dropdown = model.welcome.dropdown.copy(profileData = cleared),
+                        ),
+                    )
+                }
+            }
+            is ModpackDropdownMsg.DirectoryPicked ->
+                handleDirectoryPicked(inner.path, model).copy(modpack = newModpack)
+            else ->
+                model.copy(modpack = newModpack)
+        }
 
         // All other messages are fully handled by modpackUpdate — just commit the new child model
         else -> model.copy(modpack = newModpack)

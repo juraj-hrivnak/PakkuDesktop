@@ -13,118 +13,139 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
+import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMsg>(
+    init = ModpackDropdownModel(),
+    update = { msg, model ->
+        when (msg) {
+            // Cross-cutting — parent handles
+            is ModpackDropdownMsg.CloseRequested,
+            ModpackDropdownMsg.Export,
+            is ModpackDropdownMsg.DirectoryPicked -> model
+        }
+    },
+    view = { publish, model ->
+        val pickDirectory = LocalPickDirectory.current
+
+        PkUiDropdown(
+            modifier = Modifier.padding(vertical = 4.dp),
+            enabled = model.enabled,
+            menuModifier = Modifier.width(200.dp),
+            content = {
+                Row(
+                    Modifier.align(Alignment.Center),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    model.profileData.currentProfile?.name?.let { Text(it) } ?: Text("Modpack")
+                }
+            },
+            menuContent = {
+
+                // -- OPEN --
+                selectableItem(false, onClick = { pickDirectory() }) {
+                    Row(Modifier.padding(2.dp)) {
+                        Column(Modifier.fillMaxWidth(0.2f)) {
+                            Icon(
+                                key = PakkuDesktopIcons.open,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp),
+                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                            )
+                        }
+                        Column { Text("Open...", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
+                    }
+                }
+
+                // -- CLOSE --
+                selectableItem(false, onClick = { publish(ModpackDropdownMsg.CloseRequested()) }) {
+                    Row(Modifier.padding(2.dp)) {
+                        Column(Modifier.fillMaxWidth(0.2f)) {}
+                        Column { Text("Close", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
+                    }
+                }
+
+                separator()
+
+                // -- EXPORT --
+                selectableItem(
+                    selected = false,
+                    onClick = { publish(ModpackDropdownMsg.Export) },
+                    enabled = model.actionEnabled,
+                ) {
+                    Row(Modifier.padding(2.dp)) {
+                        Column(Modifier.fillMaxWidth(0.2f)) {
+                            Icon(
+                                key = PakkuDesktopIcons.cube,
+                                "export",
+                                modifier = Modifier.size(15.dp),
+                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                            )
+                        }
+                        Column { Text("Export", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
+                    }
+                }
+
+                separator()
+
+                // -- FETCH --
+                selectableItem(false, onClick = { }) {
+                    Row(Modifier.padding(2.dp)) {
+                        Column(Modifier.fillMaxWidth(0.2f)) {
+                            Icon(
+                                key = PakkuDesktopIcons.cloudDownload,
+                                contentDescription = "fetch",
+                                Modifier.size(15.dp),
+                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                            )
+                        }
+                        Column { Text("Fetch", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
+                    }
+                }
+
+                if (model.profileData.recentProfilesFiltered.isNotEmpty()) {
+                    separator()
+
+                    passiveItem {
+                        Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
+                            Text("Recent Modpacks", color = Color.Gray)
+                        }
+                    }
+
+                    model.profileData.recentProfilesFiltered.forEach { profile ->
+                        selectableItem(false, onClick = { publish(ModpackDropdownMsg.DirectoryPicked(profile.path)) }) {
+                            Row(Modifier.padding(2.dp)) {
+                                Column(Modifier.fillMaxWidth(0.2f)) {}
+                                Column { Text(profile.name, color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    },
+)
+
+// ---------------------------------------------------------------------------
+// View entry point
+// ---------------------------------------------------------------------------
 
 @Composable
 fun ModpackDropdown(
     publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
-    profileData: ProfileData,
-    onOpenDirectory: () -> Unit,
-    enabled: Boolean = true,
 ) {
-    PkUiDropdown(
-        Modifier.padding(vertical = 4.dp),
-        enabled = enabled,
-        content = {
-            Row(
-                Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                profileData.currentProfile?.name?.let { Text(it) } ?: Text("Modpack")
-            }
-        },
-        menuModifier = Modifier.width(200.dp),
-        menuContent = {
-
-            // -- OPEN --
-            selectableItem(false, onClick = { onOpenDirectory() }) {
-                Row(Modifier.padding(2.dp)) {
-                    Column(Modifier.fillMaxWidth(0.2f)) {
-                        Icon(
-                            key = PakkuDesktopIcons.open,
-                            contentDescription = null,
-                            modifier = Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
-                    }
-                    Column { Text("Open...", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                }
-            }
-
-            // -- CLOSE —
-            // parent handles: if action running → close dialog; else → navigate
-            selectableItem(false, onClick = { publish(ModpackMsg.CloseRequested()) }) {
-                Row(Modifier.padding(2.dp)) {
-                    Column(Modifier.fillMaxWidth(0.2f)) { }
-                    Column { Text("Close", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                }
-            }
-
-            separator()
-
-            // -- EXPORT --
-            selectableItem(
-                selected = false,
-                onClick = { publish(ModpackMsg.ExportRequested) },
-                enabled = model.actionName == null,
-            ) {
-                Row(Modifier.padding(2.dp)) {
-                    Column(Modifier.fillMaxWidth(0.2f)) {
-                        Icon(
-                            key = PakkuDesktopIcons.cube,
-                            "export",
-                            modifier = Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
-                    }
-                    Column { Text("Export", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                }
-            }
-
-            separator()
-
-            // -- FETCH --
-            selectableItem(false, onClick = { }) {
-                Row(Modifier.padding(2.dp)) {
-                    Column(Modifier.fillMaxWidth(0.2f)) {
-                        Icon(
-                            key = PakkuDesktopIcons.cloudDownload,
-                            contentDescription = "fetch",
-                            Modifier.size(15.dp),
-                            tint = if (profileData.intUiTheme.isDark()) Color.White else Color.Black
-                        )
-                    }
-                    Column { Text("Fetch", color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                }
-            }
-
-            if (profileData.recentProfilesFiltered.isNotEmpty()) {
-                separator()
-
-                passiveItem {
-                    Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
-                        Text("Recent Modpacks", color = Color.Gray)
-                    }
-                }
-
-                profileData.recentProfilesFiltered.forEach { profile ->
-                    selectableItem(false, onClick = {
-                        // parent handles: if action running → close dialog; else → set pendingPath
-                        publish(ModpackMsg.DirectoryPicked(profile.path))
-                    }) {
-                        Row(Modifier.padding(2.dp)) {
-                            Column(Modifier.fillMaxWidth(0.2f)) {}
-                            Column { Text(profile.name, color = if (profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                        }
-                    }
-                }
-            }
-        }
-    )
+    modpackDropdownComponent.view({ publish(ModpackMsg.ModpackDropdown(it)) }, model.modpackDropdown)
 }

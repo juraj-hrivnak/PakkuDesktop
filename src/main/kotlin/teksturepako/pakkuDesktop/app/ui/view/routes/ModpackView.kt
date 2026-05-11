@@ -23,7 +23,6 @@ import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
-import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -34,6 +33,7 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
+import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
@@ -47,7 +47,6 @@ fun PakkuApplicationScope.ModpackView(
 ) {
     val profileData = appModel.profile.data
     val titleBarHeight = 40.dp
-    val pickDirectory = LocalPickDirectory.current
 
     // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
     val hasNonFileNotFoundError = model.lockFile?.isErr == true &&
@@ -63,13 +62,10 @@ fun PakkuApplicationScope.ModpackView(
         },
     ) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            ModpackDropdown(
-                publish,
-                model,
-                profileData = profileData,
-                onOpenDirectory = { pickDirectory() },
-            )
-            Pro(appModel) { GitDropdown(publish, model) }
+            DropdownHost {
+                ModpackDropdown(publish, model)
+                Pro(appModel) { GitDropdown(publish, model) }
+            }
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

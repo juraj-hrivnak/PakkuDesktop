@@ -41,7 +41,6 @@ fun PakkuApplicationScope.MainTitleBar(
         Row {
         this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                 modifier.newFullscreenControls(),
-                gradientStartColor = if (withGradient) Color(16, 77, 69) else Color.Unspecified
             ) {
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.Start) {
                     Icon(

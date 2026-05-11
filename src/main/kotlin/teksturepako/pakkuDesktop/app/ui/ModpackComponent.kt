@@ -10,8 +10,12 @@ import com.github.michaelbull.result.get
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
+import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
+import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
+import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pro.git.gitFolderIds
+import teksturepako.pakkuDesktop.pro.ui.component.gitDropdownComponent
 import teksturepako.pakkuDesktop.pro.git.mergeChangelistExpandedFolders
 
 // ---------------------------------------------------------------------------
@@ -58,10 +62,12 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     ModpackMsg.ExportRequested -> model.copy(wantsExport = true)
     is ModpackMsg.ActionStarted -> model.copy(
-        actionName = msg.name, wantsExport = false, wantsTerminateAction = false
+        actionName = msg.name, wantsExport = false, wantsTerminateAction = false,
+        modpackDropdown = model.modpackDropdown.copy(actionEnabled = false),
     )
     ModpackMsg.ActionFinished -> model.copy(
-        actionName = null, wantsTerminateAction = false, wantsExport = false
+        actionName = null, wantsTerminateAction = false, wantsExport = false,
+        modpackDropdown = model.modpackDropdown.copy(actionEnabled = true),
     )
     ModpackMsg.TerminateAction -> model.copy(wantsTerminateAction = true)
 
@@ -80,7 +86,10 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             model.git.gitFiles,
             incoming.gitFiles,
         )
-        model.copy(git = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded))
+        model.copy(
+            git = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded),
+            gitDropdown = model.gitDropdown.copy(gitState = incoming),
+        )
     }
     is ModpackMsg.GitFileSelectionToggled  -> {
         val g = model.git
@@ -152,6 +161,29 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     )
     is ModpackMsg.GitCheckoutRequested -> model.copy(gitCheckoutBranch = msg.branch)
     ModpackMsg.GitCheckoutFinished  -> model.copy(gitCheckoutBranch = null, gitEventProgress = null)
+
+    is ModpackMsg.ModpackDropdown -> {
+        val updatedDropdown = modpackDropdownComponent.update(msg.msg, model.modpackDropdown)
+        val base = model.copy(modpackDropdown = updatedDropdown)
+        when (msg.msg) {
+            ModpackDropdownMsg.Export                -> base.copy(wantsExport = true)
+            // Cross-cutting — inert here; appUpdate handles CloseRequested & DirectoryPicked
+            is ModpackDropdownMsg.CloseRequested,
+            is ModpackDropdownMsg.DirectoryPicked    -> model
+            else                                     -> base
+        }
+    }
+    is ModpackMsg.GitDropdown -> {
+        val updatedGitDropdown = gitDropdownComponent.update(msg.msg, model.gitDropdown)
+        val base = model.copy(gitDropdown = updatedGitDropdown)
+        when (msg.msg) {
+            GitDropdownMsg.PullRequested              -> base.copy(wantsGitPull = true)
+            GitDropdownMsg.PushRequested              -> base.copy(wantsGitPush = true)
+            is GitDropdownMsg.TabSelected             -> base.copy(selectedTab = msg.msg.tab)
+            is GitDropdownMsg.CheckoutRequested       -> base.copy(gitCheckoutBranch = msg.msg.branch)
+            else                                      -> base
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

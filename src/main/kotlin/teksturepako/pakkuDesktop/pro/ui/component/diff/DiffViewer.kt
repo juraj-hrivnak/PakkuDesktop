@@ -28,7 +28,7 @@ fun DiffViewer(
         FileHeader(currentDiff)
         DiffTextArea(
             diff = currentDiff,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
         )
     }
 }

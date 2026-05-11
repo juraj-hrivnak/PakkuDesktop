@@ -6,12 +6,15 @@ package teksturepako.pakkuDesktop.pro.ui.component.diff
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -27,8 +30,11 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
+import kotlin.math.ceil
+import kotlin.math.floor
 
 @Composable
 internal fun DiffTextArea(
@@ -49,14 +55,14 @@ internal fun DiffTextArea(
     val gutterFg = diffGutterLabelColor()
     val gutterStyle = editorStyle.copy(color = gutterFg)
 
-    val addedStyle     = diffLineStyle(DiffType.ADDED)
-    val deletedStyle   = diffLineStyle(DiffType.DELETED)
+    val addedStyle = diffLineStyle(DiffType.ADDED)
+    val deletedStyle = diffLineStyle(DiffType.DELETED)
     val unchangedStyle = diffLineStyle(DiffType.UNCHANGED)
-    val hunkBg         = diffHunkHeaderBackground()
-    val headerFg       = diffHunkHeaderForeground()
-    val gutterBg       = diffGutterBackground()
+    val hunkBg = diffHunkHeaderBackground()
+    val headerFg = diffHunkHeaderForeground()
+    val gutterBg = diffGutterBackground()
     val separatorColor = diffSeparatorColor()
-    val borderColor    = diffBorderColor()
+    val borderColor = diffBorderColor()
 
     val density = LocalDensity.current
 
@@ -73,7 +79,7 @@ internal fun DiffTextArea(
     val contentIndentPx = 2f * lineNumColWidthPx + prefixColWidthPx
     val contentIndent = with(density) { contentIndentPx.toDp().toSp() }
 
-    Box(modifier = modifier.fillMaxSize().clipToBounds()) {
+    Box(modifier = Modifier.clipToBounds().fillMaxHeight()) {
         Canvas(modifier = Modifier.matchParentSize()) {
             val layout = textLayoutResult ?: return@Canvas
             val scrollY = scrollState.value.toFloat()
@@ -87,8 +93,19 @@ internal fun DiffTextArea(
                 val endOff = (line.endOffsetExclusive - 1).coerceAtLeast(line.startOffset).coerceAtMost(textLen)
                 val endLayoutLine = layout.getLineForOffset(endOff)
 
-                val top = layout.getLineTop(startLayoutLine) - scrollY
-                val bottom = layout.getLineBottom(endLayoutLine) - scrollY
+                val top = floor(layout.getLineTop(startLayoutLine) - scrollY)
+
+                // Extend to the TOP of the next layout line (not getLineBottom) so any
+                // inter-paragraph spacing in Compose's MultiParagraph is absorbed and
+                // no pixel-gap appears between adjacent line backgrounds.
+                val bottom = if (endLayoutLine + 1 < layout.lineCount)
+                {
+                    floor(layout.getLineTop(endLayoutLine + 1) - scrollY)
+                }
+                else
+                {
+                    ceil(layout.getLineBottom(endLayoutLine) - scrollY)
+                }
                 if (bottom <= 0f || top >= size.height) continue
 
                 val bg = when (line.kind)
@@ -105,14 +122,14 @@ internal fun DiffTextArea(
                 if (line.kind != DiffRenderedLineKind.HUNK_HEADER)
                 {
                     drawRect(
-                        color   = gutterBg,
+                        color = gutterBg,
                         topLeft = Offset(0f, top),
-                        size    = Size(contentIndentPx, bottom - top),
+                        size = Size(contentIndentPx, bottom - top),
                     )
                     drawLine(
-                        color       = separatorColor,
-                        start       = Offset(contentIndentPx, top),
-                        end         = Offset(contentIndentPx, bottom),
+                        color = separatorColor,
+                        start = Offset(contentIndentPx, top),
+                        end = Offset(contentIndentPx, bottom),
                         strokeWidth = 1f,
                     )
                 }
@@ -121,7 +138,9 @@ internal fun DiffTextArea(
 
                 if (line.kind == DiffRenderedLineKind.HUNK_HEADER)
                 {
-                    val l = textMeasurer.measure(line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1)
+                    val l = textMeasurer.measure(
+                        line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1
+                    )
                     drawText(l, topLeft = Offset(colPadPx, baselineY - l.getLineBaseline(0)))
                 }
                 else
@@ -130,14 +149,22 @@ internal fun DiffTextArea(
                     if (oldText.isNotEmpty())
                     {
                         val l = textMeasurer.measure(oldText, style = gutterStyle, maxLines = 1)
-                        drawText(l, topLeft = Offset(lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
+                        drawText(
+                            l, topLeft = Offset(
+                                lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)
+                            )
+                        )
                     }
 
                     val newText = line.newNum?.toString() ?: ""
                     if (newText.isNotEmpty())
                     {
                         val l = textMeasurer.measure(newText, style = gutterStyle, maxLines = 1)
-                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
+                        drawText(
+                            l, topLeft = Offset(
+                                2f * lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)
+                            )
+                        )
                     }
 
                     if (line.prefix.isNotBlank())
@@ -148,12 +175,18 @@ internal fun DiffTextArea(
                             DiffRenderedLineKind.DELETED -> deletedStyle.prefixColor
                             else                         -> gutterFg
                         }
-                        val l = textMeasurer.measure(line.prefix, style = editorStyle.copy(color = prefixColor), maxLines = 1)
-                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f, baselineY - l.getLineBaseline(0)))
+                        val l = textMeasurer.measure(
+                            line.prefix, style = editorStyle.copy(color = prefixColor), maxLines = 1
+                        )
+                        drawText(
+                            l, topLeft = Offset(
+                                2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f,
+                                baselineY - l.getLineBaseline(0)
+                            )
+                        )
                     }
                 }
             }
-
 
             // Border around the whole component — drawn last so it sits on top.
             drawRect(color = borderColor, size = size, style = Stroke(width = 1f))
@@ -170,6 +203,10 @@ internal fun DiffTextArea(
                 textIndent = TextIndent(firstLine = contentIndent, restLine = contentIndent),
             ),
             modifier = Modifier.fillMaxSize(),
+        )
+
+        VerticalScrollbar(
+            scrollState, modifier = Modifier.align(Alignment.TopEnd).fillMaxHeight().padding(8.dp)
         )
     }
 }
