@@ -13,10 +13,12 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
@@ -47,11 +49,14 @@ internal fun DiffTextArea(
     val gutterFg = diffGutterLabelColor()
     val gutterStyle = editorStyle.copy(color = gutterFg)
 
-    val addedStyle = diffLineStyle(DiffType.ADDED)
-    val deletedStyle = diffLineStyle(DiffType.DELETED)
+    val addedStyle     = diffLineStyle(DiffType.ADDED)
+    val deletedStyle   = diffLineStyle(DiffType.DELETED)
     val unchangedStyle = diffLineStyle(DiffType.UNCHANGED)
-    val hunkBg = diffHunkHeaderBackground()
-    val headerFg = diffHunkHeaderForeground()
+    val hunkBg         = diffHunkHeaderBackground()
+    val headerFg       = diffHunkHeaderForeground()
+    val gutterBg       = diffGutterBackground()
+    val separatorColor = diffSeparatorColor()
+    val borderColor    = diffBorderColor()
 
     val density = LocalDensity.current
 
@@ -68,7 +73,7 @@ internal fun DiffTextArea(
     val contentIndentPx = 2f * lineNumColWidthPx + prefixColWidthPx
     val contentIndent = with(density) { contentIndentPx.toDp().toSp() }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().clipToBounds()) {
         Canvas(modifier = Modifier.matchParentSize()) {
             val layout = textLayoutResult ?: return@Canvas
             val scrollY = scrollState.value.toFloat()
@@ -95,12 +100,28 @@ internal fun DiffTextArea(
                 }
                 drawRect(color = bg, topLeft = Offset(0f, top), size = Size(size.width, bottom - top))
 
+                // Gutter semi-transparent overlay applied on top of the line color.
+                // Not applied to hunk headers — they use a uniform full-width background.
+                if (line.kind != DiffRenderedLineKind.HUNK_HEADER)
+                {
+                    drawRect(
+                        color   = gutterBg,
+                        topLeft = Offset(0f, top),
+                        size    = Size(contentIndentPx, bottom - top),
+                    )
+                    drawLine(
+                        color       = separatorColor,
+                        start       = Offset(contentIndentPx, top),
+                        end         = Offset(contentIndentPx, bottom),
+                        strokeWidth = 1f,
+                    )
+                }
+
                 val baselineY = layout.getLineBaseline(startLayoutLine) - scrollY
 
                 if (line.kind == DiffRenderedLineKind.HUNK_HEADER)
                 {
-                    val l =
-                        textMeasurer.measure(line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1)
+                    val l = textMeasurer.measure(line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1)
                     drawText(l, topLeft = Offset(colPadPx, baselineY - l.getLineBaseline(0)))
                 }
                 else
@@ -109,26 +130,14 @@ internal fun DiffTextArea(
                     if (oldText.isNotEmpty())
                     {
                         val l = textMeasurer.measure(oldText, style = gutterStyle, maxLines = 1)
-                        drawText(
-                            l,
-                            topLeft = Offset(
-                                lineNumColWidthPx - colPadPx - l.size.width,
-                                baselineY - l.getLineBaseline(0)
-                            )
-                        )
+                        drawText(l, topLeft = Offset(lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
                     }
 
                     val newText = line.newNum?.toString() ?: ""
                     if (newText.isNotEmpty())
                     {
                         val l = textMeasurer.measure(newText, style = gutterStyle, maxLines = 1)
-                        drawText(
-                            l,
-                            topLeft = Offset(
-                                2f * lineNumColWidthPx - colPadPx - l.size.width,
-                                baselineY - l.getLineBaseline(0)
-                            )
-                        )
+                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx - colPadPx - l.size.width, baselineY - l.getLineBaseline(0)))
                     }
 
                     if (line.prefix.isNotBlank())
@@ -139,21 +148,15 @@ internal fun DiffTextArea(
                             DiffRenderedLineKind.DELETED -> deletedStyle.prefixColor
                             else                         -> gutterFg
                         }
-                        val l = textMeasurer.measure(
-                            line.prefix,
-                            style = editorStyle.copy(color = prefixColor),
-                            maxLines = 1
-                        )
-                        drawText(
-                            l,
-                            topLeft = Offset(
-                                2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f,
-                                baselineY - l.getLineBaseline(0)
-                            )
-                        )
+                        val l = textMeasurer.measure(line.prefix, style = editorStyle.copy(color = prefixColor), maxLines = 1)
+                        drawText(l, topLeft = Offset(2f * lineNumColWidthPx + (prefixColWidthPx - l.size.width) / 2f, baselineY - l.getLineBaseline(0)))
                     }
                 }
             }
+
+
+            // Border around the whole component — drawn last so it sits on top.
+            drawRect(color = borderColor, size = size, style = Stroke(width = 1f))
         }
 
         BasicTextField(
@@ -193,12 +196,16 @@ private data class RenderedDiff(
 )
 
 
+private const val MAX_RENDERED_LINES = 5_000
+
 private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 {
     val sb = StringBuilder()
     val lines = ArrayList<RenderedDiffLine>(diff.hunks.sumOf { it.lines.size + 1 })
+    var lineCount = 0
+    var truncated = false
 
-    for (hunk in diff.hunks)
+    outer@ for (hunk in diff.hunks)
     {
         val hunkStart = sb.length
         sb.append('\n')
@@ -211,6 +218,11 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 
         for (line in hunk.lines)
         {
+            if (lineCount >= MAX_RENDERED_LINES)
+            {
+                truncated = true
+                break@outer
+            }
             val lineStart = sb.length
             sb.append(line.content)
             sb.append('\n')
@@ -222,7 +234,21 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
                 newNum = line.number.new,
                 prefix = line.type.toPrefix(),
             )
+            lineCount++
         }
+    }
+
+    if (truncated)
+    {
+        val noticeStart = sb.length
+        sb.append("... diff truncated at $MAX_RENDERED_LINES lines ...")
+        sb.append('\n')
+        lines += RenderedDiffLine(
+            kind = DiffRenderedLineKind.HUNK_HEADER,
+            startOffset = noticeStart,
+            endOffsetExclusive = sb.length,
+            hunkHeader = "... diff truncated at $MAX_RENDERED_LINES lines ...",
+        )
     }
 
     return RenderedDiff(sourceText = sb.toString(), lines = lines)

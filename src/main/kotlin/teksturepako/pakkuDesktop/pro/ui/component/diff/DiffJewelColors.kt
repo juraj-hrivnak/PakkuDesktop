@@ -52,10 +52,26 @@ internal fun diffLineStyle(type: DiffType): DiffLineStyle {
 
 @Composable
 @ReadOnlyComposable
-internal fun diffHunkHeaderBackground(): Color {
-    val g = JewelTheme.globalColors
-    return g.panelBackground
+internal fun diffHunkHeaderBackground(): Color
+{
+    val p = JewelTheme.colorPalette
+    val blueBase = p.blue.midOrNull() ?: JewelTheme.globalColors.panelBackground
+    val tintAlpha = if (JewelTheme.isDark) 0.2f else 0.12f
+    return blueBase.copy(alpha = tintAlpha)
 }
+
+@Composable
+@ReadOnlyComposable
+internal fun diffGutterBackground(): Color =
+    JewelTheme.globalColors.panelBackground.copy(alpha = 0.5f)
+
+@Composable
+@ReadOnlyComposable
+internal fun diffSeparatorColor(): Color = JewelTheme.globalColors.borders.normal
+
+@Composable
+@ReadOnlyComposable
+internal fun diffBorderColor(): Color = JewelTheme.globalColors.borders.normal
 
 @Composable
 @ReadOnlyComposable

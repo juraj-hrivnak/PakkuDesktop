@@ -6,7 +6,6 @@ package teksturepako.pakkuDesktop.pro.git
 
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.diff.DiffFormatter
-import org.eclipse.jgit.lib.ObjectReader
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
@@ -25,6 +24,10 @@ import java.nio.file.Path
 
 object GitDiffComputer {
 
+    private const val MAX_FILE_BYTES = 512_000L
+    private const val MAX_RENDERED_LINES = 5_000
+    private const val BINARY_PROBE_BYTES = 8_000
+
     fun openRepository(path: Path): Result<Pair<Git, Repository>> = runCatching {
         val repository = FileRepositoryBuilder()
             .setGitDir(path.resolve(".git").toFile())
@@ -35,7 +38,7 @@ object GitDiffComputer {
     }
 
     /**
-     * Working tree vs HEAD for [gitFile.path]. Uses JGit's formatter (same algorithm as native git diff).
+     * Working tree vs HEAD for [gitFile]. Uses JGit's formatter (same algorithm as native git diff).
      */
     fun computeDiff(git: Git, repository: Repository, gitFile: GitFile): DiffContent? = runCatching {
         val path = gitFile.path
@@ -71,6 +74,10 @@ object GitDiffComputer {
             }
         }
 
+        if (raw.size() > MAX_FILE_BYTES) {
+            return@runCatching placeholderDiffContent(path, "Diff too large to display (${raw.size() / 1024} KB).")
+        }
+
         val text = raw.toString(StandardCharsets.UTF_8)
         if (text.isBlank()) {
             return@runCatching untrackedAsNewFile(repository, path)
@@ -79,8 +86,17 @@ object GitDiffComputer {
     }.getOrNull()
 
     private fun untrackedAsNewFile(repository: Repository, path: String): DiffContent {
-        val text = repository.workTree.resolve(path).readText()
-        val lines = text.lines()
+        val file = repository.workTree.resolve(path)
+
+        if (isBinaryFile(file)) {
+            return placeholderDiffContent(path, "Binary file not shown.")
+        }
+
+        if (file.length() > MAX_FILE_BYTES) {
+            return placeholderDiffContent(path, "File too large to display (${file.length() / 1024} KB).")
+        }
+
+        val lines = file.readText().lines().take(MAX_RENDERED_LINES)
         return DiffContent(
             oldPath = null,
             newPath = path,
@@ -97,5 +113,28 @@ object GitDiffComputer {
                 ),
             ),
         )
+    }
+
+    private fun placeholderDiffContent(path: String, message: String) = DiffContent(
+        oldPath = null,
+        newPath = path,
+        hunks = listOf(
+            DiffHunk(
+                header = "@@",
+                lines = listOf(
+                    DiffLine(
+                        number = DiffLine.LineNumbers(old = null, new = null),
+                        content = message,
+                        type = DiffType.UNCHANGED,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    private fun isBinaryFile(file: java.io.File): Boolean {
+        if (!file.exists() || file.length() == 0L) return false
+        val probe = file.inputStream().use { it.readNBytes(BINARY_PROBE_BYTES) }
+        return probe.any { it == 0.toByte() }
     }
 }

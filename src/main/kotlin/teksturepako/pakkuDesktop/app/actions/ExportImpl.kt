@@ -27,7 +27,6 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.cli.ui.shortForm
 import teksturepako.pakku.io.toHumanReadableSize
-import teksturepako.pakkuDesktop.app.io.RevealFileAction
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import java.nio.file.Path
 import kotlin.io.path.Path
