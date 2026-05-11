@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 @Composable
@@ -22,8 +23,9 @@ fun EmptyDiff(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "Select a file to preview the diff (same as the Source Control view in VS Code).",
-            modifier = Modifier.padding(24.dp),
+            text = "Select a file to preview the diff.",
+            modifier = Modifier.padding(28.dp),
+            style = JewelTheme.defaultTextStyle,
             color = diffEmptyHintColor(),
         )
     }

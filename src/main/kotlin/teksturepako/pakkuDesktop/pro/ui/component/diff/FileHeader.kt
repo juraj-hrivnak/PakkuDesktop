@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 
@@ -20,21 +20,22 @@ import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 fun FileHeader(diffContent: DiffContent)
 {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 4.dp)
     ) {
         Text(
             text = diffContent.newPath,
+            style = JewelTheme.defaultTextStyle.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Medium,
+            ),
             color = diffFileTitleColor(),
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Medium
         )
 
         if (diffContent.oldPath != null && diffContent.oldPath != diffContent.newPath)
         {
             Text(
                 text = "(was: ${diffContent.oldPath})",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
+                style = JewelTheme.defaultTextStyle.copy(fontFamily = FontFamily.Monospace),
                 color = diffFileSubtitleColor(),
             )
         }

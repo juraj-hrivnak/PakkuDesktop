@@ -33,6 +33,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
+import org.jetbrains.jewel.ui.theme.treeStyle
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -44,12 +45,13 @@ import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
 
-private val ChangelistIndentPerLevel = 12.dp
-private val ChangelistChevronSlot = 18.dp
-private val ChangelistChevronGap = 2.dp
-private val ChangelistCheckSlot = 28.dp
-private val ChangelistStatusSlot = 22.dp
-private val ChangelistRowMinHeight = 24.dp
+private val ChangelistIndentPerLevel = 20.dp
+private val ChangelistChevronSlot = 20.dp
+private val ChangelistChevronGap = 4.dp
+private val ChangelistCheckSlot = 32.dp
+/** Status letter (A/M/D) or folder icon: same width keeps file and folder names aligned. */
+private val ChangelistStatusSlot = 20.dp
+private val ChangelistRowMinHeight = 30.dp
 private val ChangelistSelectionStripeWidth = 3.dp
 
 @Composable
@@ -122,7 +124,6 @@ private fun SourceControlSidePanel(
                 text = "SOURCE CONTROL",
                 modifier = Modifier.padding(4.dp),
                 style = JewelTheme.defaultTextStyle.copy(
-                    fontSize = 11.sp,
                     letterSpacing = 0.6.sp,
                     fontWeight = FontWeight.SemiBold,
                 ),
@@ -142,7 +143,7 @@ private fun SourceControlSidePanel(
                         contentDescription = "Select all",
                         tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                         hints = arrayOf(),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
                 IconButton(
@@ -154,7 +155,7 @@ private fun SourceControlSidePanel(
                         contentDescription = "Clear selection",
                         tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                         hints = arrayOf(),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
                 IconButton(
@@ -166,7 +167,7 @@ private fun SourceControlSidePanel(
                         contentDescription = "Expand all",
                         tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                         hints = arrayOf(),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
                 IconButton(
@@ -178,18 +179,17 @@ private fun SourceControlSidePanel(
                         contentDescription = "Collapse all",
                         tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                         hints = arrayOf(),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
         }
 
-        Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 4.dp)) {
+        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Changes",
                     style = JewelTheme.defaultTextStyle.copy(
-                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
                     color = JewelTheme.contentColor,
@@ -197,7 +197,7 @@ private fun SourceControlSidePanel(
                 if (files.isNotEmpty()) {
                     Text(
                         text = "  ${files.size}",
-                        style = JewelTheme.defaultTextStyle.copy(fontSize = 11.sp),
+                        style = JewelTheme.defaultTextStyle,
                         color = JewelTheme.contentColor.copy(alpha = 0.45f),
                     )
                 }
@@ -215,15 +215,15 @@ private fun SourceControlSidePanel(
             Text(
                 text = "No local changes",
                 modifier = Modifier
-                    .padding(horizontal = 14.dp, vertical = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 18.dp)
                     .fillMaxWidth(),
-                style = JewelTheme.defaultTextStyle.copy(fontSize = 12.sp),
+                style = JewelTheme.defaultTextStyle,
                 color = JewelTheme.globalColors.text.disabled,
             )
             Text(
                 text = "Edits to tracked files and new files will appear in this list.",
-                modifier = Modifier.padding(horizontal = 14.dp).fillMaxWidth(),
-                style = JewelTheme.defaultTextStyle.copy(fontSize = 11.sp),
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                style = JewelTheme.defaultTextStyle,
                 color = JewelTheme.contentColor.copy(alpha = 0.45f),
             )
             Spacer(Modifier.weight(1f))
@@ -301,6 +301,7 @@ private fun ChangelistFolderRow(
         hovered = hovered,
         folderBand = true,
     )
+    val treeChevron = JewelTheme.treeStyle.icons.chevron(isExpanded = row.expanded, isSelected = false)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -313,7 +314,7 @@ private fun ChangelistFolderRow(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 3.dp, horizontal = 0.dp),
+                .padding(vertical = 4.dp, horizontal = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Spacer(Modifier.width(ChangelistIndentPerLevel * row.depth))
@@ -329,11 +330,11 @@ private fun ChangelistFolderRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    key = if (row.expanded) AllIconsKeys.Gutter.FoldBottom else AllIconsKeys.Gutter.Fold,
+                    key = treeChevron,
                     contentDescription = if (row.expanded) "Collapse" else "Expand",
                     tint = JewelTheme.contentColor.copy(alpha = 0.65f),
                     hints = arrayOf(),
-                    modifier = Modifier.size(11.dp),
+                    modifier = Modifier.size(13.dp),
                 )
             }
             Spacer(Modifier.width(ChangelistChevronGap))
@@ -348,10 +349,22 @@ private fun ChangelistFolderRow(
                     onClick = { publish(ModpackMsg.GitFolderSelectionToggled(row.fullPath)) },
                 )
             }
-            Spacer(Modifier.width(ChangelistStatusSlot))
+            Box(
+                modifier = Modifier
+                    .width(ChangelistStatusSlot)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Icon(
+                    key = AllIconsKeys.Nodes.Folder,
+                    contentDescription = null,
+                    tint = JewelTheme.contentColor.copy(alpha = 0.85f),
+                    hints = arrayOf(),
+                    modifier = Modifier.size(17.dp),
+                )
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
                 modifier = Modifier
                     .weight(1f)
                     .clickable(
@@ -361,13 +374,6 @@ private fun ChangelistFolderRow(
                         publish(ModpackMsg.GitChangelistFolderExpansionToggled(row.fullPath))
                     },
             ) {
-                Icon(
-                    key = AllIconsKeys.Nodes.Folder,
-                    contentDescription = null,
-                    tint = JewelTheme.contentColor.copy(alpha = 0.85f),
-                    hints = arrayOf(),
-                    modifier = Modifier.size(15.dp),
-                )
                 Text(
                     text = row.displayName,
                     modifier = Modifier.weight(1f),
@@ -375,7 +381,6 @@ private fun ChangelistFolderRow(
                     overflow = TextOverflow.Ellipsis,
                     color = JewelTheme.contentColor,
                     style = JewelTheme.defaultTextStyle.copy(
-                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     ),
                 )
@@ -423,7 +428,7 @@ private fun ChangelistFileRow(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = 3.dp),
+                .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Spacer(Modifier.width(ChangelistIndentPerLevel * row.depth))
@@ -450,7 +455,6 @@ private fun ChangelistFileRow(
                     text = label,
                     color = statusColor,
                     style = JewelTheme.defaultTextStyle.copy(
-                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
                 )
@@ -462,7 +466,6 @@ private fun ChangelistFileRow(
                 overflow = TextOverflow.Ellipsis,
                 color = if (isViewed) JewelTheme.contentColor else JewelTheme.contentColor.copy(alpha = 0.92f),
                 style = JewelTheme.defaultTextStyle.copy(
-                    fontSize = 12.sp,
                     fontWeight = if (isViewed) FontWeight.Medium else FontWeight.Normal,
                 ),
             )
@@ -506,7 +509,7 @@ private fun gitStatusLetter(status: GitChange): String = when (status) {
     is GitChange.Added -> "A"
     is GitChange.Modified -> "M"
     is GitChange.Deleted -> "D"
-    is GitChange.Untracked -> "?"
+    is GitChange.Untracked -> "U"
 }
 
 @Composable
@@ -531,17 +534,16 @@ private fun CommitPanel(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = modifier.padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Text(
             text = "Commit",
             style = JewelTheme.defaultTextStyle.copy(
-                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
             ),
             color = JewelTheme.contentColor,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
 
         val textFieldState = rememberTextFieldState(gitState.commitMessage)
 
@@ -563,15 +565,15 @@ private fun CommitPanel(
             textFieldState,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 52.dp, max = 112.dp)
+                .heightIn(min = 56.dp, max = 120.dp)
                 .padding(vertical = 4.dp),
             placeholder = { Text("Summary") },
         )
 
         Text(
             text = "Only checked files will be included in the commit.",
-            modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
-            style = JewelTheme.defaultTextStyle.copy(fontSize = 10.sp),
+            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+            style = JewelTheme.defaultTextStyle,
             color = JewelTheme.globalColors.text.disabled,
         )
 
@@ -588,7 +590,7 @@ private fun CommitPanel(
                     contentDescription = null,
                     tint = JewelTheme.contentColor,
                     hints = arrayOf(),
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(16.dp),
                 )
                 Text("Commit")
             }

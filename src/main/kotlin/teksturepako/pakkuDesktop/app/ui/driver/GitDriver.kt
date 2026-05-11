@@ -32,6 +32,7 @@ import teksturepako.pakkuDesktop.pro.git.GitDiffComputer
 import teksturepako.pakkuDesktop.pro.git.GitEvent
 import teksturepako.pakkuDesktop.pro.git.GitState
 import teksturepako.pakkuDesktop.pro.git.buildGitState
+import teksturepako.pakkuDesktop.pro.git.jgitTransportCredentialsProvider
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import kotlin.io.path.Path
 import kotlinx.coroutines.CoroutineScope
@@ -122,9 +123,10 @@ private suspend fun refreshGitState(
     }
 }
 
-private suspend fun runPull(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git) {
+private suspend fun runPull(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git, repository: Repository) {
     try {
         git.pull()
+            .setCredentialsProvider(jgitTransportCredentialsProvider(repository))
             .setProgressMonitor(jgitProgressMonitor(scope, publish))
             .call()
     } catch (e: Exception) {
@@ -132,9 +134,10 @@ private suspend fun runPull(scope: CoroutineScope, publish: (AppMsg) -> Unit, gi
     }
 }
 
-private suspend fun runPush(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git) {
+private suspend fun runPush(scope: CoroutineScope, publish: (AppMsg) -> Unit, git: Git, repository: Repository) {
     try {
         git.push()
+            .setCredentialsProvider(jgitTransportCredentialsProvider(repository))
             .setProgressMonitor(jgitProgressMonitor(scope, publish))
             .call()
     } catch (e: Exception) {
@@ -212,7 +215,7 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
         withContext(Dispatchers.IO) {
-            runPull(scope, publish, g)
+            runPull(scope, publish, g, r)
             refreshGitState(publish, g, r, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPullFinished))
@@ -225,7 +228,7 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
         withContext(Dispatchers.IO) {
-            runPush(scope, publish, g)
+            runPush(scope, publish, g, r)
             refreshGitState(publish, g, r, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPushFinished))
