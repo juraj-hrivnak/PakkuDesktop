@@ -189,23 +189,52 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             holder.close()
             return@LaunchedEffect
         }
-        holder.open(workingPath)
-        val g = holder.git ?: return@LaunchedEffect
-        val r = holder.repository ?: return@LaunchedEffect
-        withContext(Dispatchers.IO) {
-            refreshGitState(publish, g, r, model.modpack.git)
+        try {
+            holder.open(workingPath)
+            val g = holder.git ?: return@LaunchedEffect
+            val r = holder.repository ?: return@LaunchedEffect
+            withContext(Dispatchers.IO) {
+                refreshGitState(publish, g, r, model.modpack.git)
+            }
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Failed to open repository")
         }
     }
 
-    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded) {
+    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded, workingPath) {
         val file = model.modpack.gitDiffPendingFile ?: return@LaunchedEffect
-        if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val g = holder.git ?: return@LaunchedEffect
-        val r = holder.repository ?: return@LaunchedEffect
-        val diff = withContext(Dispatchers.IO) {
-            GitDiffComputer.computeDiff(g, r, file)
+        println("[GitDiff] Pending file: ${file.path} (status=${file.status})")
+        if (model.screen != AppScreen.Modpack || !model.modpack.loaded) {
+            println("[GitDiff] Skipped — screen=${model.screen}, loaded=${model.modpack.loaded}")
+            return@LaunchedEffect
         }
-        publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(diff)))
+        try {
+            holder.open(workingPath)
+            // If the repo could not be opened (no exception but onSuccess didn't run), clear
+            // the pending state so gitDiffPendingFile doesn't stay non-null forever and the
+            // effect can re-run when the user clicks a file again.
+            val g = holder.git ?: run {
+                println("[GitDiff] Aborted — holder.git is null after open (not a git repo?)")
+                publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
+                return@LaunchedEffect
+            }
+            val r = holder.repository ?: run {
+                println("[GitDiff] Aborted — holder.repository is null after open")
+                publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
+                return@LaunchedEffect
+            }
+            println("[GitDiff] Computing diff for: ${file.path}")
+            val diff = withContext(Dispatchers.IO) {
+                GitDiffComputer.computeDiff(g, r, file)
+            }
+            println("[GitDiff] Diff ready — ${diff.hunks.size} hunk(s) for: ${file.path}")
+            publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(diff)))
+        } catch (e: Exception) {
+            println("[GitDiff] Exception for ${file.path}: ${e::class.simpleName}: ${e.message}")
+            gitToast(publish, e.message ?: "Failed to compute diff")
+            // Clear pending state so the user can retry by clicking the file again.
+            publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
+        }
     }
 
     LaunchedEffect(model.modpack.wantsGitPull, model.screen, model.modpack.loaded) {
@@ -214,9 +243,13 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val g = holder.git ?: return@LaunchedEffect
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
-        withContext(Dispatchers.IO) {
-            runPull(scope, publish, g, r)
-            refreshGitState(publish, g, r, preserve)
+        try {
+            withContext(Dispatchers.IO) {
+                runPull(scope, publish, g, r)
+                refreshGitState(publish, g, r, preserve)
+            }
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Pull failed")
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPullFinished))
     }
@@ -227,9 +260,13 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val g = holder.git ?: return@LaunchedEffect
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
-        withContext(Dispatchers.IO) {
-            runPush(scope, publish, g, r)
-            refreshGitState(publish, g, r, preserve)
+        try {
+            withContext(Dispatchers.IO) {
+                runPush(scope, publish, g, r)
+                refreshGitState(publish, g, r, preserve)
+            }
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Push failed")
         }
         publish(AppMsg.Modpack(ModpackMsg.GitPushFinished))
     }
@@ -240,10 +277,15 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val g = holder.git ?: return@LaunchedEffect
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
-        val commitOk = withContext(Dispatchers.IO) {
-            val ok = runCommit(publish, g, preserve)
-            refreshGitState(publish, g, r, preserve)
-            ok
+        val commitOk = try {
+            withContext(Dispatchers.IO) {
+                val ok = runCommit(publish, g, preserve)
+                refreshGitState(publish, g, r, preserve)
+                ok
+            }
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Commit failed")
+            false
         }
         publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished(commitOk)))
     }
@@ -254,9 +296,13 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val g = holder.git ?: return@LaunchedEffect
         val r = holder.repository ?: return@LaunchedEffect
         val preserve = model.modpack.git
-        withContext(Dispatchers.IO) {
-            runCheckout(publish, g, branch)
-            refreshGitState(publish, g, r, preserve)
+        try {
+            withContext(Dispatchers.IO) {
+                runCheckout(publish, g, branch)
+                refreshGitState(publish, g, r, preserve)
+            }
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Checkout failed")
         }
         publish(AppMsg.Modpack(ModpackMsg.GitCheckoutFinished))
     }

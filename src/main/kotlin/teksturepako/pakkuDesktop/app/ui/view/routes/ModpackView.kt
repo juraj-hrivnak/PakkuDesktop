@@ -82,41 +82,43 @@ fun PakkuApplicationScope.ModpackView(
 
     if (hasNonFileNotFoundError) return
 
-    Row(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
-        ModpackSideBar(publish, model, appModel)
-
-        VerticalSplitLayout(
-            state = actionSplitState,
-            dividerStyle = animatedDividerStyle(),
-            first = {
-                Column {
-                    Row {
-                        when (model.selectedTab) {
-                            SelectedTab.PROJECTS -> ProjectsTab(publish, model)
-                            SelectedTab.MODPACK  -> ModpackTab()
-                            SelectedTab.COMMIT   -> GitTab(publish, model)
-                        }
-                    }
-                }
-            },
-            second = {
-                Column { Row { } }
-            },
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            firstPaneMinWidth = 100.dp,
-            secondPaneMinWidth = 40.dp,
-            draggableWidth = 16.dp
-        )
-    }
-
     val toastState = remember { mutableStateOf(model.toasts) }
     toastState.value = model.toasts
 
-    ToastHost(
-        toasts = toastState,
-        modifier = Modifier.fillMaxSize().subtractTopHeight(titleBarHeight),
-        alignment = Alignment.TopEnd,
-        spacing = 8.dp,
-        onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
-    )
+    Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
+        Row(Modifier.matchParentSize()) {
+            ModpackSideBar(publish, model, appModel)
+
+            VerticalSplitLayout(
+                state = actionSplitState,
+                dividerStyle = animatedDividerStyle(),
+                first = {
+                    Column {
+                        Row {
+                            when (model.selectedTab) {
+                                SelectedTab.PROJECTS -> ProjectsTab(publish, model)
+                                SelectedTab.MODPACK  -> ModpackTab()
+                                SelectedTab.COMMIT   -> GitTab(publish, model)
+                            }
+                        }
+                    }
+                },
+                second = {
+                    Column { Row { } }
+                },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                firstPaneMinWidth = 100.dp,
+                secondPaneMinWidth = 40.dp,
+                draggableWidth = 16.dp
+            )
+        }
+
+        ToastHost(
+            toasts = toastState,
+            modifier = Modifier.align(Alignment.TopEnd),
+            alignment = Alignment.TopEnd,
+            spacing = 8.dp,
+            onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
+        )
+    }
 }

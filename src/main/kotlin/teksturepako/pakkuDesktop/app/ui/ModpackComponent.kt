@@ -109,11 +109,17 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         }.toSet()
         if (under.isEmpty()) model
         else {
+            val underPaths = under.map { it.path }.toSet()
             val selectedPaths = g.selectedFiles.map { it.path }.toSet()
-            val allSelected = under.all { it.path in selectedPaths }
+            val allSelected = underPaths.all { it in selectedPaths }
+            // Path-based merge: GitFile equality includes mtime/size, so set +/- under
+            // misses rows after refresh or disk touch — folder checkbox then appears broken.
             val sel =
-                if (allSelected) g.selectedFiles - under
-                else g.selectedFiles + under
+                if (allSelected) {
+                    g.selectedFiles.filterNot { it.path in underPaths }.toSet()
+                } else {
+                    g.selectedFiles.filterNot { it.path in underPaths }.toSet() + under
+                }
             model.copy(git = g.copy(selectedFiles = sel))
         }
     }

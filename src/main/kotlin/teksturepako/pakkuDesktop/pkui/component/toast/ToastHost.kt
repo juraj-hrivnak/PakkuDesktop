@@ -34,9 +34,11 @@ fun ToastHost(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
+    // Do not append fillMaxSize(): callers overlay this host on full UI; a max-size Box here
+    // captures all pointer events (invisible glass pane) and breaks clicks underneath.
     Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = alignment
+        modifier = modifier,
+        contentAlignment = alignment,
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(spacing),

@@ -64,6 +64,8 @@ fun GitTab(
 
     val splitState = remember { SplitLayoutState(0.32f) }
 
+    val diffPendingPath = model.gitDiffPendingFile?.path
+
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
             state = splitState,
@@ -71,6 +73,7 @@ fun GitTab(
                 SourceControlSidePanel(
                     gitState = gitState,
                     currentDiff = diffContent,
+                    diffPendingPath = diffPendingPath,
                     publish = publish,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -95,6 +98,7 @@ fun GitTab(
 private fun SourceControlSidePanel(
     gitState: GitState,
     currentDiff: DiffContent?,
+    diffPendingPath: String?,
     publish: (ModpackMsg) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -249,7 +253,12 @@ private fun SourceControlSidePanel(
                         }
                     },
                 ) { row ->
-                    GitChangesListRow(row = row, currentDiff = currentDiff, publish = publish)
+                    GitChangesListRow(
+                        row = row,
+                        currentDiff = currentDiff,
+                        diffPendingPath = diffPendingPath,
+                        publish = publish,
+                    )
                 }
             }
         }
@@ -274,11 +283,12 @@ private fun SourceControlSidePanel(
 private fun GitChangesListRow(
     row: GitChangelistFlatRow,
     currentDiff: DiffContent?,
+    diffPendingPath: String?,
     publish: (ModpackMsg) -> Unit,
 ) {
     when (row) {
         is GitChangelistFlatRow.Folder -> ChangelistFolderRow(row, publish)
-        is GitChangelistFlatRow.File -> ChangelistFileRow(row, currentDiff, publish)
+        is GitChangelistFlatRow.File -> ChangelistFileRow(row, currentDiff, diffPendingPath, publish)
     }
 }
 
@@ -393,12 +403,17 @@ private fun ChangelistFolderRow(
 private fun ChangelistFileRow(
     row: GitChangelistFlatRow.File,
     currentDiff: DiffContent?,
+    diffPendingPath: String?,
     publish: (ModpackMsg) -> Unit,
 ) {
     val file = row.file
     val included = row.selectedForCommit
-    val isViewed = currentDiff?.newPath == file.path || currentDiff?.oldPath == file.path
+    val isViewed =
+        sameGitPath(file.path, diffPendingPath) ||
+            sameGitPath(file.path, currentDiff?.newPath) ||
+            sameGitPath(file.path, currentDiff?.oldPath)
     val interaction = remember(file.path) { MutableInteractionSource() }
+    val diffClickInteraction = remember(file.path, "diffOpen") { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val status = file.status
     val label = gitStatusLetter(status)
@@ -416,12 +431,7 @@ private fun ChangelistFileRow(
             .fillMaxWidth()
             .heightIn(min = ChangelistRowMinHeight)
             .background(bg)
-            .hoverable(interaction)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = { publish(ModpackMsg.GitDiffFileSelected(file)) },
-            ),
+            .hoverable(interaction),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SelectionStripe(stripe, selectedForDiff = isViewed)
@@ -445,30 +455,52 @@ private fun ChangelistFileRow(
                     onCheckedChange = { publish(ModpackMsg.GitFileSelectionToggled(file)) },
                 )
             }
+            // Transparent overlay: Jewel Text can consume pointer input, so parent Row.clickable
+            // often never fires on short names (e.g. pakku.json) — overlay receives hits first.
             Box(
                 modifier = Modifier
-                    .width(ChangelistStatusSlot)
+                    .weight(1f)
                     .fillMaxHeight(),
-                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = label,
-                    color = statusColor,
-                    style = JewelTheme.defaultTextStyle.copy(
-                        fontWeight = FontWeight.SemiBold,
-                    ),
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(ChangelistStatusSlot)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            color = statusColor,
+                            style = JewelTheme.defaultTextStyle.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                    Text(
+                        text = pathLabel,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isViewed) JewelTheme.contentColor else JewelTheme.contentColor.copy(alpha = 0.92f),
+                        style = JewelTheme.defaultTextStyle.copy(
+                            fontWeight = if (isViewed) FontWeight.Medium else FontWeight.Normal,
+                        ),
+                    )
+                }
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .clickable(
+                            interactionSource = diffClickInteraction,
+                            indication = null,
+                            onClick = { publish(ModpackMsg.GitDiffFileSelected(file)) },
+                        ),
                 )
             }
-            Text(
-                text = pathLabel,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (isViewed) JewelTheme.contentColor else JewelTheme.contentColor.copy(alpha = 0.92f),
-                style = JewelTheme.defaultTextStyle.copy(
-                    fontWeight = if (isViewed) FontWeight.Medium else FontWeight.Normal,
-                ),
-            )
         }
     }
 }
@@ -504,6 +536,13 @@ private fun changelistRowBackground(
         else -> Color.Transparent
     }
 }
+
+/** Normalize repo-relative paths from JGit vs unified diff headers (slashes, `./`). */
+private fun gitPathKey(repoRelative: String): String =
+    repoRelative.replace('\\', '/').trim().removePrefix("./")
+
+private fun sameGitPath(a: String, b: String?): Boolean =
+    b != null && gitPathKey(a) == gitPathKey(b)
 
 private fun gitStatusLetter(status: GitChange): String = when (status) {
     is GitChange.Added -> "A"

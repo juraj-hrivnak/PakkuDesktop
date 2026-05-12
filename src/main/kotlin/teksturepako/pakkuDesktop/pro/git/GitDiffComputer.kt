@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.pro.git
 
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.diff.DiffFormatter
+import org.eclipse.jgit.errors.MissingObjectException
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
@@ -39,11 +40,12 @@ object GitDiffComputer {
 
     /**
      * Working tree vs HEAD for [gitFile]. Uses JGit's formatter (same algorithm as native git diff).
+     * Throws on JGit / IO errors so the caller can surface them (e.g. via a toast).
      */
-    fun computeDiff(git: Git, repository: Repository, gitFile: GitFile): DiffContent? = runCatching {
+    fun computeDiff(git: Git, repository: Repository, gitFile: GitFile): DiffContent {
         val path = gitFile.path
         if (gitFile.status is GitChange.Untracked) {
-            return@runCatching untrackedAsNewFile(repository, path)
+            return untrackedAsNewFile(repository, path)
         }
 
         val entries = repository.newObjectReader().use { reader ->
@@ -62,28 +64,61 @@ object GitDiffComputer {
         }
 
         if (entries.isEmpty()) {
-            return@runCatching untrackedAsNewFile(repository, path)
+            return untrackedAsNewFile(repository, path)
         }
 
         val raw = ByteArrayOutputStream()
-        DiffFormatter(raw).use { fmt ->
-            fmt.setRepository(repository)
-            fmt.setContext(3)
-            for (entry in entries) {
-                fmt.format(entry)
+        try {
+            DiffFormatter(raw).use { fmt ->
+                fmt.setRepository(repository)
+                fmt.setContext(3)
+                for (entry in entries) {
+                    fmt.format(entry)
+                }
             }
+        } catch (e: MissingObjectException) {
+            // JGit cannot read the blob from its pack-file reader even though native git can
+            // (common with certain pack-index versions, multi-pack-index, or alternates).
+            // Fall back to invoking the native git binary which has no such limitation.
+            println("[GitDiff] MissingObjectException for $path (${e.objectId.name}), falling back to native git diff")
+            return nativeGitDiff(repository, path)
         }
 
         if (raw.size() > MAX_FILE_BYTES) {
-            return@runCatching placeholderDiffContent(path, "Diff too large to display (${raw.size() / 1024} KB).")
+            return placeholderDiffContent(path, "Diff too large to display (${raw.size() / 1024} KB).")
         }
 
         val text = raw.toString(StandardCharsets.UTF_8)
         if (text.isBlank()) {
-            return@runCatching untrackedAsNewFile(repository, path)
+            return untrackedAsNewFile(repository, path)
         }
-        UnifiedDiffParser.parse(text, path)
-    }.getOrNull()
+        return UnifiedDiffParser.parse(text, path)
+    }
+
+    /**
+     * Runs `git diff HEAD -- <path>` as a subprocess in the repository's working directory.
+     * Used as a fallback when JGit cannot read a blob from the pack-file store.
+     * If the subprocess fails or produces no output, falls back to [untrackedAsNewFile].
+     */
+    private fun nativeGitDiff(repository: Repository, path: String): DiffContent {
+        return try {
+            val process = ProcessBuilder("git", "diff", "HEAD", "--", path)
+                .directory(repository.workTree)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            println("[GitDiff] Native git diff exited $exitCode, output length=${output.length}")
+            if (exitCode == 0 && output.isNotBlank()) {
+                UnifiedDiffParser.parse(output, path)
+            } else {
+                untrackedAsNewFile(repository, path)
+            }
+        } catch (e: Exception) {
+            println("[GitDiff] Native git diff failed: ${e::class.simpleName}: ${e.message}")
+            untrackedAsNewFile(repository, path)
+        }
+    }
 
     private fun untrackedAsNewFile(repository: Repository, path: String): DiffContent {
         val file = repository.workTree.resolve(path)
