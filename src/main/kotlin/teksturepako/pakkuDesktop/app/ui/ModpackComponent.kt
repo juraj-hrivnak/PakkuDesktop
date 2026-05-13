@@ -14,9 +14,9 @@ import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownCompon
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.elm.component
-import teksturepako.pakkuDesktop.pro.git.gitFolderIds
+import teksturepako.pakkuDesktop.pro.git.wrapper.gitFolderIds
 import teksturepako.pakkuDesktop.pro.ui.component.gitDropdownComponent
-import teksturepako.pakkuDesktop.pro.git.mergeChangelistExpandedFolders
+import teksturepako.pakkuDesktop.pro.git.wrapper.mergeChangelistExpandedFolders
 
 // ---------------------------------------------------------------------------
 // modpackUpdate — pure update for ModpackModel.

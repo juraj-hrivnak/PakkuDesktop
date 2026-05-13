@@ -2,11 +2,26 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git
+package teksturepako.pakkuDesktop.pro.git.wrapper
 
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+
+/**
+ * Progress events surfaced from native git stderr into the ELM model.
+ */
+sealed class GitEvent {
+    data class Progress(
+        val operation: String,
+        val current: Int,
+        val total: Int? = null,
+        val message: String? = null,
+    ) : GitEvent() {
+        val percentage: Float
+            get() = total?.let { current.toFloat() / it } ?: 0f
+    }
+}
 
 data class GitState(
     val gitFiles: List<GitFile> = emptyList(),

@@ -38,9 +38,9 @@ import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.animatedColor
-import teksturepako.pakkuDesktop.pro.git.GitChangelistFlatRow
-import teksturepako.pakkuDesktop.pro.git.GitState
-import teksturepako.pakkuDesktop.pro.git.gitChangelistUiSnapshot
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitChangelistFlatRow
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
+import teksturepako.pakkuDesktop.pro.git.wrapper.gitChangelistUiSnapshot
 import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange

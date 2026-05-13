@@ -15,7 +15,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
-import teksturepako.pakkuDesktop.pro.git.GitState
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
 
 @Composable
 fun GitPushDialog(

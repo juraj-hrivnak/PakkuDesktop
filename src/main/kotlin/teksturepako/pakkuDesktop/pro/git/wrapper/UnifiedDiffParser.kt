@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git
+package teksturepako.pakkuDesktop.pro.git.wrapper
 
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffHunk
@@ -10,8 +10,7 @@ import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffLine
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
 
 /**
- * Parses unified diff text (as produced by JGit [org.eclipse.jgit.diff.DiffFormatter]) into
- * the structured model consumed by the UI.
+ * Parses unified diff text (as produced by `git diff`) into the structured model consumed by the UI.
  */
 object UnifiedDiffParser {
 

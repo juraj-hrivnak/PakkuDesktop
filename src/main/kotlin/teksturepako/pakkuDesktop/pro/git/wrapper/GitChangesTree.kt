@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git
+package teksturepako.pakkuDesktop.pro.git.wrapper
 
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 

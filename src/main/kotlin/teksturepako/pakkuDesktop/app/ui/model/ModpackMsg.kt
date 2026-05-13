@@ -11,8 +11,8 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
-import teksturepako.pakkuDesktop.pro.git.GitEvent
-import teksturepako.pakkuDesktop.pro.git.GitState
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitEvent
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
