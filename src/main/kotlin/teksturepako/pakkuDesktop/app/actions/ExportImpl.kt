@@ -17,7 +17,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
-import teksturepako.pakku.api.actions.errors.IOExportingError
 import teksturepako.pakku.api.actions.export.ExportProfile
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
 import teksturepako.pakku.api.data.workingPath
@@ -86,25 +85,22 @@ fun exportImpl(modpackUiState: ModpackUiState)
 
             exportDefaultProfiles(
                 onError = { profile: ExportProfile, error: ActionError ->
-                    if (error !is IOExportingError)
-                    {
-                        val message = "[${profile.name} profile] ${error.rawMessage}"
+                    val message = "[${profile.name} profile] ${error.rawMessage}"
 
-                        withContext(Dispatchers.Main) {
-                            ModpackViewModel.toasts.showToast {
-                                Box(
-                                    modifier = Modifier.padding(16.dp).width(300.dp)
-                                ) {
-                                    Column {
-                                        Text("[${profile.name} profile]", fontWeight = FontWeight.Bold)
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(error.rawMessage)
-                                    }
+                    withContext(Dispatchers.Main) {
+                        ModpackViewModel.toasts.showToast {
+                            Box(
+                                modifier = Modifier.padding(16.dp).width(300.dp)
+                            ) {
+                                Column {
+                                    Text("[${profile.name} profile]", fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(error.rawMessage)
                                 }
                             }
                         }
-                        println(message)
                     }
+                    println(message)
                 },
                 onSuccess = { profile: ExportProfile, path: Path, duration: Duration ->
                     val fileSize = path.fileSize().toHumanReadableSize()
