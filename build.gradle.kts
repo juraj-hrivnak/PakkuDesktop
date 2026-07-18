@@ -100,7 +100,7 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:252.25557.131")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku-jvm:1.3.2")
+    implementation("teksturepako.pakku:pakku:1.5.0.319-SNAPSHOT")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
