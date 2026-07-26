@@ -9,9 +9,10 @@ import androidx.compose.runtime.Composable
 import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 data class ToastData(
     val id: String = UUID.randomUUID().toString(),
-    val duration: Duration = 4000.milliseconds,
+    val duration: Duration = 1.minutes,
     val content: @Composable BoxScope.() -> Unit,
 )

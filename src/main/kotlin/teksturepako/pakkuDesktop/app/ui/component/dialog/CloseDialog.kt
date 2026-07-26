@@ -6,94 +6,55 @@ package teksturepako.pakkuDesktop.app.ui.component.dialog
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 
+/**
+ * A declarative dialog — shown when [model.closeDialog] is non-null.
+ * No driver needed; pure composable shown conditionally from view.
+ */
 @Composable
-fun CloseDialog()
-{
-    val profileData by ProfileViewModel.profileData.collectAsState()
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
+fun CloseDialog(publish: (AppMsg) -> Unit, model: AppModel) {
+    val request = model.closeDialog ?: return
 
-    val coroutineScope = rememberCoroutineScope()
-
-    if (profileData.closeDialog != null)
-    {
-        Dialog(onDismissRequest = { ProfileViewModel.dismissCloseDialog() }) {
-            ContentBox {
-                Row(
-                    Modifier.padding(PakkuDesktopConstants.commonPaddingSize),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        modpackUiState.action.first
-                            ?.let {
-                                Header(
-                                    text = "Action '$it' is running.",
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                                Text(
-                                    text = "Do you want to terminate the action?",
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                            ?: Header(
-                                text = "Do you want to close this modpack?",
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-
-                        FlowRow(
-                            verticalArrangement = Arrangement.Center,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    if (profileData.closeDialog!!.forceClose)
-                                    {
-                                        // Close and then terminate action
-                                        coroutineScope.launch {
-                                            profileData.closeDialog!!.onClose.invoke()
-                                            ModpackViewModel.terminateAction()
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Close and terminate action simultaneously
-                                        coroutineScope.launch {
-                                            ModpackViewModel.terminateAction()
-                                        }
-                                        coroutineScope.launch {
-                                            profileData.closeDialog!!.onClose.invoke()
-                                        }
-                                    }
-                                    ProfileViewModel.dismissCloseDialog()
-                                },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Text("Yes")
-                            }
-                            DefaultButton(
-                                onClick = { ProfileViewModel.dismissCloseDialog() },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Text("No")
-                            }
+    Dialog(onDismissRequest = { publish(AppMsg.DismissCloseDialog) }) {
+        ContentBox {
+            Row(
+                Modifier.padding(PakkuDesktopConstants.commonPaddingSize),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    model.modpack.actionName
+                        ?.let {
+                            Header("Action '$it' is running.", Modifier.padding(vertical = 4.dp))
+                            Text("Do you want to terminate the action?", Modifier.padding(vertical = 4.dp))
                         }
+                        ?: Header("Do you want to close this modpack?", Modifier.padding(vertical = 4.dp))
+
+                    FlowRow(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { publish(AppMsg.ConfirmCloseDialog) },
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) { Text("Yes") }
+
+                        DefaultButton(
+                            onClick = { publish(AppMsg.DismissCloseDialog) },
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) { Text("No") }
                     }
                 }
             }

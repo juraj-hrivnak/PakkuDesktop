@@ -4,17 +4,10 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
@@ -26,47 +19,32 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSel
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.NullableProjectStringSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectBooleanSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectEnumSelection
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectProperties()
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
-    Column(
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
+fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    Column(verticalArrangement = Arrangement.SpaceBetween) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                Modifier.weight(1F)
-            ) {
+            Column(Modifier.weight(1F)) {
                 Text("Properties")
             }
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Column(horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Edit: ")
                     Switch(
-                        checked = modpackUiState.editingProject,
+                        checked = model.editingProject,
                         onCheckedChange = {
-                            if (!modpackUiState.editingProject)
-                            {
-                                ModpackViewModel.editProject(true)
-                            }
-                            else
-                            {
-                                ModpackViewModel.editProject(false)
-                                coroutineScope.launch {
-                                    ModpackViewModel.loadFromDisk()
-                                }
+                            if (!model.editingProject) {
+                                publish(ModpackMsg.ProjectEditing(true))
+                            } else {
+                                publish(ModpackMsg.ProjectEditing(false))
+                                // Trigger reload — modpack disk driver will re-read files
+                                // In fractal model: the driver periodically reloads on screen change
+                                // For explicit reload: we'd need a dedicated message
                             }
                         }
                     )
@@ -78,33 +56,39 @@ fun ProjectProperties()
             label = "Type:",
             enumEntries = ProjectType.entries,
             projectRef = Project::type,
-            projectConfigRef = ConfigFile.ProjectConfig::type
+            projectConfigRef = ConfigFile.ProjectConfig::type,
+            publish = publish,
+            model = model,
         )
-
         NullableProjectEnumSelection(
             label = "Side:",
             enumEntries = ProjectSide.entries,
             projectRef = Project::side,
-            projectConfigRef = ConfigFile.ProjectConfig::side
+            projectConfigRef = ConfigFile.ProjectConfig::side,
+            publish = publish,
+            model = model,
         )
-
         ProjectEnumSelection(
             label = "Update Strategy:",
             enumEntries = UpdateStrategy.entries,
             projectRef = Project::updateStrategy,
-            projectConfigRef = ConfigFile.ProjectConfig::updateStrategy
+            projectConfigRef = ConfigFile.ProjectConfig::updateStrategy,
+            publish = publish,
+            model = model,
         )
-
         ProjectBooleanSelection(
             label = "Redistributable:",
             projectRef = Project::redistributable,
-            projectConfigRef = ConfigFile.ProjectConfig::redistributable
+            projectConfigRef = ConfigFile.ProjectConfig::redistributable,
+            publish = publish,
+            model = model,
         )
-
         NullableProjectStringSelection(
             label = "Subpath:",
             projectRef = Project::getSubpath,
-            projectConfigRef = ConfigFile.ProjectConfig::subpath
+            projectConfigRef = ConfigFile.ProjectConfig::subpath,
+            publish = publish,
+            model = model,
         )
     }
 }

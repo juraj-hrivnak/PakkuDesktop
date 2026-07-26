@@ -6,21 +6,27 @@ package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
+import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectDisplay
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectsList
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
 @Composable
-fun ProjectsTab()
-{
+fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val splitState = remember { SplitLayoutState(0.2F) }
+
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
-            state = ModpackViewModel.projectsTabSplitState,
+            state = splitState,
+            dividerStyle = animatedDividerStyle(),
             first = {
                 Column {
                     HorizontalBar {
@@ -28,14 +34,14 @@ fun ProjectsTab()
                     }
 
                     Row {
-                        ProjectDisplay()
+                        ProjectDisplay(publish, model)
                     }
                 }
             },
             second = {
                 Column {
                     Row {
-                        ProjectsList()
+                        ProjectsList(publish, model)
                     }
                 }
             },

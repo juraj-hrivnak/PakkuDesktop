@@ -6,6 +6,9 @@ package teksturepako.pakkuDesktop
 
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
+import dev.nucleusframework.application.NucleusBackend
+import dev.nucleusframework.application.nucleusApplication
+import io.github.vinceglb.filekit.FileKit
 import io.klogging.config.ANSI_CONSOLE
 import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
@@ -14,15 +17,12 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
-import teksturepako.pakkuDesktop.app.ui.application.theme.themedApplication
-import teksturepako.pakkuDesktop.app.ui.application.window.MainWindow
-import teksturepako.pakkuDesktop.app.ui.view.RootView
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.WindowViewModel
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.LicenseKeyViewModel
+import teksturepako.pakkuDesktop.app.ui.appComponent
+import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
+import teksturepako.pakkuDesktop.app.ui.driver.*
+import teksturepako.pakkuDesktop.elm.run
 
-fun main()
-{
+fun main() {
     loggingConfiguration {
         ANSI_CONSOLE()
         sink(
@@ -31,6 +31,8 @@ fun main()
             STDOUT
         )
     }
+
+    FileKit.init(appId = "PakkuDesktop")
 
     val credentials = runBlocking { CredentialsFile.readToResult() }
         .onFailure { error -> debug { println(error.rawMessage) } }
@@ -41,15 +43,27 @@ fun main()
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
-    runBlocking {
-        WindowViewModel.loadFromDisk()
-        LicenseKeyViewModel.checkActivation()
-        ProfileViewModel.loadFromDisk()
-    }
-
-    themedApplication {
-        MainWindow {
-            RootView()
-        }
+    nucleusApplication(backend = NucleusBackend.Tao) {
+        run(
+            appComponent,
+            drivers = listOf(
+                themeDriver,
+                mainWindowDriver(applicationScope = this),
+                themedBoxDriver,
+                profileDiskDriver,
+                modpackDiskDriver,
+                gitDriver,
+                windowDiskDriver(
+                    onQuit = {
+                        exitApplication()
+                        kotlin.system.exitProcess(0)
+                    },
+                ),
+                directoryPickerDriver(),
+                licenseDriver,
+                actionDriver,
+                projectEditDriver,
+            ),
+        )
     }
 }

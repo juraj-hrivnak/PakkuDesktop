@@ -5,165 +5,120 @@
 package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavHostController
 import com.github.michaelbull.result.getError
-import io.github.vinceglb.filekit.compose.PickerResultLauncher
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
-import io.github.vinceglb.filekit.core.FileKitPlatformSettings
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
-import teksturepako.pakkuDesktop.app.ui.view.Nav
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ProfileViewModel
-import teksturepako.pakkuDesktop.app.ui.viewmodel.state.SelectedTab
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
+import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
-import kotlin.io.path.Path
 
 @Composable
-fun PakkuApplicationScope.ModpackView(navController: NavHostController)
-{
+fun PakkuApplicationScope.ModpackView(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+    appModel: AppModel,
+    appPublish: (AppMsg) -> Unit,
+) {
+    val profileData = appModel.profile.data
     val titleBarHeight = 40.dp
 
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-    val profileData by ProfileViewModel.profileData.collectAsState()
+    // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
+    val hasNonFileNotFoundError = model.lockFile?.isErr == true &&
+        model.lockFile.getError() !is FileNotFound
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(lifecycleState, profileData.currentProfile)
-    {
-        ModpackViewModel.loadFromDisk()
-    }
-
-    val pickerLauncher: PickerResultLauncher = rememberDirectoryPickerLauncher(
-        title = "Open modpack directory",
-        platformSettings = FileKitPlatformSettings(parentWindow = this.decoratedWindowScope.window)
-    ) { directory ->
-        if (directory?.path == null) return@rememberDirectoryPickerLauncher
-
-        if (modpackUiState.action.first != null)
-        {
-            ProfileViewModel.updateCloseDialog {
-                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
-                navController.navigate(Nav.Modpack.route)
-            }
-        }
-        else
-        {
-            coroutineScope.launch {
-                ProfileViewModel.updateCurrentProfile(Path(directory.path!!))
-                navController.navigate(Nav.Modpack.route)
-            }
-        }
-    }
-
-    MainTitleBar(Modifier.height(titleBarHeight), withGradient = true) {
+    MainTitleBar(
+        Modifier.height(titleBarHeight),
+        withGradient = true,
+        themeTrailingActions = {
+            ThemeButton(appPublish, profileData.intUiTheme)
+        },
+    ) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            ModpackDropdown(pickerLauncher, navController)
-            Pro { GitDropdown() }
-            if (modpackUiState.action.first != null)
-            {
+            DropdownHost {
+                ModpackDropdown(publish, model)
+                Pro(appModel) { GitDropdown(publish, model) }
+            }
+            if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(modpackUiState.action.first!!)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(model.actionName)
                         CircularProgressIndicator()
                     }
                 }
             }
         }
         AlignedTitleBarContent(alignment = Alignment.End) {
-            SettingsButton(onClick = { navController.navigate(Nav.Settings(Nav.Modpack).route) })
+            SettingsButton(onClick = { publish(ModpackMsg.ShowSettings) })
         }
     }
 
-    if (modpackUiState.lockFile?.isErr == true)
-    {
-        Row(
-            Modifier
-                .fillMaxSize()
-                .subtractTopHeight(titleBarHeight)
-        ) {
-            if (modpackUiState.lockFile?.getError() is FileNotFound)
-            {
-                navController.navigate(Nav.NewModpack(Nav.Modpack).route)
-            }
-            else
-            {
-                navController.navigate(Nav.Err.route)
-            }
-        }
+    if (hasNonFileNotFoundError) return
 
-        return
-    }
+    val toastState = remember { mutableStateOf(model.toasts) }
+    toastState.value = model.toasts
 
-    Row(
-        Modifier
-            .fillMaxSize()
-            .subtractTopHeight(titleBarHeight)
-    ) {
-        ModpackSideBar()
+    Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
+        Row(Modifier.matchParentSize()) {
+            ModpackSideBar(publish, model, appModel)
 
-        VerticalSplitLayout(
-            state = ModpackViewModel.actionSplitState,
-            first = {
-                Column {
-                    Row {
-                        when (modpackUiState.selectedTab)
-                        {
-                            SelectedTab.PROJECTS -> ProjectsTab()
-                            SelectedTab.MODPACK  -> ModpackTab()
-                            SelectedTab.COMMIT   -> GitTab()
+            VerticalSplitLayout(
+                state = actionSplitState,
+                dividerStyle = animatedDividerStyle(),
+                first = {
+                    Column {
+                        Row {
+                            when (model.selectedTab) {
+                                SelectedTab.PROJECTS -> ProjectsTab(publish, model)
+                                SelectedTab.MODPACK  -> ModpackTab()
+                                SelectedTab.COMMIT   -> GitTab(publish, model)
+                            }
                         }
                     }
-                }
-            },
-            second = {
-                Column {
-                    Row {
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            firstPaneMinWidth = 100.dp,
-            secondPaneMinWidth = 40.dp,
-            draggableWidth = 16.dp
+                },
+                second = {
+                    Column { Row { } }
+                },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                firstPaneMinWidth = 100.dp,
+                secondPaneMinWidth = 40.dp,
+                draggableWidth = 16.dp
+            )
+        }
+
+        ToastHost(
+            toasts = toastState,
+            modifier = Modifier.align(Alignment.TopEnd),
+            alignment = Alignment.TopEnd,
+            spacing = 8.dp,
+            onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
         )
-
     }
-
-    ToastHost(
-        ModpackViewModel.toasts,
-        Modifier
-            .fillMaxSize()
-            .subtractTopHeight(titleBarHeight),
-        alignment = Alignment.TopEnd,
-        spacing = 8.dp
-    )
-
 }

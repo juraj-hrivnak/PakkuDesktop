@@ -5,33 +5,41 @@
 package teksturepako.pakkuDesktop.app.ui.application.titlebar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
-import io.github.kdroidfilter.nucleus.window.TitleBarScope
-import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
-import io.github.kdroidfilter.nucleus.window.newFullscreenControls
+import dev.nucleusframework.window.TitleBarScope
+import dev.nucleusframework.window.jewel.JewelTitleBar
+import dev.nucleusframework.window.newFullscreenControls
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun PakkuApplicationScope.MainTitleBar(
     modifier: Modifier,
     withGradient: Boolean = false,
-    content: @Composable TitleBarScope.() -> Unit = { }
+    themeTrailingActions: @Composable RowScope.() -> Unit = { },
+    content: @Composable TitleBarScope.() -> Unit = { },
 )
 {
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Column {
         Row {
-        this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
+            this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                 modifier.newFullscreenControls(),
-                gradientStartColor = if (withGradient) Color(16, 77, 69) else Color.Unspecified
             ) {
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.Start) {
                     Icon(
@@ -42,7 +50,7 @@ fun PakkuApplicationScope.MainTitleBar(
                 }
 
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {
-                    ThemeButton()
+                    themeTrailingActions()
                     AlphaLabel()
                 }
 
@@ -50,7 +58,7 @@ fun PakkuApplicationScope.MainTitleBar(
             }
         }
         Row {
-            Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+            Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
         }
     }
 }

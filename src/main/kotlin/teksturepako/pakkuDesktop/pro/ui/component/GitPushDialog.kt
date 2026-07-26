@@ -7,48 +7,55 @@ package teksturepako.pakkuDesktop.pro.ui.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowColumn
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.GitViewModel
+import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
 
 @Composable
 fun GitPushDialog(
+    gitState: GitState,
     visible: Boolean,
     onDismiss: () -> Unit,
-)
-{
-    val gitState by GitViewModel.gitState.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
-
+    onPush: () -> Unit,
+) {
     PkUiDialog(visible, onDismiss) {
         FlowColumn(
-            Modifier,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            gitState.outgoingCommits.forEach { outgoingCommit ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(outgoingCommit.hash)
-                    Text(outgoingCommit.message)
+            Text(
+                "Commits not yet on the remote (same as \u201coutgoing\u201d in IntelliJ):",
+                color = JewelTheme.contentColor.copy(alpha = 0.55f),
+            )
+            if (gitState.outgoingCommits.isEmpty()) {
+                Text(
+                    "Nothing to push — your current branch matches the remote or has no upstream commits.",
+                    color = JewelTheme.contentColor,
+                )
+            } else {
+                gitState.outgoingCommits.forEach { outgoingCommit ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(outgoingCommit.hash, color = JewelTheme.contentColor.copy(alpha = 0.55f))
+                        Text(outgoingCommit.message, color = JewelTheme.contentColor)
+                    }
                 }
             }
             Row {
                 DefaultButton(
+                    enabled = gitState.outgoingCommits.isNotEmpty(),
                     onClick = {
-                        coroutineScope.launch {
-                            GitViewModel.push()
-                        }
-                    }) {
+                        onPush()
+                        onDismiss()
+                    },
+                ) {
                     Text("Push")
                 }
             }

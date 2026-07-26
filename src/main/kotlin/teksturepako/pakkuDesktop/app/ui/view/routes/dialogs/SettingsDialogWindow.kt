@@ -5,17 +5,15 @@
 package teksturepako.pakkuDesktop.app.ui.view.routes.dialogs
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialogWindow
 
 @Composable
-fun SettingsDialogWindow(navController: NavHostController)
-{
+fun SettingsDialog(onDismiss: () -> Unit) {
     PkUiDialogWindow(
-        visible = navController.currentDestination?.route?.contains("settings") == true,
-        onDismiss = { navController.popBackStack() },
+        visible = true,
+        onDismiss = onDismiss,
         title = "Settings"
     ) {
-
+        // Settings content goes here
     }
 }

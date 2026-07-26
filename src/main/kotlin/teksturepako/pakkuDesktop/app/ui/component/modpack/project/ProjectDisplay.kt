@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,22 +16,17 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
-fun ProjectDisplay()
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-    val project = modpackUiState.selectedProject ?: return
+fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+    val project = model.selectedProject ?: return
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     val scrollState = rememberScrollState()
 
-    LaunchedEffect(project.pakkuId) {
-        ModpackViewModel.editProject(false)
-    }
-
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -59,12 +51,12 @@ fun ProjectDisplay()
 
             Spacer(
                 modifier = Modifier
-                    .background(JewelTheme.globalColors.borders.normal)
+                    .background(borderColor)
                     .height(1.dp)
                     .fillMaxWidth()
             )
 
-            ProjectProperties()
+            ProjectProperties(publish, model)
         }
 
         VerticalScrollbar(

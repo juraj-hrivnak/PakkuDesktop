@@ -8,8 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
@@ -18,37 +16,28 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
-import teksturepako.pakkuDesktop.app.ui.viewmodel.ModpackViewModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 
 @Composable
 fun AddProjectsDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
-)
-{
-    val modpackUiState by ModpackViewModel.modpackUiState.collectAsState()
-    val lockFile = modpackUiState.lockFile?.get() ?: return
-
-    val projectProvider = lockFile.getProjectProvider().getOrElse {
-        return
-    }
-
+    model: ModpackModel,
+) {
+    val lockFile = model.lockFile?.get() ?: return
+    val projectProvider = lockFile.getProjectProvider().getOrElse { return }
     val textFieldState = rememberTextFieldState()
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
 
-    PkUiDialog(
-        visible = visible,
-        onDismiss = onDismiss
-    ) {
-        FlowColumn(
-            Modifier,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+    PkUiDialog(visible = visible, onDismiss = onDismiss) {
+        FlowColumn(Modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Header("Add Projects")
             Spacer(Modifier.height(8.dp))
-            Spacer(Modifier.background(JewelTheme.globalColors.borders.normal).height(1.dp).fillMaxWidth())
+            Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Text("Enter the projects to teksturepako.pakkuDesktop.actions.add")
+            Text("Enter the projects to add")
             Spacer(Modifier.height(8.dp))
             TextField(state = textFieldState)
         }

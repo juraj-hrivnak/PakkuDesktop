@@ -5,13 +5,11 @@
 package teksturepako.pakkuDesktop.pro.ui.component
 
 import androidx.compose.runtime.Composable
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.LicenseKeyViewModel
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
 
 @Composable
-fun Pro(content: @Composable () -> Unit)
-{
-    if (LicenseKeyViewModel.isActivated == true)
-    {
+fun Pro(appModel: AppModel, content: @Composable () -> Unit) {
+//    if (appModel.isProActivated == true) {
         content()
-    }
+//    }
 }

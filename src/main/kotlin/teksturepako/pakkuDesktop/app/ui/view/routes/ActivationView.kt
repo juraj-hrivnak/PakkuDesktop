@@ -10,19 +10,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
+import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pro.ui.component.license.LicenseKeyField
 
+/** Not wired into navigation yet; callers pass app state explicitly (no CompositionLocals). */
 @Composable
-fun PakkuApplicationScope.ActivationView()
-{
+fun PakkuApplicationScope.ActivationView(
+    appPublish: (AppMsg) -> Unit,
+    isProActivated: Boolean?,
+    licenseKeyError: ActionError?,
+    intUiTheme: IntUiThemes,
+) {
     val titleBarHeight = 40.dp
 
-    MainTitleBar(Modifier.height(titleBarHeight)) {
+    MainTitleBar(
+        Modifier.height(titleBarHeight),
+        themeTrailingActions = {
+            ThemeButton(appPublish, intUiTheme)
+        },
+    ) {
         FadeIn {
             Text("Welcome to Pakku Pro")
         }
@@ -31,7 +45,7 @@ fun PakkuApplicationScope.ActivationView()
     Column(
         Modifier
             .fillMaxSize()
-            .subtractTopHeight(titleBarHeight)
+            .subtractTopHeight(titleBarHeight),
     ) {
         Row(
             Modifier
@@ -39,7 +53,7 @@ fun PakkuApplicationScope.ActivationView()
                 .fillMaxHeight(0.5F)
                 .padding(teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants.commonPaddingSize),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             FlowColumn(
                 verticalArrangement = Arrangement.Center,
@@ -55,9 +69,13 @@ fun PakkuApplicationScope.ActivationView()
                 .fillMaxHeight()
                 .padding(teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants.commonPaddingSize),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.Top,
         ) {
-            LicenseKeyField()
+            LicenseKeyField(
+                isProActivated = isProActivated,
+                licenseKeyError = licenseKeyError,
+                onSubmitLicenseKey = { key -> appPublish(AppMsg.LicenseKeySubmit(key)) },
+            )
         }
     }
 }

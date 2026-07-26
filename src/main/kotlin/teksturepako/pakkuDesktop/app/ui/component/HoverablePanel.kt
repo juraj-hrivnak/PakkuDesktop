@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun HoverablePanel(
@@ -46,6 +47,9 @@ fun HoverablePanel(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    val panelBackground = animatedColor(JewelTheme.globalColors.panelBackground)
+    val shadowColor = animatedColor(JewelTheme.globalColors.borders.disabled)
 
     var mousePosition by remember { mutableStateOf(Offset.Zero) }
     var boxSize by remember { mutableStateOf(Offset.Zero) }
@@ -120,10 +124,10 @@ fun HoverablePanel(
                 .shadow(
                     elevation = JewelTheme.tooltipStyle.metrics.shadowSize,
                     shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
-                    ambientColor = JewelTheme.globalColors.borders.disabled,
+                    ambientColor = shadowColor,
                 )
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(JewelTheme.globalColors.panelBackground)
+                .background(panelBackground)
                 .drawBehind {
                     // Border
                     drawRoundRect(
