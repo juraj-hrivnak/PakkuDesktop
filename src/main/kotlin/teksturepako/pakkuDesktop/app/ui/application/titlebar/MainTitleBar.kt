@@ -17,13 +17,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
-import io.github.kdroidfilter.nucleus.window.TitleBarScope
-import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
-import io.github.kdroidfilter.nucleus.window.newFullscreenControls
+import dev.nucleusframework.window.TitleBarScope
+import dev.nucleusframework.window.jewel.JewelTitleBar
+import dev.nucleusframework.window.newFullscreenControls
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.elm.animatedColor
@@ -39,7 +38,7 @@ fun PakkuApplicationScope.MainTitleBar(
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     Column {
         Row {
-        this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
+            this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                 modifier.newFullscreenControls(),
             ) {
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.Start) {

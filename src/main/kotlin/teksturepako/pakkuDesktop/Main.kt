@@ -4,9 +4,10 @@
 
 package teksturepako.pakkuDesktop
 
-import androidx.compose.ui.window.application
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
+import dev.nucleusframework.application.NucleusBackend
+import dev.nucleusframework.application.nucleusApplication
 import io.github.vinceglb.filekit.FileKit
 import io.klogging.config.ANSI_CONSOLE
 import io.klogging.config.loggingConfiguration
@@ -42,12 +43,12 @@ fun main() {
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
-    application {
+    nucleusApplication(backend = NucleusBackend.Tao) {
         run(
             appComponent,
             drivers = listOf(
                 themeDriver,
-                mainWindowDriver(applicationScope = this@application),
+                mainWindowDriver(applicationScope = this),
                 themedBoxDriver,
                 profileDiskDriver,
                 modpackDiskDriver,

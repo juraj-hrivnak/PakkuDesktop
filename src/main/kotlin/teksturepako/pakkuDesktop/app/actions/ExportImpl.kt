@@ -19,7 +19,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
-import teksturepako.pakku.api.actions.errors.IOExportingError
+import teksturepako.pakku.api.actions.errors.AlreadyExists
 import teksturepako.pakku.api.actions.export.ExportProfile
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
 import teksturepako.pakku.api.data.ConfigFile
@@ -53,7 +53,7 @@ suspend fun exportSuspend(
 
     exportDefaultProfiles(
         onError = { profile: ExportProfile, error: ActionError ->
-            if (error !is IOExportingError) {
+            if (error !is AlreadyExists) {
                 val message = "[${profile.name} profile] ${error.rawMessage}"
                 logger.error(message)
                 onToast(errorToast("[${profile.name} profile]\n${error.rawMessage}"))

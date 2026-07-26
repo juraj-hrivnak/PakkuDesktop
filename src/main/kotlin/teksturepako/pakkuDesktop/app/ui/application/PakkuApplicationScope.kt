@@ -4,11 +4,11 @@
 
 package teksturepako.pakkuDesktop.app.ui.application
 
-import androidx.compose.ui.window.ApplicationScope
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
+import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.application.NucleusDecoratedWindowScope
 
 interface PakkuApplicationScope
 {
-    val applicationScope: ApplicationScope
-    val decoratedWindowScope: DecoratedWindowScope
+    val applicationScope: NucleusApplicationScope
+    val decoratedWindowScope: NucleusDecoratedWindowScope
 }

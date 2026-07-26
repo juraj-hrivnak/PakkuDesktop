@@ -1,15 +1,15 @@
 
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.CompressionLevel
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import java.io.FileInputStream
 import java.util.*
 
 plugins {
-    kotlin("jvm") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.20"
-    id("org.jetbrains.compose") version "1.10.0"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.3.20"
-    id("io.github.kdroidfilter.nucleus") version "1.14.5"
+    kotlin("jvm") version "2.4.0"
+    kotlin("plugin.serialization") version "2.4.0"
+    id("org.jetbrains.compose") version "1.11.1"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
+    id("dev.nucleusframework") version "2.1.3"
 }
 
 group = "teksturepako"
@@ -53,23 +53,28 @@ dependencies {
      * [release notes](https://github.com/JetBrains/intellij-community/blob/master/platform/jewel/RELEASE%20NOTES.md)
      * [mvn repo](https://mvnrepository.com/artifact/org.jetbrains.jewel/jewel-foundation)
      */
-    val jewel = "0.35.0-261.23567.138"
+    val jewel = "0.37.0-262.4852.51"
 
     implementation("org.jetbrains.jewel:jewel-foundation:$jewel")
 
     implementation("org.jetbrains.jewel:jewel-ui:$jewel")
     implementation("org.jetbrains.jewel:jewel-int-ui-standalone:$jewel")
 
-    // Nucleus Jewel decorated window (replaces jewel-int-ui-decorated-window)
-    implementation("io.github.kdroidfilter:nucleus.decorated-window-jewel:1.14.5")
-    implementation("io.github.kdroidfilter:nucleus.decorated-window-core:1.14.5")
-    implementation("io.github.kdroidfilter:nucleus.decorated-window-jbr:1.14.5")
+    // Nucleus application entry + Jewel toolkit + Tao backend (no AWT)
+    val nucleus = "2.1.9"
+    implementation("dev.nucleusframework:nucleus.nucleus-application:$nucleus")
+    implementation("dev.nucleusframework:nucleus.decorated-window-jewel:$nucleus")
+    implementation("dev.nucleusframework:nucleus.decorated-window-core:$nucleus")
+    implementation("dev.nucleusframework:nucleus.decorated-window-tao:$nucleus")
 
     // Optional: Nucleus core runtime features (dark mode, notifications, etc.)
-    implementation("io.github.kdroidfilter:nucleus.core-runtime:1.14.5")
+    implementation("dev.nucleusframework:nucleus.core-runtime:$nucleus")
+
+    // GraalVM native-image bootstrap (fonts, resources, reachability metadata)
+    implementation("dev.nucleusframework:nucleus.graalvm-runtime:$nucleus")
 
     // Optional: System dark-mode reactive detection
-    implementation("io.github.kdroidfilter:nucleus.darkmode-detector:1.14.5")
+    implementation("dev.nucleusframework:nucleus.darkmode-detector:$nucleus")
 
     // Optional, for markdown renderer
     implementation("org.jetbrains.jewel:jewel-markdown-core:$jewel")
@@ -86,13 +91,10 @@ dependencies {
     implementation(compose.components.resources)
 
     // Compose Preview
-    implementation("org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.7.1")
+    implementation("org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.11.1")
 
     // Navigation
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta01")
-
-    // https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-swing
-    runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
 
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
@@ -100,12 +102,12 @@ dependencies {
     implementation("com.jetbrains.intellij.platform:icons:252.25557.131")
 
     // Pakku
-    implementation("teksturepako.pakku:pakku:1.5.0.319-SNAPSHOT")
+    implementation("teksturepako.pakku:pakku:1.5.0.320-SNAPSHOT")
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // File Kit
+    // File Kit (native dialogs — required on Tao; no AWT JFileChooser)
     implementation("io.github.vinceglb:filekit-core:0.14.1")
     implementation("io.github.vinceglb:filekit-dialogs-compose:0.14.1")
 

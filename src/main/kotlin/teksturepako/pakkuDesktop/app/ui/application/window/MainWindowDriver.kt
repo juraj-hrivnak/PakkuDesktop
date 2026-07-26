@@ -8,12 +8,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
+import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
@@ -23,7 +24,6 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
 import teksturepako.pakkuDesktop.elm.Driver
-import java.awt.Dimension
 
 /**
  * Window state for placement persistence — provided by [mainWindowDriver] for descendants (e.g. windowDiskDriver).
@@ -41,11 +41,12 @@ fun snapshotWindowData(windowState: WindowState) = WindowData(
 )
 
 /**
- * Decorated main window: loads saved [WindowData] once, provides [LocalPakkuApplicationScope] / [LocalWindowState],
- * and forwards native close to the ELM [publish] (same thread as the window; Compose Desktop dispatches on the EDT).
+ * Decorated main window on the Nucleus Tao backend: loads saved [WindowData] once,
+ * provides [LocalPakkuApplicationScope] / [LocalWindowState], and forwards native close
+ * to the ELM [publish].
  */
 fun mainWindowDriver(
-    applicationScope: ApplicationScope,
+    applicationScope: NucleusApplicationScope,
     windowCloseMessage: AppMsg = AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)),
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
     val initialWindowData = remember { WindowData.readOrNewBlocking() }
@@ -63,22 +64,27 @@ fun mainWindowDriver(
 
     val title = model.profile.data.currentProfile?.name ?: appNameWithVersion(model.isProActivated)
 
-    JewelDecoratedWindow(
-        state = windowState,
-        onCloseRequest = { publish(windowCloseMessage) },
-        title = title,
-        icon = painterResource("icons/pakku.svg"),
-    ) {
-        this.window.minimumSize = Dimension(600, 400)
-
-        CompositionLocalProvider(
-            LocalPakkuApplicationScope provides object : PakkuApplicationScope {
-                override val applicationScope = applicationScope
-                override val decoratedWindowScope = this@JewelDecoratedWindow
-            },
-            LocalWindowState provides windowState,
+    with(applicationScope) {
+        JewelDecoratedWindow(
+            state = windowState,
+            onCloseRequest = { publish(windowCloseMessage) },
+            title = title,
+            icon = painterResource("icons/pakku.svg"),
+            minimumSize = DpSize(600.dp, 400.dp),
+            // Compose Popup / PopupMenu layers need native windows under Tao (no AWT).
+            // nativePopupLayers is on DecoratedWindow; Jewel wrapper forwards via NucleusDecoratedWindowFn.
+            // If JewelDecoratedWindow does not expose it yet, Popups still work when drawn inline.
         ) {
-            content()
+            val windowScope = this
+            CompositionLocalProvider(
+                LocalPakkuApplicationScope provides object : PakkuApplicationScope {
+                    override val applicationScope = applicationScope
+                    override val decoratedWindowScope = windowScope
+                },
+                LocalWindowState provides windowState,
+            ) {
+                content()
+            }
         }
     }
 }
