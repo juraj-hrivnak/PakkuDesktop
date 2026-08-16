@@ -1,0 +1,46 @@
+[versions]
+pakku = "1.5.0.320-SNAPSHOT"
+kotlin = "2.4.10"
+compose = "1.11.1"
+nucleus = "2.4.6"
+jewel = "0.39.1-262.9437.29"
+navigation = "2.9.2"
+lifecycle = "2.11.0"
+intellij-icons = "262.9437.214"
+serialization = "1.11.0"
+filekit = "0.15.0"
+klogging = "0.11.8"
+
+[libraries]
+jewel-foundation = { module = "org.jetbrains.jewel:jewel-foundation", version.ref = "jewel" }
+jewel-ui = { module = "org.jetbrains.jewel:jewel-ui", version.ref = "jewel" }
+jewel-int-ui-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+jewel-markdown-core = { module = "org.jetbrains.jewel:jewel-markdown-core", version.ref = "jewel" }
+jewel-markdown-int-ui-standalone-styling = { module = "org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling", version.ref = "jewel" }
+jewel-markdown-extensions-gfm-alerts = { module = "org.jetbrains.jewel:jewel-markdown-extensions-gfm-alerts", version.ref = "jewel" }
+jewel-markdown-extensions-autolink = { module = "org.jetbrains.jewel:jewel-markdown-extensions-autolink", version.ref = "jewel" }
+
+nucleus-application = { module = "dev.nucleusframework:nucleus.nucleus-application", version.ref = "nucleus" }
+nucleus-decorated-window-jewel = { module = "dev.nucleusframework:nucleus.decorated-window-jewel", version.ref = "nucleus" }
+nucleus-decorated-window-core = { module = "dev.nucleusframework:nucleus.decorated-window-core", version.ref = "nucleus" }
+nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorated-window-tao", version.ref = "nucleus" }
+nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
+nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
+nucleus-darkmode-detector = { module = "dev.nucleusframework:nucleus.darkmode-detector", version.ref = "nucleus" }
+
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview-desktop", version.ref = "compose" }
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
+lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+intellij-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij-icons" }
+pakku = { module = "teksturepako.pakku:pakku", version.ref = "pakku" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
+filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+klogging = { module = "io.klogging:klogging-jvm", version.ref = "klogging" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }
