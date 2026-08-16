@@ -11,7 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
@@ -49,8 +51,9 @@ fun PakkuApplicationScope.ModpackView(
     val titleBarHeight = 40.dp
 
     // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
-    val hasNonFileNotFoundError = model.lockFile?.isErr == true &&
-        model.lockFile.getError() !is FileNotFound
+    val hasNonFileNotFoundError =
+        (model.lockFile?.isErr == true && model.lockFile.getError() !is FileNotFound) ||
+            (model.configFile?.isErr == true && model.configFile.getError() !is FileNotFound)
 
     val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
@@ -66,6 +69,7 @@ fun PakkuApplicationScope.ModpackView(
                 ModpackDropdown(publish, model)
                 Pro(appModel) { GitDropdown(publish, model) }
             }
+            McLoaderLabel(model)
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -97,7 +101,7 @@ fun PakkuApplicationScope.ModpackView(
                         Row {
                             when (model.selectedTab) {
                                 SelectedTab.PROJECTS -> ProjectsTab(publish, model)
-                                SelectedTab.MODPACK  -> ModpackTab()
+                                SelectedTab.MODPACK  -> ModpackTab(publish, model)
                                 SelectedTab.COMMIT   -> GitTab(publish, model)
                             }
                         }
@@ -121,4 +125,18 @@ fun PakkuApplicationScope.ModpackView(
             onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
         )
     }
+}
+
+@Composable
+private fun McLoaderLabel(model: ModpackModel)
+{
+    val lockFile = model.lockFile?.get() ?: return
+    val mc = lockFile.getFirstMcVersion() ?: return
+    val loader = lockFile.getLoaders().firstOrNull()
+    val label = if (loader != null) "MC $mc · $loader" else "MC $mc"
+    Text(
+        label,
+        color = JewelTheme.contentColor.copy(alpha = 0.7f),
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
 }

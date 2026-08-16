@@ -17,9 +17,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
-// ---------------------------------------------------------------------------
-// modpackDiskDriver — loads LockFile + ConfigFile when on Modpack screen
-// ---------------------------------------------------------------------------
+// -- modpackDiskDriver --
 
 val modpackDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.screen, model.profile.data.currentProfile) {

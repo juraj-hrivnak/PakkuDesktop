@@ -21,6 +21,7 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.data.workingPath
+import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.TooltipPosition
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
@@ -33,68 +34,72 @@ fun FileHeader(diffContent: DiffContent)
     val file = Path(workingPath).resolve(diffContent.newPath)
     val parentDir = file.parent
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        SelectionContainer {
-            Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                Text(
-                    text = diffContent.newPath,
-                    style = JewelTheme.defaultTextStyle.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    color = diffFileTitleColor(),
-                )
+    HorizontalBar {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(Modifier.weight(1f)) {
+                SelectionContainer {
+                    Column(Modifier.padding(vertical = 2.dp)) {
+                        Text(
+                            text = diffContent.newPath,
+                            style = JewelTheme.defaultTextStyle.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            color = diffFileTitleColor(),
+                        )
 
-                if (diffContent.oldPath != null && diffContent.oldPath != diffContent.newPath)
-                {
-                    Text(
-                        text = "(was: ${diffContent.oldPath})",
-                        style = JewelTheme.defaultTextStyle.copy(fontFamily = FontFamily.Monospace),
-                        color = diffFileSubtitleColor(),
+                        if (diffContent.oldPath != null && diffContent.oldPath != diffContent.newPath)
+                        {
+                            Text(
+                                text = "(was: ${diffContent.oldPath})",
+                                style = JewelTheme.defaultTextStyle.copy(fontFamily = FontFamily.Monospace),
+                                color = diffFileSubtitleColor(),
+                            )
+                        }
+                    }
+                }
+            }
+
+            PkUiTooltip(
+                tooltip = { Text("Open Folder") },
+                position = TooltipPosition.BOTTOM,
+            ) {
+                IconButton(
+                    onClick = {
+                        FileKit.openFileWithDefaultApplication(PlatformFile(parentDir.absolutePathString()))
+                    },
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.General.OpenDisk,
+                        contentDescription = "Open folder",
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
                     )
                 }
             }
-        }
 
-        PkUiTooltip(
-            tooltip = { Text("Open Folder") },
-            position = TooltipPosition.BOTTOM,
-        ) {
-            IconButton(
-                onClick = {
-                    FileKit.openFileWithDefaultApplication(PlatformFile(parentDir.absolutePathString()))
-                },
-                modifier = Modifier.size(26.dp),
+            PkUiTooltip(
+                tooltip = { Text("Open") },
+                position = TooltipPosition.BOTTOM,
             ) {
-                Icon(
-                    key = AllIconsKeys.General.OpenDisk,
-                    contentDescription = "Open folder",
-                    tint = JewelTheme.contentColor,
-                    hints = arrayOf(),
-                )
-            }
-        }
-
-        PkUiTooltip(
-            tooltip = { Text("Open") },
-            position = TooltipPosition.BOTTOM,
-        ) {
-            IconButton(
-                onClick = {
-                    FileKit.openFileWithDefaultApplication(PlatformFile(file.absolutePathString()))
-                },
-                modifier = Modifier.size(26.dp),
-            ) {
-                Icon(
-                    key = AllIconsKeys.Actions.Edit,
-                    contentDescription = "Open",
-                    tint = JewelTheme.contentColor,
-                    hints = arrayOf(),
-                )
+                IconButton(
+                    onClick = {
+                        FileKit.openFileWithDefaultApplication(PlatformFile(file.absolutePathString()))
+                    },
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Edit,
+                        contentDescription = "Open",
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
+                    )
+                }
             }
         }
     }

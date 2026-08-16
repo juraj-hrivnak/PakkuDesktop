@@ -1,15 +1,18 @@
-
 import dev.nucleusframework.desktop.application.dsl.CompressionLevel
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import java.io.FileInputStream
 import java.util.*
 
 plugins {
-    kotlin("jvm") version "2.4.0"
-    kotlin("plugin.serialization") version "2.4.0"
-    id("org.jetbrains.compose") version "1.11.1"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.4.0"
-    id("dev.nucleusframework") version "2.1.3"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.nucleus)
+}
+
+kotlin {
+    jvmToolchain(25)
 }
 
 group = "teksturepako"
@@ -47,40 +50,40 @@ repositories {
 }
 
 dependencies {
+    // Pakku
+    implementation(libs.pakku)
+
     /**
      * Pakku Desktop uses **Jewel**.
      *
      * [release notes](https://github.com/JetBrains/intellij-community/blob/master/platform/jewel/RELEASE%20NOTES.md)
      * [mvn repo](https://mvnrepository.com/artifact/org.jetbrains.jewel/jewel-foundation)
      */
-    val jewel = "0.37.0-262.4852.51"
+    implementation(libs.jewel.foundation)
 
-    implementation("org.jetbrains.jewel:jewel-foundation:$jewel")
-
-    implementation("org.jetbrains.jewel:jewel-ui:$jewel")
-    implementation("org.jetbrains.jewel:jewel-int-ui-standalone:$jewel")
+    implementation(libs.jewel.ui)
+    implementation(libs.jewel.int.ui.standalone)
 
     // Nucleus application entry + Jewel toolkit + Tao backend (no AWT)
-    val nucleus = "2.1.9"
-    implementation("dev.nucleusframework:nucleus.nucleus-application:$nucleus")
-    implementation("dev.nucleusframework:nucleus.decorated-window-jewel:$nucleus")
-    implementation("dev.nucleusframework:nucleus.decorated-window-core:$nucleus")
-    implementation("dev.nucleusframework:nucleus.decorated-window-tao:$nucleus")
+    implementation(libs.nucleus.application)
+    implementation(libs.nucleus.decorated.window.jewel)
+    implementation(libs.nucleus.decorated.window.core)
+    implementation(libs.nucleus.decorated.window.tao)
 
     // Optional: Nucleus core runtime features (dark mode, notifications, etc.)
-    implementation("dev.nucleusframework:nucleus.core-runtime:$nucleus")
+    implementation(libs.nucleus.core.runtime)
 
     // GraalVM native-image bootstrap (fonts, resources, reachability metadata)
-    implementation("dev.nucleusframework:nucleus.graalvm-runtime:$nucleus")
+    implementation(libs.nucleus.graalvm.runtime)
 
     // Optional: System dark-mode reactive detection
-    implementation("dev.nucleusframework:nucleus.darkmode-detector:$nucleus")
+    implementation(libs.nucleus.darkmode.detector)
 
     // Optional, for markdown renderer
-    implementation("org.jetbrains.jewel:jewel-markdown-core:$jewel")
-    implementation("org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling:$jewel")
-    implementation("org.jetbrains.jewel:jewel-markdown-extensions-gfm-alerts:$jewel")
-    implementation("org.jetbrains.jewel:jewel-markdown-extensions-autolink:$jewel")
+    implementation(libs.jewel.markdown.core)
+    implementation(libs.jewel.markdown.int.ui.standalone.styling)
+    implementation(libs.jewel.markdown.extensions.gfm.alerts)
+    implementation(libs.jewel.markdown.extensions.autolink)
 
     // Do not bring in Material (we use Jewel)
     implementation(compose.desktop.currentOs) {
@@ -91,28 +94,25 @@ dependencies {
     implementation(compose.components.resources)
 
     // Compose Preview
-    implementation("org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.11.1")
+    implementation(libs.compose.ui.tooling.preview)
 
     // Navigation
-    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.0-beta01")
+    implementation(libs.navigation.compose)
 
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation(libs.lifecycle.runtime.compose)
 
     // IntelliJ Icons: https://mvnrepository.com/artifact/com.jetbrains.intellij.platform/icons
-    implementation("com.jetbrains.intellij.platform:icons:252.25557.131")
-
-    // Pakku
-    implementation("teksturepako.pakku:pakku:1.5.0.320-SNAPSHOT")
+    implementation(libs.intellij.icons)
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation(libs.kotlinx.serialization.json)
 
     // File Kit (native dialogs — required on Tao; no AWT JFileChooser)
-    implementation("io.github.vinceglb:filekit-core:0.14.1")
-    implementation("io.github.vinceglb:filekit-dialogs-compose:0.14.1")
+    implementation(libs.filekit.core)
+    implementation(libs.filekit.dialogs.compose)
 
     // Logging
-    implementation("io.klogging:klogging-jvm:0.8.0")
+    implementation(libs.klogging)
 }
 
 nucleus.application {
@@ -173,7 +173,7 @@ nucleus.application {
             menuGroup = group.toString()
             shortcut = true
             iconFile.set(project.file("icon.ico"))
-            perUserInstall = true
+            msi.perMachine = false
         }
 
         linux {

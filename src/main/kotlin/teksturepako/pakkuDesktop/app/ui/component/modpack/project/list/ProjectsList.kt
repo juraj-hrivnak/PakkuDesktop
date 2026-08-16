@@ -4,57 +4,87 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilter
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
-fun ProjectsList(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
-    // For shift+click functionality
+fun ProjectsList(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+    filterFocusRequester: FocusRequester,
+) {
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
-    val shiftPressed = remember { mutableStateOf(false) }
 
-    Column {
-        Spacer(Modifier.fillMaxWidth().padding(vertical = 4.dp))
+    val allProjects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val pendingUpdateCount = model.updatePreviews?.count { !it.value.applied }
 
-        // Filter
+    Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            ProjectFilter(publish, model)
+            Text(
+                text = buildString {
+                    append("${allProjects.size} total")
+                    if (pendingUpdateCount != null) {
+                        append(" · ")
+                        append(
+                            when (pendingUpdateCount) {
+                                0 -> "up to date"
+                                1 -> "1 update"
+                                else -> "$pendingUpdateCount updates"
+                            },
+                        )
+                    }
+                },
+                fontSize = 12.sp,
+                color = JewelTheme.contentColor.copy(alpha = 0.55f),
+            )
         }
 
-        // Controls
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            ProjectFilter(
+                publish = publish,
+                model = model,
+                focusRequester = filterFocusRequester,
+            )
+        }
+
         Column {
             ListControls(publish, model, lastClickedIndex)
         }
 
-        Spacer(
-            Modifier.background(borderColor).height(1.dp).fillMaxWidth()
-        )
+        Divider(Orientation.Horizontal)
 
-        // Main content with scrollbar
-        Box(modifier = Modifier.weight(1f)) {
-            ListImpl(publish, model, lastClickedIndex, shiftPressed)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            ListImpl(publish, model, lastClickedIndex)
+            ListFloatingActions(publish, model)
         }
 
-        // Bottom border
-        Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
+        Divider(Orientation.Horizontal)
 
-        // Actions at bottom
         ListActions(publish, model)
     }
 }

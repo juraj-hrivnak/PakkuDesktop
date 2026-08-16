@@ -25,9 +25,7 @@ object NativeGit {
     private const val MAX_RENDERED_LINES = 5_000
     private const val BINARY_PROBE_BYTES = 8_000
 
-    // -------------------------------------------------------------------------
-    // Repository
-    // -------------------------------------------------------------------------
+    // -- Repository --
 
     /**
      * Verifies [path] contains a `.git` directory and returns the working-tree [File].
@@ -38,9 +36,7 @@ object NativeGit {
         workDir
     }
 
-    // -------------------------------------------------------------------------
-    // State
-    // -------------------------------------------------------------------------
+    // -- State --
 
     /**
      * Builds [GitState] purely from native git commands.
@@ -120,9 +116,7 @@ object NativeGit {
             }
     }
 
-    // -------------------------------------------------------------------------
-    // Diff
-    // -------------------------------------------------------------------------
+    // -- Diff --
 
     /**
      * Computes the diff for [gitFile] against HEAD using `git diff`.
@@ -189,6 +183,27 @@ object NativeGit {
         if (!file.exists() || file.length() == 0L) return false
         val probe = file.inputStream().use { it.readNBytes(BINARY_PROBE_BYTES) }
         return probe.any { it == 0.toByte() }
+    }
+
+    /**
+     * Clones [url] into [destDir] (created as the repository root).
+     * Runs `git clone <url> <destDir.name>` in the parent directory.
+     */
+    fun clone(url: String, destDir: File): Result<File> = runCatching {
+        require(url.isNotBlank()) { "Clone URL is blank" }
+        val parent = destDir.parentFile ?: error("Invalid destination: $destDir")
+        parent.mkdirs()
+        require(!destDir.exists() || destDir.list().isNullOrEmpty()) {
+            "Destination already exists and is not empty: $destDir"
+        }
+        val proc = ProcessBuilder("git", "clone", url, destDir.name)
+            .directory(parent)
+            .redirectErrorStream(true)
+            .start()
+        val output = proc.inputStream.bufferedReader().readText()
+        val code = proc.waitFor()
+        check(code == 0) { output.ifBlank { "git clone failed with exit code $code" } }
+        destDir
     }
 
     fun run(workDir: File, vararg args: String, files: Array<out String> = emptyArray()): String? = try {

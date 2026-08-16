@@ -29,9 +29,7 @@ import teksturepako.pakkuDesktop.pro.git.wrapper.NativeGit
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import java.io.File
 
-// ---------------------------------------------------------------------------
-// Repository handle — just the working-tree directory
-// ---------------------------------------------------------------------------
+// -- Repository handle --
 
 private class GitRepoHolder {
     var path: String? = null
@@ -53,9 +51,7 @@ private class GitRepoHolder {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// -- Helpers --
 
 private suspend fun gitToast(publish: (AppMsg) -> Unit, message: String) {
     withContext(Dispatchers.Main) {
@@ -78,9 +74,7 @@ private suspend fun refreshGitState(publish: (AppMsg) -> Unit, workDir: File, pr
     }
 }
 
-// ---------------------------------------------------------------------------
-// Native-git operations with real-time stderr progress
-// ---------------------------------------------------------------------------
+// -- Native-git ops --
 
 /** Regex that matches git's progress lines: "Counting objects:  73% (8/11)". */
 private val GIT_PROGRESS_RE = Regex("""(?:remote:\s+)?(.+?):\s+\d+%\s+\((\d+)/(\d+)\)""")
@@ -227,9 +221,7 @@ private suspend fun runCheckout(publish: (AppMsg) -> Unit, workDir: File, branch
     }
 }
 
-// ---------------------------------------------------------------------------
-// Driver
-// ---------------------------------------------------------------------------
+// -- Driver --
 
 val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val holder = remember { GitRepoHolder() }

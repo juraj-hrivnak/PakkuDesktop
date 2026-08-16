@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +17,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -37,59 +39,83 @@ fun ModpackSideBar(
         Column(
             Modifier
                 .fillMaxHeight()
-                .width(40.dp)
-                .padding(vertical = 4.dp)
+                .width(48.dp)
+                .padding(vertical = 6.dp, horizontal = 4.dp)
                 .background(panelBackground),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            PkUiTooltip({ Text("Projects") }) {
-                IconButton(
-                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
-                    Modifier.size(30.dp),
-                    enabled = modpack.selectedTab != SelectedTab.PROJECTS,
-                ) {
-                    Icon(
-                        key = PakkuDesktopIcons.Modpack.manage,
-                        contentDescription = "projects icon",
-                        tint = if (modpack.selectedTab == SelectedTab.PROJECTS) Color.LightGray else Color.Gray,
-                        hints = arrayOf()
-                    )
-                }
+            RailButton(
+                tooltip = "Projects",
+                selected = modpack.selectedTab == SelectedTab.PROJECTS,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
+            ) {
+                Icon(
+                    key = PakkuDesktopIcons.Modpack.manage,
+                    contentDescription = "projects icon",
+                    tint = it,
+                    hints = arrayOf()
+                )
             }
-            PkUiTooltip({ Text("Modpack") }) {
-                IconButton(
-                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
-                    Modifier.size(30.dp),
-                    enabled = modpack.selectedTab != SelectedTab.MODPACK,
-                ) {
-                    Icon(
-                        key = PakkuDesktopIcons.properties,
-                        contentDescription = "modpack icon",
-                        tint = if (modpack.selectedTab == SelectedTab.MODPACK) Color.LightGray else Color.Gray,
-                        hints = arrayOf()
-                    )
-                }
+            RailButton(
+                tooltip = "Modpack",
+                selected = modpack.selectedTab == SelectedTab.MODPACK,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
+            ) {
+                Icon(
+                    key = PakkuDesktopIcons.properties,
+                    contentDescription = "modpack icon",
+                    tint = it,
+                    hints = arrayOf()
+                )
             }
             Pro(appModel) {
-                PkUiTooltip({ Text("Source control") }) {
-                    IconButton(
-                        onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
-                        Modifier.size(30.dp),
-                        enabled = modpack.selectedTab != SelectedTab.COMMIT,
-                    ) {
-                        Icon(
-                            key = AllIconsKeys.Toolwindows.ToolWindowCommit,
-                            contentDescription = "commit icon",
-                            tint = if (modpack.selectedTab == SelectedTab.COMMIT) Color.LightGray else Color.Gray,
-                            hints = arrayOf()
-                        )
-                    }
+                RailButton(
+                    tooltip = "Source control",
+                    selected = modpack.selectedTab == SelectedTab.COMMIT,
+                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Toolwindows.ToolWindowCommit,
+                        contentDescription = "commit icon",
+                        tint = it,
+                        hints = arrayOf()
+                    )
                 }
             }
         }
         Column {
             Spacer(Modifier.background(borderColor).width(1.dp).fillMaxHeight())
+        }
+    }
+}
+
+@Composable
+private fun RailButton(
+    tooltip: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable (Color) -> Unit,
+)
+{
+    val tint = if (selected) PakkuDesktopConstants.highlightColor else Color.Gray
+    PkUiTooltip({ Text(tooltip) }) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = if (selected) PakkuDesktopConstants.highlightColor.copy(alpha = 0.14f) else Color.Transparent,
+                    shape = RoundedCornerShape(12.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(
+                onClick = onClick,
+                Modifier.size(36.dp),
+                enabled = !selected,
+            ) {
+                icon(tint)
+            }
         }
     }
 }

@@ -6,8 +6,14 @@ package teksturepako.pakkuDesktop.app.ui.application.window
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
@@ -18,8 +24,10 @@ import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.LocalShiftPressed
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
+import teksturepako.pakkuDesktop.app.ui.application.handleAppShortcut
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
@@ -63,6 +71,7 @@ fun mainWindowDriver(
     )
 
     val title = model.profile.data.currentProfile?.name ?: appNameWithVersion(model.isProActivated)
+    var shiftPressed by remember { mutableStateOf(false) }
 
     with(applicationScope) {
         JewelDecoratedWindow(
@@ -71,9 +80,12 @@ fun mainWindowDriver(
             title = title,
             icon = painterResource("icons/pakku.svg"),
             minimumSize = DpSize(600.dp, 400.dp),
-            // Compose Popup / PopupMenu layers need native windows under Tao (no AWT).
-            // nativePopupLayers is on DecoratedWindow; Jewel wrapper forwards via NucleusDecoratedWindowFn.
-            // If JewelDecoratedWindow does not expose it yet, Popups still work when drawn inline.
+            onPreviewKeyEvent = { event ->
+                if (event.type == KeyEventType.KeyDown || event.type == KeyEventType.KeyUp) {
+                    shiftPressed = event.isShiftPressed
+                }
+                handleAppShortcut(event, model, publish)
+            },
         ) {
             val windowScope = this
             CompositionLocalProvider(
@@ -82,6 +94,7 @@ fun mainWindowDriver(
                     override val decoratedWindowScope = windowScope
                 },
                 LocalWindowState provides windowState,
+                LocalShiftPressed provides shiftPressed,
             ) {
                 content()
             }

@@ -14,6 +14,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.app.ui.application.acceleratorLabel
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeDropdownMsg
@@ -27,10 +28,11 @@ val welcomeDropdownComponent = component(
     update = { _, model -> model },
     view = { publish, model ->
         val pickDirectory = LocalPickDirectory.current
+        val dark = model.profileData.intUiTheme.isDark()
 
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
-            menuModifier = Modifier.width(160.dp),
+            menuModifier = Modifier.width(240.dp),
             content = {
                 Row(
                     Modifier.align(Alignment.Center),
@@ -42,20 +44,36 @@ val welcomeDropdownComponent = component(
             },
             menuContent = {
 
-                // -- OPEN --
                 selectableItem(false, onClick = { pickDirectory() }) {
-                    Row {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Icon(
                                 key = PakkuDesktopIcons.open,
                                 contentDescription = null,
                                 modifier = Modifier.size(15.dp),
-                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                                tint = if (dark) Color.White else Color.Black,
                             )
+                            Text("Open...", color = if (dark) Color.White else Color.Black)
                         }
-                        Column {
-                            Text("Open...", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black)
-                        }
+                        Text(acceleratorLabel("O"), color = Color.Gray)
+                    }
+                }
+
+                selectableItem(false, onClick = { publish(WelcomeDropdownMsg.ShowSettings) }) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Settings...", color = if (dark) Color.White else Color.Black)
+                        Text(acceleratorLabel(","), color = Color.Gray)
                     }
                 }
 
@@ -73,7 +91,7 @@ val welcomeDropdownComponent = component(
                             Row {
                                 Column(Modifier.fillMaxWidth(0.2f)) {}
                                 Column {
-                                    Text(profile.name, color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black)
+                                    Text(profile.name, color = if (dark) Color.White else Color.Black)
                                 }
                             }
                         }
@@ -84,9 +102,7 @@ val welcomeDropdownComponent = component(
     },
 )
 
-// ---------------------------------------------------------------------------
-// View entry point
-// ---------------------------------------------------------------------------
+// -- View --
 
 @Composable
 fun WelcomeViewDropdown(

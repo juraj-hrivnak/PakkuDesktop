@@ -38,9 +38,11 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
+import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pro.ui.component.Pro
+import java.nio.file.Files
 
 @Composable
 fun PakkuApplicationScope.WelcomeView(
@@ -99,7 +101,13 @@ fun PakkuApplicationScope.WelcomeView(
         ) {
             FadeIn {
                 ContentBox(
-                    Modifier.fillMaxSize(0.9F).padding(20.dp)
+                    Modifier
+                        .fillMaxSize(0.9F)
+                        .padding(20.dp)
+                        .allowDragAndDrop { paths ->
+                            val firstDir = paths.firstOrNull { Files.isDirectory(it) } ?: return@allowDragAndDrop
+                            appPublish(AppMsg.DirectoryPicked(firstDir.toString()))
+                        },
                 ) {
                     val scrollState = rememberScrollState()
 
@@ -116,7 +124,7 @@ fun PakkuApplicationScope.WelcomeView(
                                 Modifier.padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                             ) {
-                                OutlinedButton(onClick = { publish(WelcomeMsg.ShowNewModpack) }) {
+                                OutlinedButton(onClick = { pickDirectory() }) {
                                     FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalArrangement = Arrangement.Center
@@ -147,7 +155,7 @@ fun PakkuApplicationScope.WelcomeView(
                                     }
                                 }
                                 Pro(appModel) {
-                                    OutlinedButton(onClick = { }) {
+                                    OutlinedButton(onClick = { appPublish(AppMsg.ShowCloneDialog) }) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             verticalArrangement = Arrangement.Center
@@ -160,6 +168,23 @@ fun PakkuApplicationScope.WelcomeView(
                                                 modifier = Modifier.size(15.dp)
                                             )
                                             Text("Clone Repository...")
+                                        }
+                                    }
+                                }
+                                if (appModel.isProActivated != true) {
+                                    OutlinedButton(onClick = { appPublish(AppMsg.ShowActivation) }) {
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                key = AllIconsKeys.General.Vcs,
+                                                contentDescription = "Activate Pakku Pro",
+                                                tint = JewelTheme.contentColor,
+                                                hints = arrayOf(),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text("Activate Pakku Pro...")
                                         }
                                     }
                                 }

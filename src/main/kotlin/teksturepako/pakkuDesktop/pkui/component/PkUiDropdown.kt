@@ -45,9 +45,7 @@ import org.jetbrains.jewel.ui.disabled
 import org.jetbrains.jewel.ui.theme.dropdownStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 
-// ---------------------------------------------------------------------------
-// DropdownHost
-// ---------------------------------------------------------------------------
+// -- DropdownHost --
 
 @Stable
 class DropdownHostState {
@@ -67,9 +65,7 @@ fun DropdownHost(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalDropdownHostState provides hostState) { content() }
 }
 
-// ---------------------------------------------------------------------------
-// PkUiDropdown
-// ---------------------------------------------------------------------------
+// -- PkUiDropdown --
 
 @Composable
 fun PkUiDropdown(
@@ -228,7 +224,7 @@ fun PkUiDropdown(
             }
         }
 
-        // ── Popup — always dark ───────────────────────────────────────────────
+        // -- Popup (always dark) --
         if (expanded) {
             val density = LocalDensity.current
 

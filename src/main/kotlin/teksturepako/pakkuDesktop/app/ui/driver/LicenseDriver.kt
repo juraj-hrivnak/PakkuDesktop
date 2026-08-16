@@ -13,9 +13,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.pro.data.Polar
 
-// ---------------------------------------------------------------------------
-// licenseDriver — startup activation check + license key submission (IO)
-// ---------------------------------------------------------------------------
+// -- licenseDriver --
 
 val licenseDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(Unit) {

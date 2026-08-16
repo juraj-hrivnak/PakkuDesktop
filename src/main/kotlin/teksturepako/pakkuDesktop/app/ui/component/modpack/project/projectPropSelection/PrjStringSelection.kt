@@ -43,12 +43,17 @@ fun NullableProjectStringSelection(
     model: ModpackModel,
 ) {
     if (model.editingProject) {
-        val textFieldState = rememberTextFieldState(
-            model.selectedProject?.let { projectRef(it) }?.get() ?: ""
-        )
+        val initialText = model.selectedProject?.let { projectRef(it) }?.get() ?: ""
+        val textFieldState = rememberTextFieldState(initialText)
+        // Skip the initial composition value — opening Edit must not rewrite config / reload.
+        var seeded by remember { mutableStateOf(false) }
 
         LaunchedEffect(textFieldState.text) {
             val text = textFieldState.text.toString()
+            if (!seeded) {
+                seeded = true
+                return@LaunchedEffect
+            }
             if (text.isNotBlank()) {
                 publish(ModpackMsg.PropertyWriteRequested(PropertyWrite { projectConfigRef.set(this, text) }))
             } else {

@@ -11,49 +11,73 @@ import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 
 sealed interface AppMsg {
 
-    // -----------------------------------------------------------------------
-    // Profile (dispatched by profileDiskDriver)
-    // -----------------------------------------------------------------------
+    // -- Profile --
 
     data class ProfileLoaded(val data: ProfileData) : AppMsg
     data class ProfileCurrentResolved(val data: ProfileData) : AppMsg
     data class ThemeChangeRequested(val theme: IntUiThemes) : AppMsg
     data class ThemeChanged(val data: ProfileData) : AppMsg
 
-    /** Dispatched by directoryPickerDriver when the OS file picker returns. */
+    /** directoryPickerDriver */
     data class DirectoryPicked(val path: String) : AppMsg
 
-    // -----------------------------------------------------------------------
-    // Window (dispatched by windowDiskDriver)
-    // -----------------------------------------------------------------------
+    /** open OS directory picker */
+    data object OpenDirectoryPickerRequested : AppMsg
+
+    /** directoryPickerDriver consumed the request */
+    data object DirectoryPickerLaunched : AppMsg
+
+    // -- Window --
 
     data class WindowLoaded(val data: WindowData) : AppMsg
 
-    // -----------------------------------------------------------------------
-    // Dialog dismissals — dispatched from AppView lambdas
-    // -----------------------------------------------------------------------
+    // -- Dialog dismissals --
 
     data object HideSettings : AppMsg
     data object HideNewModpack : AppMsg
 
-    // -----------------------------------------------------------------------
-    // Close / Quit dialog
-    // -----------------------------------------------------------------------
+    /** credentialsDriver finished loading settings form values */
+    data class CredentialsLoaded(
+        val curseForgeApiKey: String,
+        val gitHubAccessToken: String,
+    ) : AppMsg
+
+    /** credentialsDriver */
+    data class CredentialsUpdateRequested(
+        val curseForgeApiKey: String,
+        val gitHubAccessToken: String,
+    ) : AppMsg
+
+    /** credentialsDriver finished writing credentials */
+    data class CredentialsUpdateHandled(val statusMessage: String) : AppMsg
+
+    data object ShowActivation : AppMsg
+    data object HideActivation : AppMsg
+
+    /** cloneDriver: clone [url] into [destPath], then open */
+    data class CloneRequested(val url: String, val destPath: String) : AppMsg
+    data class CloneFinished(val errorMessage: String?) : AppMsg
+    data object ShowCloneDialog : AppMsg
+    data object HideCloneDialog : AppMsg
+    /** clone dialog Browse… */
+    data object CloneParentPickerRequested : AppMsg
+    data class CloneParentPicked(val path: String) : AppMsg
+    data object CloneParentPickerLaunched : AppMsg
+
+    // -- Close / Quit dialog --
 
     data class RequestCloseDialog(val request: CloseDialogRequest) : AppMsg
     data object DismissCloseDialog : AppMsg
     data object ConfirmCloseDialog : AppMsg
 
-    /** The driver publishes this after saving window data — signals actual quit. */
+    /** after windowDiskDriver save — actually quit */
     data object QuitReady : AppMsg
 
-    // -----------------------------------------------------------------------
-    // Pro (dispatched by licenseDriver)
-    // -----------------------------------------------------------------------
+    // -- Pro --
 
     data class ProActivationChecked(val activated: Boolean?) : AppMsg
 
-    /** Dispatched from the activation UI; fulfilled by licenseDriver. */
+    /** licenseDriver */
     data class LicenseKeySubmit(val key: String) : AppMsg
 
     data class LicenseKeyHandled(
@@ -61,13 +85,8 @@ sealed interface AppMsg {
         val error: ActionError?,
     ) : AppMsg
 
-    // -----------------------------------------------------------------------
-    // Child component message wrappers (fractal delegation)
-    // -----------------------------------------------------------------------
+    // -- Child components --
 
-    /** All messages originating from the Welcome screen. */
     data class Welcome(val msg: WelcomeMsg) : AppMsg
-
-    /** All messages originating from the Modpack screen. */
     data class Modpack(val msg: ModpackMsg) : AppMsg
 }

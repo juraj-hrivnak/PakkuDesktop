@@ -10,26 +10,21 @@ import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import teksturepako.pakkuDesktop.elm.component
 
-// ---------------------------------------------------------------------------
-// welcomeUpdate — delegates dropdown state to welcomeDropdownComponent;
-// all cross-cutting effects (showSettings, pendingPath, etc.) handled by appUpdate.
-// ---------------------------------------------------------------------------
+// -- welcomeUpdate --
 
 fun welcomeUpdate(msg: WelcomeMsg, model: WelcomeModel): WelcomeModel = when (msg) {
-    // Cross-cutting — appUpdate handles; child is inert
+    // parent
     WelcomeMsg.ShowSettings,
     WelcomeMsg.ShowNewModpack,
     is WelcomeMsg.DirectoryPicked,
     is WelcomeMsg.WelcomeDropdown -> model
 }
 
-// ---------------------------------------------------------------------------
-// welcomeComponent
-// ---------------------------------------------------------------------------
+// -- welcomeComponent --
 
 val welcomeComponent = component(
     init = WelcomeModel(),
     update = ::welcomeUpdate,
-    // Real UI is composed from AppComponent (needs app-level AppMsg publish + PakkuApplicationScope).
+    // view in AppComponent
     view = { _, _ -> Spacer(Modifier) },
 )

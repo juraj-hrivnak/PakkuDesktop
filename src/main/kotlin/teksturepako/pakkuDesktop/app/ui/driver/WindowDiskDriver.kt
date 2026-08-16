@@ -14,9 +14,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
-// ---------------------------------------------------------------------------
-// windowDiskDriver — loads window data once; saves + quits when wantsQuit
-// ---------------------------------------------------------------------------
+// -- windowDiskDriver --
 
 fun windowDiskDriver(
     onQuit: () -> Unit,

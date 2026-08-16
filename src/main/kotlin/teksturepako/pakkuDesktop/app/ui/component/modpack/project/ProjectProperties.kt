@@ -42,9 +42,7 @@ fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                                 publish(ModpackMsg.ProjectEditing(true))
                             } else {
                                 publish(ModpackMsg.ProjectEditing(false))
-                                // Trigger reload — modpack disk driver will re-read files
-                                // In fractal model: the driver periodically reloads on screen change
-                                // For explicit reload: we'd need a dedicated message
+                                // disk driver reloads on its own
                             }
                         }
                     )

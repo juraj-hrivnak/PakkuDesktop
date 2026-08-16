@@ -22,10 +22,15 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import java.net.URI
+import java.nio.file.Path
+import kotlin.io.path.toPath
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun DragAndDropTarget(showTargetBorder: MutableState<Boolean>) = remember {
+private fun rememberFilesDropTarget(
+    showTargetBorder: MutableState<Boolean>,
+    onPaths: (List<Path>) -> Unit,
+): DragAndDropTarget = remember(onPaths) {
     object : DragAndDropTarget
     {
         override fun onStarted(event: DragAndDropEvent)
@@ -40,17 +45,14 @@ private fun DragAndDropTarget(showTargetBorder: MutableState<Boolean>) = remembe
 
         override fun onDrop(event: DragAndDropEvent): Boolean
         {
-            println("Action at the target: ${event.action}")
-
             if (event.dragData() !is DragData.FilesList) return false
 
-            val pathUri = (event.dragData() as DragData.FilesList)
+            val paths = (event.dragData() as DragData.FilesList)
                 .readFiles()
-                .first()
-                .let(::URI)
+                .mapNotNull { runCatching { URI(it).toPath() }.getOrNull() }
 
-            println(pathUri.path)
-
+            if (paths.isEmpty()) return false
+            onPaths(paths)
             return true
         }
     }
@@ -58,10 +60,10 @@ private fun DragAndDropTarget(showTargetBorder: MutableState<Boolean>) = remembe
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Modifier.allowDragAndDrop(): Modifier
+fun Modifier.allowDragAndDrop(onPaths: (List<Path>) -> Unit): Modifier
 {
     val showTargetBorder = remember { mutableStateOf(false) }
-    val dragAndDropTarget = DragAndDropTarget(showTargetBorder)
+    val dragAndDropTarget = rememberFilesDropTarget(showTargetBorder, onPaths)
 
     return this
         .then(
@@ -77,4 +79,3 @@ fun Modifier.allowDragAndDrop(): Modifier
             target = dragAndDropTarget
         )
 }
-

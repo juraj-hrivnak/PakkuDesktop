@@ -15,9 +15,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
-// ---------------------------------------------------------------------------
-// projectEditDriver — executes pending project property writes as a side effect
-// ---------------------------------------------------------------------------
+// -- projectEditDriver --
 
 /**
  * Watches [AppModel.modpack]'s pending property write. When non-null:
@@ -43,6 +41,24 @@ val projectEditDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
 
         publish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile)))
         publish(AppMsg.Modpack(ModpackMsg.PropertyWriteCompleted))
+    }
+
+    LaunchedEffect(model.modpack.pendingMetaWrite) {
+        val request    = model.modpack.pendingMetaWrite ?: return@LaunchedEffect
+        val lockFile   = model.modpack.lockFile?.get()   ?: return@LaunchedEffect
+        val configFile = model.modpack.configFile?.get() ?: return@LaunchedEffect
+
+        withContext(Dispatchers.IO) {
+            request.mutate(configFile, lockFile)
+            configFile.write()
+            lockFile.write()
+        }
+
+        val newLockFile   = withContext(Dispatchers.IO) { LockFile.readToResult() }
+        val newConfigFile = withContext(Dispatchers.IO) { ConfigFile.readToResult() }
+
+        publish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile)))
+        publish(AppMsg.Modpack(ModpackMsg.MetaWriteCompleted))
     }
 
     content()

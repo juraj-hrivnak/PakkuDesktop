@@ -34,10 +34,11 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.treeStyle
-import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.animatedColor
+import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitChangelistFlatRow
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
 import teksturepako.pakkuDesktop.pro.git.wrapper.gitChangelistUiSnapshot
@@ -69,6 +70,7 @@ fun GitTab(
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
             state = splitState,
+            dividerStyle = animatedDividerStyle(),
             first = {
                 SourceControlSidePanel(
                     gitState = gitState,
@@ -87,7 +89,7 @@ fun GitTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            firstPaneMinWidth = 280.dp,
+            firstPaneMinWidth = 240.dp,
             secondPaneMinWidth = 200.dp,
             draggableWidth = 16.dp,
         )
@@ -106,8 +108,7 @@ private fun SourceControlSidePanel(
     val selectedCount = gitState.selectedFiles.size
 
     val panelBg = animatedColor(JewelTheme.globalColors.panelBackground)
-    val borderNormal = animatedColor(JewelTheme.globalColors.borders.normal)
-    val borderMuted = animatedColor(JewelTheme.globalColors.borders.disabled)
+    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
 
     val changelistSnapshot = remember(files) { gitChangelistUiSnapshot(files) }
     val folderIds = changelistSnapshot.folderIds
@@ -123,110 +124,48 @@ private fun SourceControlSidePanel(
             .background(panelBg)
             .fillMaxSize(),
     ) {
-        HorizontalBar {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text("Changes", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                text = "SOURCE CONTROL",
-                modifier = Modifier.padding(4.dp),
-                style = JewelTheme.defaultTextStyle.copy(
-                    letterSpacing = 0.6.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = JewelTheme.contentColor.copy(alpha = 0.5f),
+                text = when {
+                    files.isEmpty() -> "no local changes"
+                    files.size == 1 -> "1 file"
+                    else -> "${files.size} files"
+                },
+                fontSize = 12.sp,
+                color = JewelTheme.contentColor.copy(alpha = 0.55f),
             )
-            Spacer(Modifier.weight(1f))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(
-                    enabled = files.isNotEmpty(),
-                    onClick = { publish(ModpackMsg.GitSelectAllChangedFiles) },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Selectall,
-                        contentDescription = "Select all",
-                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                        hints = arrayOf(),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(
-                    enabled = selectedCount > 0,
-                    onClick = { publish(ModpackMsg.GitClearChangedFileSelection) },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Unselectall,
-                        contentDescription = "Clear selection",
-                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                        hints = arrayOf(),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(
-                    enabled = files.isNotEmpty() && folderIds.isNotEmpty(),
-                    onClick = { publish(ModpackMsg.GitChangelistExpandAllFolders) },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Expandall,
-                        contentDescription = "Expand all",
-                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                        hints = arrayOf(),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(
-                    enabled = files.isNotEmpty() && folderIds.isNotEmpty(),
-                    onClick = { publish(ModpackMsg.GitChangelistCollapseAllFolders) },
-                ) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Collapseall,
-                        contentDescription = "Collapse all",
-                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                        hints = arrayOf(),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
         }
 
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Changes",
-                    style = JewelTheme.defaultTextStyle.copy(
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = JewelTheme.contentColor,
-                )
-                if (files.isNotEmpty()) {
-                    Text(
-                        text = "  ${files.size}",
-                        style = JewelTheme.defaultTextStyle,
-                        color = JewelTheme.contentColor.copy(alpha = 0.45f),
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Spacer(
-                Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(borderMuted),
-            )
-        }
+        ChangelistToolbar(
+            filesEmpty = files.isEmpty(),
+            selectedCount = selectedCount,
+            hasFolders = folderIds.isNotEmpty(),
+            publish = publish,
+        )
+
+        Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
 
         if (files.isEmpty()) {
             Text(
                 text = "No local changes",
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 18.dp)
+                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp)
                     .fillMaxWidth(),
                 style = JewelTheme.defaultTextStyle,
-                color = JewelTheme.globalColors.text.disabled,
+                color = JewelTheme.contentColor.copy(alpha = 0.55f),
             )
             Text(
                 text = "Edits to tracked files and new files will appear in this list.",
-                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
+                    .fillMaxWidth(),
                 style = JewelTheme.defaultTextStyle,
                 color = JewelTheme.contentColor.copy(alpha = 0.45f),
             )
@@ -263,19 +202,82 @@ private fun SourceControlSidePanel(
             }
         }
 
-        Spacer(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(borderNormal),
-        )
+        Spacer(Modifier.background(borderColor).height(1.dp).fillMaxWidth())
 
         CommitPanel(
             gitState = gitState,
             publish = publish,
             canCommit = selectedCount > 0 && gitState.commitMessage.isNotBlank(),
+            selectedCount = selectedCount,
+            totalCount = files.size,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+@Composable
+private fun ChangelistToolbar(
+    filesEmpty: Boolean,
+    selectedCount: Int,
+    hasFolders: Boolean,
+    publish: (ModpackMsg) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            enabled = !filesEmpty,
+            onClick = { publish(ModpackMsg.GitSelectAllChangedFiles) },
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Selectall,
+                contentDescription = "Select all",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        IconButton(
+            enabled = selectedCount > 0,
+            onClick = { publish(ModpackMsg.GitClearChangedFileSelection) },
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Unselectall,
+                contentDescription = "Clear selection",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(
+            enabled = !filesEmpty && hasFolders,
+            onClick = { publish(ModpackMsg.GitChangelistExpandAllFolders) },
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Expandall,
+                contentDescription = "Expand all",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        IconButton(
+            enabled = !filesEmpty && hasFolders,
+            onClick = { publish(ModpackMsg.GitChangelistCollapseAllFolders) },
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Collapseall,
+                contentDescription = "Collapse all",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -419,7 +421,7 @@ private fun ChangelistFileRow(
     val label = gitStatusLetter(status)
     val statusColor = gitStatusColor(status)
     val pathLabel = file.path.substringAfterLast('/').ifEmpty { file.path }
-    val stripe = if (isViewed) JewelTheme.globalColors.outlines.focused else Color.Transparent
+    val stripe = if (isViewed) PakkuDesktopConstants.highlightColor else Color.Transparent
     val bg = changelistRowBackground(
         selectedForDiff = isViewed,
         hovered = hovered,
@@ -511,7 +513,10 @@ private fun SelectionStripe(color: Color, selectedForDiff: Boolean) {
         Modifier
             .width(ChangelistSelectionStripeWidth)
             .fillMaxHeight()
-            .background(if (selectedForDiff) color else Color.Transparent),
+            .background(
+                if (selectedForDiff) PakkuDesktopConstants.highlightColor
+                else Color.Transparent,
+            ),
     )
 }
 
@@ -524,8 +529,7 @@ private fun changelistRowBackground(
 ): Color {
     val content = JewelTheme.contentColor
     val panel = JewelTheme.globalColors.panelBackground
-    val focus = JewelTheme.globalColors.outlines.focused
-    val selectedFill = lerp(panel, focus, if (JewelTheme.isDark) 0.22f else 0.16f)
+    val selectedFill = PakkuDesktopConstants.highlightColor.copy(alpha = if (JewelTheme.isDark) 0.14f else 0.10f)
     val hoverFill = content.copy(alpha = if (JewelTheme.isDark) 0.07f else 0.06f)
     val folderFill = lerp(panel, content, if (JewelTheme.isDark) 0.06f else 0.04f)
     return when {
@@ -570,20 +574,24 @@ private fun CommitPanel(
     gitState: GitState,
     publish: (ModpackMsg) -> Unit,
     canCommit: Boolean,
+    selectedCount: Int,
+    totalCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = "Commit",
-            style = JewelTheme.defaultTextStyle.copy(
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = JewelTheme.contentColor,
-        )
-        Spacer(Modifier.height(8.dp))
+    val selectionLabel = when {
+        totalCount == 0 -> "0 of 0 selected"
+        selectedCount == 0 -> "0 of $totalCount selected"
+        selectedCount == totalCount -> "All $selectedCount of $totalCount selected"
+        else -> "$selectedCount of $totalCount selected"
+    }
 
+    Column(
+        modifier = modifier.padding(
+            horizontal = PakkuDesktopConstants.commonPaddingSize,
+            vertical = 10.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         val textFieldState = rememberTextFieldState(gitState.commitMessage)
 
         LaunchedEffect(gitState.commitMessage) {
@@ -604,34 +612,40 @@ private fun CommitPanel(
             textFieldState,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp, max = 120.dp)
-                .padding(vertical = 4.dp),
-            placeholder = { Text("Summary") },
+                .heightIn(min = 48.dp, max = 100.dp),
+            placeholder = { Text("Commit message") },
         )
 
-        Text(
-            text = "Only checked files will be included in the commit.",
-            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-            style = JewelTheme.defaultTextStyle,
-            color = JewelTheme.globalColors.text.disabled,
-        )
-
-        DefaultButton(
-            enabled = canCommit,
-            onClick = { publish(ModpackMsg.GitCommitRequested) },
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Text(
+                text = selectionLabel,
+                color = JewelTheme.contentColor.copy(alpha = 0.7f),
+                fontSize = 12.5.sp,
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            DefaultButton(
+                enabled = canCommit,
+                onClick = { publish(ModpackMsg.GitCommitRequested) },
             ) {
-                Icon(
-                    key = AllIconsKeys.Actions.Commit,
-                    contentDescription = null,
-                    tint = JewelTheme.contentColor,
-                    hints = arrayOf(),
-                    modifier = Modifier.size(16.dp),
-                )
-                Text("Commit")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Commit,
+                        contentDescription = null,
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text("Commit")
+                }
             }
         }
     }

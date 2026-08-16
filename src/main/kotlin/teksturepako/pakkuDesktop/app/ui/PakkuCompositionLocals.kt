@@ -11,3 +11,6 @@ import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
     error("LocalPakkuApplicationScope not provided — mainWindowDriver must wrap the tree")
 }
+
+/** True while Shift is held (updated from the main window key preview). */
+val LocalShiftPressed = compositionLocalOf { false }

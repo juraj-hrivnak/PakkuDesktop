@@ -18,22 +18,25 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import teksturepako.pakku.api.data.ConfigFile
+import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakkuDesktop.app.actions.addSuspend
+import teksturepako.pakkuDesktop.app.actions.applyAdditionPlan
+import teksturepako.pakkuDesktop.app.actions.checkUpdatesSuspend
 import teksturepako.pakkuDesktop.app.actions.exportSuspend
+import teksturepako.pakkuDesktop.app.actions.fetchSuspend
+import teksturepako.pakkuDesktop.app.actions.updateSuspend
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
-// ---------------------------------------------------------------------------
-// CompositionLocal — provided to the whole view tree by actionDriver
-// ---------------------------------------------------------------------------
+// -- CompositionLocal --
 
 /** Provides a function to launch a named action (suspend block). */
 val LocalLaunchAction = compositionLocalOf<(name: String, block: suspend () -> Unit) -> Unit> { { _, _ -> } }
 
-// ---------------------------------------------------------------------------
-// actionDriver — owns the running action coroutine
-// ---------------------------------------------------------------------------
+// -- actionDriver --
 
 val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val latestPublish by rememberUpdatedState(publish)
@@ -71,6 +74,107 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
+    // React to fetch intent
+    LaunchedEffect(model.modpack.wantsFetch) {
+        if (!model.modpack.wantsFetch) return@LaunchedEffect
+        val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        launchAction("Fetching") {
+            fetchSuspend(lockFile, configFile) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+        }
+    }
+
+    // React to update intent
+    LaunchedEffect(model.modpack.wantsUpdate) {
+        if (!model.modpack.wantsUpdate) return@LaunchedEffect
+        val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val ids = latestModel.modpack.selectedPakkuIds
+        val projects = lockFile.getAllProjects().filter { it.pakkuId in ids }
+        launchAction("Updating") {
+            val updatedIds = updateSuspend(
+                lockFile = lockFile,
+                configFile = configFile,
+                projects = projects,
+                updatePreviews = latestModel.modpack.updatePreviews,
+            ) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            // Reload after update writes the lock file; keep status previews and mark applied.
+            val newLockFile = LockFile.readToResult()
+            val newConfigFile = ConfigFile.readToResult()
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = true)))
+                if (updatedIds.isNotEmpty()) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.UpdatesApplied(updatedIds)))
+                }
+            }
+        }
+    }
+
+    // React to status check (pakku status — no lock write)
+    LaunchedEffect(model.modpack.wantsStatusCheck) {
+        if (!model.modpack.wantsStatusCheck) return@LaunchedEffect
+        val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get()
+        launchAction("Checking updates") {
+            val previews = checkUpdatesSuspend(lockFile, configFile) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.StatusCheckCompleted(previews)))
+            }
+        }
+    }
+
+    // DnD / auto add from query
+    LaunchedEffect(model.modpack.pendingAddQuery) {
+        val query = model.modpack.pendingAddQuery ?: return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        launchAction("Adding") {
+            addSuspend(lockFile, configFile, query) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            val newLockFile = LockFile.readToResult()
+            val newConfigFile = ConfigFile.readToResult()
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
+            }
+        }
+    }
+
+    // Confirmed addition plan from Add popup
+    LaunchedEffect(model.modpack.pendingAdditionPlan) {
+        val plan = model.modpack.pendingAdditionPlan ?: return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        launchAction("Adding") {
+            applyAdditionPlan(lockFile, configFile, plan) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            val newLockFile = LockFile.readToResult()
+            val newConfigFile = ConfigFile.readToResult()
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
+            }
+        }
+    }
+
     // React to terminate request
     LaunchedEffect(model.modpack.wantsTerminateAction) {
         if (!model.modpack.wantsTerminateAction) return@LaunchedEffect
@@ -83,4 +187,3 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         content()
     }
 }
-

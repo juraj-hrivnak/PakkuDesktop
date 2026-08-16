@@ -6,9 +6,7 @@ package teksturepako.pakkuDesktop.pro.git.wrapper
 
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 
-// ---------------------------------------------------------------------------
-// Pure changelist tree — immutable data, folds / maps only (no shared mutation)
-// ---------------------------------------------------------------------------
+// -- Changelist tree --
 
 /** Stable when only [GitFile.status] etc. changes; used to preserve expand/collapse. */
 fun gitChangelistPathsKey(files: List<GitFile>): String =

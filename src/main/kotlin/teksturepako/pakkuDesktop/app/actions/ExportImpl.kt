@@ -38,8 +38,7 @@ import kotlin.time.Duration
 val logger = logger("ExportImpl")
 
 /**
- * Pure suspend export implementation — no ViewModels, no global state.
- * The [onToast] callback is provided by the actionDriver to surface results.
+ * Pure suspend export — [onToast] from actionDriver.
  */
 suspend fun exportSuspend(
     lockFile: LockFile,
@@ -47,17 +46,16 @@ suspend fun exportSuspend(
     onToast: suspend (ToastData) -> Unit,
 ) {
     val platforms = lockFile.getPlatforms().getOrElse { error ->
-        onToast(errorToast(error.rawMessage))
+        onToast(actionErrorToast(error))
         return
     }
 
     exportDefaultProfiles(
         onError = { profile: ExportProfile, error: ActionError ->
-            if (error !is AlreadyExists) {
-                val message = "[${profile.name} profile] ${error.rawMessage}"
-                logger.error(message)
-                onToast(errorToast("[${profile.name} profile]\n${error.rawMessage}"))
-            }
+            // Same as CLI: skip AlreadyExists (export file already present).
+            if (error is AlreadyExists) return@exportDefaultProfiles
+            logger.error { "[${profile.name} profile] ${error.toUiMessage()}" }
+            onToast(actionErrorToast("[${profile.name} profile]", error))
         },
         onSuccess = { profile: ExportProfile, path: Path, duration: Duration ->
             val fileSize = path.fileSize().toHumanReadableSize()
@@ -85,9 +83,3 @@ suspend fun exportSuspend(
         lockFile, configFile, platforms,
     ).joinAll()
 }
-
-private fun errorToast(message: String) = ToastData(content = {
-    Box(Modifier.padding(16.dp).width(300.dp)) {
-        Text(message)
-    }
-})

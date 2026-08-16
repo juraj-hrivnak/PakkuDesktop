@@ -7,8 +7,12 @@ package teksturepako.pakkuDesktop.pkui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -22,17 +26,25 @@ import teksturepako.pakkuDesktop.app.ui.component.text.Header
 /**
  * In-window modal dialog. Uses [Popup] (not AWT [androidx.compose.ui.window.Dialog])
  * so it works on the Nucleus Tao backend.
+ *
+ * **Esc** dismisses; **Enter** invokes [onConfirm] when provided.
  */
 @Composable
 fun PkUiDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
     title: String? = null,
+    onConfirm: (() -> Unit)? = null,
     maxWidth: Dp = 1200.dp,
     maxHeight: Dp = 2000.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     if (!visible) return
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(visible) {
+        if (visible) runCatching { focusRequester.requestFocus() }
+    }
 
     Popup(
         alignment = Alignment.Center,
@@ -46,7 +58,9 @@ fun PkUiDialog(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f)),
+                .background(Color.Black.copy(alpha = 0.35f))
+                .focusRequester(focusRequester)
+                .dialogConfirmCancelKeys(onDismiss = onDismiss, onConfirm = onConfirm),
             contentAlignment = Alignment.Center,
         ) {
             ContentBox(

@@ -23,6 +23,8 @@ import teksturepako.pakkuDesktop.app.ui.driver.*
 import teksturepako.pakkuDesktop.elm.run
 
 fun main() {
+    println(System.getenv("LD_LIBRARY_PATH"))
+
     loggingConfiguration {
         ANSI_CONSOLE()
         sink(
@@ -50,7 +52,9 @@ fun main() {
                 themeDriver,
                 mainWindowDriver(applicationScope = this),
                 themedBoxDriver,
+                clipboardDriver,
                 profileDiskDriver,
+                projectsUiDiskDriver,
                 modpackDiskDriver,
                 gitDriver,
                 windowDiskDriver(
@@ -63,6 +67,9 @@ fun main() {
                 licenseDriver,
                 actionDriver,
                 projectEditDriver,
+                projectMutationDriver,
+                credentialsDriver,
+                cloneDriver,
             ),
         )
     }

@@ -9,7 +9,10 @@ import org.jetbrains.jewel.foundation.BorderColors
 import org.jetbrains.jewel.foundation.GlobalColors
 import org.jetbrains.jewel.foundation.OutlineColors
 import org.jetbrains.jewel.foundation.TextColors
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.ThemeColorPalette
+import org.jetbrains.jewel.intui.core.theme.IntUiLightTheme
+import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 
 val PakkuDarkGlobalColors = GlobalColors(
     borders = BorderColors(
@@ -36,6 +39,8 @@ val PakkuDarkGlobalColors = GlobalColors(
     panelBackground      = Color(0xFF1E1F22),
     toolwindowBackground = Color.Unspecified,
 )
+
+val test = IntUiLightTheme.colors
 
 /**
  * A custom dark color palette for Pakku Desktop.
@@ -266,4 +271,5 @@ val PakkuDarkColorPalette: ThemeColorPalette =
                 "Teal11" to Color(0xFF9BDDD6),
                 "Teal12" to Color(0xFFB9EBE6),
             ),
+        isIslands = false,
     )

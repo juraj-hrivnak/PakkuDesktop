@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
@@ -21,7 +22,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pro.ui.component.license.LicenseKeyField
 
-/** Not wired into navigation yet; callers pass app state explicitly (no CompositionLocals). */
+/** Pakku Pro license activation screen. */
 @Composable
 fun PakkuApplicationScope.ActivationView(
     appPublish: (AppMsg) -> Unit,
@@ -71,11 +72,19 @@ fun PakkuApplicationScope.ActivationView(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.Top,
         ) {
-            LicenseKeyField(
-                isProActivated = isProActivated,
-                licenseKeyError = licenseKeyError,
-                onSubmitLicenseKey = { key -> appPublish(AppMsg.LicenseKeySubmit(key)) },
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                LicenseKeyField(
+                    isProActivated = isProActivated,
+                    licenseKeyError = licenseKeyError,
+                    onSubmitLicenseKey = { key -> appPublish(AppMsg.LicenseKeySubmit(key)) },
+                )
+                OutlinedButton(
+                    onClick = { appPublish(AppMsg.HideActivation) },
+                    modifier = Modifier.padding(top = 16.dp),
+                ) {
+                    Text("Back")
+                }
+            }
         }
     }
 }

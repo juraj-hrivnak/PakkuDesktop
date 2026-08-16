@@ -23,9 +23,7 @@ import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// -- Component --
 
 val gitDropdownComponent = component(
     init = GitDropdownModel(),
@@ -33,7 +31,7 @@ val gitDropdownComponent = component(
         when (msg) {
             GitDropdownMsg.ShowPushDialog -> model.copy(pushDialogVisible = true)
             GitDropdownMsg.HidePushDialog -> model.copy(pushDialogVisible = false)
-            // Cross-cutting — parent handles
+            // parent
             GitDropdownMsg.PullRequested,
             GitDropdownMsg.PushRequested,
             is GitDropdownMsg.TabSelected,
@@ -137,9 +135,7 @@ val gitDropdownComponent = component(
     },
 )
 
-// ---------------------------------------------------------------------------
-// View entry point
-// ---------------------------------------------------------------------------
+// -- View --
 
 @Composable
 fun GitDropdown(

@@ -24,9 +24,7 @@ import kotlin.io.path.pathString
 
 private val logger = logger("ProfileDiskDriver")
 
-// ---------------------------------------------------------------------------
-// profileDiskDriver — loads profile on startup, saves when changed
-// ---------------------------------------------------------------------------
+// -- profileDiskDriver --
 
 val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // Load once on startup
@@ -90,7 +88,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    // Navigate to Welcome when current profile is cleared (driver saves the cleared state)
+    // back to Welcome when current profile is cleared
     LaunchedEffect(model.profile.data.currentProfile, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
         if (model.profile.data.currentProfile == null && model.screen == AppScreen.Welcome) {

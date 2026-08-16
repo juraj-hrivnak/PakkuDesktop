@@ -14,6 +14,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
+import teksturepako.pakkuDesktop.app.ui.application.acceleratorLabel
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
@@ -22,27 +23,27 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// -- Component --
 
 val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMsg>(
     init = ModpackDropdownModel(),
     update = { msg, model ->
         when (msg) {
-            // Cross-cutting — parent handles
             is ModpackDropdownMsg.CloseRequested,
             ModpackDropdownMsg.Export,
+            ModpackDropdownMsg.Fetch,
+            ModpackDropdownMsg.ShowSettings,
             is ModpackDropdownMsg.DirectoryPicked -> model
         }
     },
     view = { publish, model ->
         val pickDirectory = LocalPickDirectory.current
+        val dark = model.profileData.intUiTheme.isDark()
 
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
             enabled = model.enabled,
-            menuModifier = Modifier.width(200.dp),
+            menuModifier = Modifier.width(260.dp),
             content = {
                 Row(
                     Modifier.align(Alignment.Center),
@@ -54,65 +55,82 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
             },
             menuContent = {
 
-                // -- OPEN --
                 selectableItem(false, onClick = { pickDirectory() }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
+                    DropdownRow(
+                        icon = {
                             Icon(
                                 key = PakkuDesktopIcons.open,
                                 contentDescription = null,
                                 modifier = Modifier.size(15.dp),
-                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                                tint = if (dark) Color.White else Color.Black,
                             )
-                        }
-                        Column { Text("Open...", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                    }
+                        },
+                        label = "Open...",
+                        shortcut = acceleratorLabel("O"),
+                        dark = dark,
+                    )
                 }
 
-                // -- CLOSE --
                 selectableItem(false, onClick = { publish(ModpackDropdownMsg.CloseRequested()) }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {}
-                        Column { Text("Close", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                    }
+                    DropdownRow(
+                        label = "Close",
+                        shortcut = acceleratorLabel("W"),
+                        dark = dark,
+                    )
                 }
 
                 separator()
 
-                // -- EXPORT --
+                selectableItem(false, onClick = { publish(ModpackDropdownMsg.ShowSettings) }) {
+                    DropdownRow(
+                        label = "Settings...",
+                        shortcut = acceleratorLabel(","),
+                        dark = dark,
+                    )
+                }
+
+                separator()
+
                 selectableItem(
                     selected = false,
                     onClick = { publish(ModpackDropdownMsg.Export) },
                     enabled = model.actionEnabled,
                 ) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
+                    DropdownRow(
+                        icon = {
                             Icon(
                                 key = PakkuDesktopIcons.cube,
                                 "export",
                                 modifier = Modifier.size(15.dp),
-                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                                tint = if (dark) Color.White else Color.Black,
                             )
-                        }
-                        Column { Text("Export", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                    }
+                        },
+                        label = "Export",
+                        shortcut = acceleratorLabel("E"),
+                        dark = dark,
+                    )
                 }
 
                 separator()
 
-                // -- FETCH --
-                selectableItem(false, onClick = { }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
+                selectableItem(
+                    selected = false,
+                    onClick = { publish(ModpackDropdownMsg.Fetch) },
+                    enabled = model.actionEnabled,
+                ) {
+                    DropdownRow(
+                        icon = {
                             Icon(
                                 key = PakkuDesktopIcons.cloudDownload,
                                 contentDescription = "fetch",
                                 Modifier.size(15.dp),
-                                tint = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black,
+                                tint = if (dark) Color.White else Color.Black,
                             )
-                        }
-                        Column { Text("Fetch", color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                    }
+                        },
+                        label = "Fetch",
+                        shortcut = acceleratorLabel("Shift+F"),
+                        dark = dark,
+                    )
                 }
 
                 if (model.profileData.recentProfilesFiltered.isNotEmpty()) {
@@ -126,10 +144,10 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
 
                     model.profileData.recentProfilesFiltered.forEach { profile ->
                         selectableItem(false, onClick = { publish(ModpackDropdownMsg.DirectoryPicked(profile.path)) }) {
-                            Row(Modifier.padding(2.dp)) {
-                                Column(Modifier.fillMaxWidth(0.2f)) {}
-                                Column { Text(profile.name, color = if (model.profileData.intUiTheme.isDark()) Color.White else Color.Black) }
-                            }
+                            DropdownRow(
+                                label = profile.name,
+                                dark = dark,
+                            )
                         }
                     }
                 }
@@ -138,9 +156,35 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
     },
 )
 
-// ---------------------------------------------------------------------------
-// View entry point
-// ---------------------------------------------------------------------------
+@Composable
+private fun DropdownRow(
+    label: String,
+    dark: Boolean,
+    shortcut: String? = null,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    val color = if (dark) Color.White else Color.Black
+    Row(
+        Modifier.fillMaxWidth().padding(2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) {
+                icon?.invoke()
+            }
+            Text(label, color = color)
+        }
+        shortcut?.let {
+            Text(it, color = Color.Gray)
+        }
+    }
+}
+
+// -- View --
 
 @Composable
 fun ModpackDropdown(

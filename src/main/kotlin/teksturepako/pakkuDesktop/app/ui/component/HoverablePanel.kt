@@ -41,6 +41,13 @@ fun HoverablePanel(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 16.dp,
     scaleOnHover: Boolean = true,
+    /** Hover scale — home cards use 1.02; small FABs need more to read the same. */
+    hoverScale: Float = 1.02f,
+    pressedScale: Float = 0.98f,
+    enabled: Boolean = true,
+    /** Outer spacing that grows with [scale] (layout size change on hover). */
+    surroundPadding: Dp = 16.dp,
+    contentPadding: Dp = 4.dp,
     onClick: () -> Unit = { },
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -56,8 +63,9 @@ fun HoverablePanel(
 
     val scale by animateFloatAsState(
         targetValue = when {
-            isPressed -> 0.98f
-            isHovered && scaleOnHover -> 1.02f
+            !enabled -> 1f
+            isPressed -> pressedScale
+            isHovered && scaleOnHover -> hoverScale
             else -> 1f
         },
         animationSpec = spring(
@@ -68,6 +76,7 @@ fun HoverablePanel(
 
     val glowAlpha by animateFloatAsState(
         targetValue = when {
+            !enabled -> 0f
             isPressed -> 0.4f
             isHovered -> 0.3f
             else -> 0f
@@ -78,9 +87,8 @@ fun HoverablePanel(
         )
     )
 
-    // Animate the glow position
     val animatedGlowPosition by animateOffsetAsState(
-        targetValue = if (isHovered) mousePosition else Offset(boxSize.x / 2, boxSize.y / 2),
+        targetValue = if (isHovered && enabled) mousePosition else Offset(boxSize.x / 2, boxSize.y / 2),
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = 120f
@@ -88,18 +96,26 @@ fun HoverablePanel(
     )
 
     Box(
-        modifier = Modifier.padding(16.dp * scale)
+        modifier = Modifier.padding(surroundPadding * scale)
     ) {
         Box(
             modifier = modifier then Modifier
-                .padding(4.dp * scale)
-                .hoverable(interactionSource)
+                .padding(contentPadding * scale)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(0.5f, 0.5f)
+                    alpha = if (enabled) 1f else 0.55f
+                }
+                .hoverable(interactionSource, enabled)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
+                    enabled = enabled,
                     onClick = onClick
                 )
-                .pointerInput(Unit) {
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent()
@@ -116,20 +132,14 @@ fun HoverablePanel(
                         }
                     }
                 }
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0.5f, 0.5f)
-                }
                 .shadow(
                     elevation = JewelTheme.tooltipStyle.metrics.shadowSize,
-                    shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+                    shape = RoundedCornerShape(cornerRadius),
                     ambientColor = shadowColor,
                 )
                 .clip(RoundedCornerShape(cornerRadius))
                 .background(panelBackground)
                 .drawBehind {
-                    // Border
                     drawRoundRect(
                         color = PakkuDesktopConstants.highlightColor.copy(
                             alpha = if (isPressed) 0.4f else 0.3f
@@ -138,10 +148,8 @@ fun HoverablePanel(
                         style = Stroke(width = 1f)
                     )
 
-                    // Glow effect that follows mouse
                     if (glowAlpha > 0f) {
                         val center = Offset(
-                            // Interpolate between center and mouse position
                             size.width / 2 + (animatedGlowPosition.x - size.width / 2) * 0.3f,
                             size.height / 2 + (animatedGlowPosition.y - size.height / 2) * 0.3f
                         )

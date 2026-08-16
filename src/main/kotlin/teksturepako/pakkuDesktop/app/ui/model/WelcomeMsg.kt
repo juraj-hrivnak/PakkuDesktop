@@ -6,28 +6,24 @@ package teksturepako.pakkuDesktop.app.ui.model
 
 import teksturepako.pakkuDesktop.app.data.ProfileData
 
-// ---------------------------------------------------------------------------
-// WelcomeDropdown child model & messages
-// ---------------------------------------------------------------------------
+// -- WelcomeDropdown --
 
 data class WelcomeDropdownModel(
     val profileData: ProfileData = ProfileData(),
 )
 
 sealed interface WelcomeDropdownMsg {
-    // Cross-cutting — parent handles, child returns model unchanged
+    // parent
     data object NewModpack : WelcomeDropdownMsg
+    data object ShowSettings : WelcomeDropdownMsg
     data class RecentProfile(val path: String) : WelcomeDropdownMsg
 }
 
-// ---------------------------------------------------------------------------
-// WelcomeMsg
-// ---------------------------------------------------------------------------
+// -- WelcomeMsg --
 
 sealed interface WelcomeMsg {
     data object ShowNewModpack : WelcomeMsg
     data object ShowSettings : WelcomeMsg
     data class DirectoryPicked(val path: String) : WelcomeMsg
-    /** Fractal delegation — wraps all WelcomeDropdown child messages. */
     data class WelcomeDropdown(val msg: WelcomeDropdownMsg) : WelcomeMsg
 }

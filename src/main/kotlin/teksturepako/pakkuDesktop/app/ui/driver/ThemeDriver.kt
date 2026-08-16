@@ -24,9 +24,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
-// ---------------------------------------------------------------------------
-// themeDriver — wraps content with the correct IntUiTheme
-// ---------------------------------------------------------------------------
+// -- themeDriver --
 
 val themeDriver: Driver<AppModel, AppMsg> = { _, model, content ->
     val textStyle = JewelTheme.createDefaultTextStyle(fontFamily = FontFamily.Default)
