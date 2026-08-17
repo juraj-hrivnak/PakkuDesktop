@@ -12,5 +12,7 @@ val LocalPakkuApplicationScope = compositionLocalOf<PakkuApplicationScope> {
     error("LocalPakkuApplicationScope not provided — mainWindowDriver must wrap the tree")
 }
 
-/** True while Shift is held (updated from the main window key preview). */
-val LocalShiftPressed = compositionLocalOf { false }
+/** Shift-key tracker — read [ShiftKeyState.pressed]; do not push the boolean through CompositionLocal directly. */
+val LocalShiftKeyState = compositionLocalOf<ShiftKeyState> {
+    error("LocalShiftKeyState not provided — mainWindowDriver must wrap the tree")
+}

@@ -37,6 +37,7 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 
 /**
  * Pack metadata string field. Commits on focus loss or Enter — not on every keystroke.
@@ -160,6 +161,7 @@ fun ModpackChoiceCombo(
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
+                listState = rememberListComboBoxState(options, selectedIndex),
             )
         } else {
             Text(

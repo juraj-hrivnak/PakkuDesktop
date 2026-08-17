@@ -4,12 +4,15 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,12 +21,13 @@ import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.app.actions.uiKey
-import teksturepako.pakkuDesktop.app.ui.LocalShiftPressed
+import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
-import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
+
+private const val ProjectCardDoubleClickMs = 280L
 
 @Composable
 fun ListImpl(
@@ -33,7 +37,7 @@ fun ListImpl(
 )
 {
     val lockFile = model.lockFile?.get() ?: return
-    val shiftPressed = LocalShiftPressed.current
+    val shiftPressed = LocalShiftKeyState.current.pressed
 
     val scrollState = remember { LazyListState(0, 0) }
     val filteredProjects = model.filteredAndSortedProjects(lockFile.getAllProjects())
@@ -50,11 +54,12 @@ fun ListImpl(
         ) {
             itemsIndexed(
                 items = filteredProjects,
-                key = { index, project -> "${project.uiKey()}#$index" },
+                key = { _, project -> project.uiKey() },
             ) { index, project ->
                 val projectKey = project.uiKey()
                 val checked = projectKey in model.selectedProjectKeys
                 val focused = projectKey == model.selectedProject?.uiKey()
+                val lastClickAt = remember(projectKey) { mutableLongStateOf(0L) }
 
                 Row(
                     modifier = Modifier
@@ -97,17 +102,26 @@ fun ListImpl(
                         statusChecked = model.updatePreviews != null,
                         modifier = Modifier
                             .weight(1f)
-                            .clickableHover(
-                                pressed = if (focused) true else null,
-                                onDoubleClick = {
-                                    if (checked) publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
-                                    else publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
-                                    lastClickedIndex.value = index
+                            .clickable(
+                                interactionSource = remember(projectKey) { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastClickAt.longValue <= ProjectCardDoubleClickMs) {
+                                        lastClickAt.longValue = 0L
+                                        if (checked) {
+                                            publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
+                                        } else {
+                                            publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
+                                        }
+                                        lastClickedIndex.value = index
+                                    } else {
+                                        lastClickAt.longValue = now
+                                        publish(ModpackMsg.ProjectSelected(project))
+                                        lastClickedIndex.value = index
+                                    }
                                 },
-                            ) {
-                                publish(ModpackMsg.ProjectSelected(project))
-                                lastClickedIndex.value = index
-                            },
+                            ),
                     )
                 }
             }

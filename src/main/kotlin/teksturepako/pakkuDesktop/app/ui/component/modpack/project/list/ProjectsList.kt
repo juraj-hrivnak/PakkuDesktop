@@ -37,7 +37,7 @@ fun ProjectsList(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
-                .padding(top = 6.dp, bottom = 2.dp),
+                .padding(top = PakkuDesktopConstants.commonPaddingSize, bottom = 2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             ProjectFilter(

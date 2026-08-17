@@ -27,16 +27,18 @@ import teksturepako.pakkuDesktop.elm.Driver
 // -- themeDriver --
 
 val themeDriver: Driver<AppModel, AppMsg> = { _, model, content ->
-    val textStyle = JewelTheme.createDefaultTextStyle(fontFamily = FontFamily.Default)
-
-    val themeDefinition = if (model.profile.data.intUiTheme.isDark()) {
-        JewelTheme.darkThemeDefinition(
-            colors = PakkuDarkGlobalColors,
-            palette = PakkuDarkColorPalette,
-            defaultTextStyle = textStyle,
-        )
-    } else {
-        JewelTheme.lightThemeDefinition(defaultTextStyle = textStyle)
+    val isDark = model.profile.data.intUiTheme.isDark()
+    val textStyle = remember { JewelTheme.createDefaultTextStyle(fontFamily = FontFamily.Default) }
+    val themeDefinition = remember(isDark) {
+        if (isDark) {
+            JewelTheme.darkThemeDefinition(
+                colors = PakkuDarkGlobalColors,
+                palette = PakkuDarkColorPalette,
+                defaultTextStyle = textStyle,
+            )
+        } else {
+            JewelTheme.lightThemeDefinition(defaultTextStyle = textStyle)
+        }
     }
 
     // Use the empty ComponentStyling companion so IntUiTheme applies only ComponentStyling.default()

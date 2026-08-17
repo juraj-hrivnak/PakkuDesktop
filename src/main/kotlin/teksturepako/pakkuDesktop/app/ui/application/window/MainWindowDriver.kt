@@ -6,10 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.application.window
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -24,8 +21,8 @@ import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.component.painterResource
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.LocalShiftPressed
-import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
+import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
+import teksturepako.pakkuDesktop.app.ui.ShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.application.appNameWithVersion
 import teksturepako.pakkuDesktop.app.ui.application.handleAppShortcut
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
@@ -71,7 +68,8 @@ fun mainWindowDriver(
     )
 
     val title = model.profile.data.currentProfile?.name ?: appNameWithVersion(model.isProActivated)
-    var shiftPressed by remember { mutableStateOf(false) }
+    val shiftKeyState = remember { ShiftKeyState() }
+    val pakkuScope = remember(applicationScope) { RememberedPakkuScope(applicationScope) }
 
     with(applicationScope) {
         JewelDecoratedWindow(
@@ -82,19 +80,19 @@ fun mainWindowDriver(
             minimumSize = DpSize(600.dp, 400.dp),
             onPreviewKeyEvent = { event ->
                 if (event.type == KeyEventType.KeyDown || event.type == KeyEventType.KeyUp) {
-                    shiftPressed = event.isShiftPressed
+                    val next = event.isShiftPressed
+                    if (shiftKeyState.pressed != next) {
+                        shiftKeyState.pressed = next
+                    }
                 }
                 handleAppShortcut(event, model, publish)
             },
         ) {
-            val windowScope = this
+            pakkuScope.decoratedWindowScope = this
             CompositionLocalProvider(
-                LocalPakkuApplicationScope provides object : PakkuApplicationScope {
-                    override val applicationScope = applicationScope
-                    override val decoratedWindowScope = windowScope
-                },
+                LocalPakkuApplicationScope provides pakkuScope,
                 LocalWindowState provides windowState,
-                LocalShiftPressed provides shiftPressed,
+                LocalShiftKeyState provides shiftKeyState,
             ) {
                 content()
             }

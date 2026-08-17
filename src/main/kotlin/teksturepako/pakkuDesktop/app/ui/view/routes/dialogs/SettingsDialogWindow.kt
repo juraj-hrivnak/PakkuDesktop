@@ -42,6 +42,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsCredentials
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
+import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 
 /**
  * Settings as a declarative dialog — same shell as [teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog].
@@ -110,6 +111,7 @@ fun SettingsDialog(
                                 publish(AppMsg.UiScaleChangeRequested(scale))
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            listState = rememberListComboBoxState(uiScaleLabels, scaleIndex),
                         )
                     }
 

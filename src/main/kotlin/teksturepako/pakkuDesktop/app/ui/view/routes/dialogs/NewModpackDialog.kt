@@ -39,6 +39,7 @@ import teksturepako.pakkuDesktop.app.ui.model.InitSpec
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
+import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -107,6 +108,10 @@ fun NewModpackDialog(
                             ModpackFieldOptions.LOADERS.getOrNull(index)?.let { loader = it }
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        listState = rememberListComboBoxState(
+                            ModpackFieldOptions.LOADERS,
+                            ModpackFieldOptions.LOADERS.indexOf(loader).coerceAtLeast(0),
+                        ),
                     )
                 }
                 LabeledField("Target") {
@@ -117,6 +122,10 @@ fun NewModpackDialog(
                             ModpackFieldOptions.TARGETS.getOrNull(index)?.let { target = it }
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        listState = rememberListComboBoxState(
+                            ModpackFieldOptions.TARGETS,
+                            ModpackFieldOptions.TARGETS.indexOf(target).coerceAtLeast(0),
+                        ),
                     )
                 }
 
