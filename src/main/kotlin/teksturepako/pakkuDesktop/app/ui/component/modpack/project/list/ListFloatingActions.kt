@@ -67,6 +67,8 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
     val addAccent = PakkuDesktopConstants.highlightColor
     val removeAccent = palette.red.getOrNull(palette.red.lastIndex / 2)
         ?: PakkuDesktopConstants.coral
+    val updateAccent = PakkuDesktopConstants.amber
+    val canUpdate = selectedCount > 0 && !busy
 
     Row(
         modifier = Modifier
@@ -87,6 +89,27 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
                 tint = if (busy) Color.Gray else JewelTheme.contentColor,
                 hints = arrayOf(),
                 modifier = Modifier.size(22.dp),
+            )
+        }
+
+        FloatingActionIcon(
+            onClick = {
+                if (canUpdate) publish(ModpackMsg.UpdateRequested(model.selectedPakkuIds))
+            },
+            enabled = canUpdate,
+            buttonSize = 44.dp,
+            accent = updateAccent,
+        ) { hovered ->
+            Icon(
+                key = AllIconsKeys.Actions.CheckOut,
+                contentDescription = "Update selected projects",
+                tint = when {
+                    !canUpdate -> Color.Gray
+                    hovered -> updateAccent
+                    else -> JewelTheme.contentColor
+                },
+                hints = arrayOf(),
+                modifier = Modifier.size(20.dp),
             )
         }
 

@@ -15,6 +15,15 @@ object PakkuDesktopConstants
     val commonPaddingSize = 16.dp
     val highlightColor = Color(27, 204, 234)
 
+    /** Title-bar Pakku glyph — rail width is built around this slot. */
+    val brandIconSize = 28.dp
+
+    /** Horizontal inset around the brand icon in the title bar. */
+    val brandIconPadding = 8.dp
+
+    /** Left navigation rail — matches title-bar brand icon slot (pad + icon + pad). */
+    val railWidth = brandIconPadding * 2 + brandIconSize
+
     /** Amber — warning / provider mismatch / pending update */
     val amber = Color(0xFFF5A623)
 

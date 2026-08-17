@@ -5,12 +5,15 @@
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -22,6 +25,7 @@ import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -29,7 +33,10 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
-/** Select-all + sort order. Filters / updates live in [teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilter]. */
+/** Must match the checkbox column in [ListImpl] for pixel alignment. */
+internal val ProjectsListCheckboxColumnWidth = 40.dp
+
+/** Master checkbox + select-all / clear + sort. Filters live in ProjectFilter. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ListControls(
@@ -40,27 +47,73 @@ fun ListControls(
     val projects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
     val filteredProjects = projects.filter { it.matchesProjectsListFilters(model) }
     val sortOrder = model.sortOrder
+    val selectableIds = filteredProjects.mapNotNull { it.pakkuId }
+    val allSelected = selectableIds.isNotEmpty() && selectableIds.all { it in model.selectedPakkuIds }
+    val selectedCount = model.selectedPakkuIds.size
 
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Checkbox(
-            checked = filteredProjects.isNotEmpty() &&
-                filteredProjects.all { it.pakkuId in model.selectedPakkuIds },
-            onCheckedChange = { checked ->
-                if (checked) {
-                    publish(ModpackMsg.ProjectsSelected(filteredProjects.mapNotNull { it.pakkuId }.toSet()))
-                } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Same slot as row checkboxes in ListImpl (40.dp + end pad + centered Checkbox).
+            Box(
+                modifier = Modifier
+                    .width(ProjectsListCheckboxColumnWidth)
+                    .padding(end = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Checkbox(
+                    checked = allSelected,
+                    onCheckedChange = { checked ->
+                        if (checked) {
+                            publish(ModpackMsg.ProjectsSelected(selectableIds.toSet()))
+                        } else {
+                            publish(ModpackMsg.ProjectsCleared())
+                        }
+                        lastClickedIndex.value = null
+                    },
+                    modifier = Modifier.padding(4.dp),
+                )
+            }
+            IconButton(
+                enabled = selectableIds.isNotEmpty() && !allSelected,
+                onClick = {
+                    publish(ModpackMsg.SelectAllFilteredRequested)
+                    lastClickedIndex.value = null
+                },
+            ) {
+                Icon(
+                    key = AllIconsKeys.Actions.Selectall,
+                    contentDescription = "Select all",
+                    tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                    hints = arrayOf(),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            IconButton(
+                enabled = selectedCount > 0,
+                onClick = {
                     publish(ModpackMsg.ProjectsCleared())
-                }
-                lastClickedIndex.value = null
-            },
-            modifier = Modifier.padding(4.dp),
-        )
+                    lastClickedIndex.value = null
+                },
+            ) {
+                Icon(
+                    key = AllIconsKeys.Actions.Unselectall,
+                    contentDescription = "Clear selection",
+                    tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                    hints = arrayOf(),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.size(4.dp))
 
         SortLabel(
             label = "Name",

@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.application.titlebar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +25,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import dev.nucleusframework.window.TitleBarScope
 import dev.nucleusframework.window.jewel.JewelTitleBar
 import dev.nucleusframework.window.newFullscreenControls
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.elm.animatedColor
@@ -41,12 +44,17 @@ fun PakkuApplicationScope.MainTitleBar(
             this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                 modifier.newFullscreenControls(),
             ) {
-                AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.Start) {
-                    Icon(
-                        PakkuDesktopIcons.pakku,
-                        "pakku",
-                        Modifier.size(28.dp),
-                    )
+                AlignedTitleBarContent(alignment = Alignment.Start) {
+                    Box(
+                        modifier = Modifier.width(PakkuDesktopConstants.railWidth),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            PakkuDesktopIcons.pakku,
+                            "pakku",
+                            Modifier.size(PakkuDesktopConstants.brandIconSize),
+                        )
+                    }
                 }
 
                 AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {

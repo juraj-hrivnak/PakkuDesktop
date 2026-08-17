@@ -44,9 +44,13 @@ fun ProjectCard(
     val hasPendingUpdate = updateInfo != null && !applied
     val borderColor = when {
         selected -> PakkuDesktopConstants.highlightColor
-        applied -> PakkuDesktopConstants.green.copy(alpha = 0.75f)
-        hasPendingUpdate -> PakkuDesktopConstants.amber.copy(alpha = 0.7f)
-        else -> Color.Gray.copy(alpha = 0.3f)
+        applied -> PakkuDesktopConstants.green.copy(alpha = 0.9f)
+        hasPendingUpdate -> PakkuDesktopConstants.amber.copy(alpha = 0.9f)
+        else -> Color.Gray.copy(alpha = 0.28f)
+    }
+    val borderWidth = when {
+        selected || applied || hasPendingUpdate -> 1.5.dp
+        else -> 1.dp
     }
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
     val published = latest?.datePublished
@@ -58,13 +62,13 @@ fun ProjectCard(
             .clip(shape)
             .then(
                 when {
-                    selected -> Modifier.background(PakkuDesktopConstants.highlightColor.copy(alpha = 0.10f))
-                    applied -> Modifier.background(PakkuDesktopConstants.green.copy(alpha = 0.08f))
-                    hasPendingUpdate -> Modifier.background(PakkuDesktopConstants.amber.copy(alpha = 0.06f))
+                    selected -> Modifier.background(PakkuDesktopConstants.highlightColor.copy(alpha = 0.12f))
+                    applied -> Modifier.background(PakkuDesktopConstants.green.copy(alpha = 0.10f))
+                    hasPendingUpdate -> Modifier.background(PakkuDesktopConstants.amber.copy(alpha = 0.08f))
                     else -> Modifier
                 },
             )
-            .border(width = 1.dp, color = borderColor, shape = shape)
+            .border(width = borderWidth, color = borderColor, shape = shape)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -82,7 +86,7 @@ fun ProjectCard(
                     applied -> Badge(style = JewelTheme.badgeStyle.green) {
                         Text("Updated")
                     }
-                    hasPendingUpdate -> Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                    hasPendingUpdate -> Badge(style = JewelTheme.badgeStyle.blueSecondary) {
                         Text("Update")
                     }
                 }

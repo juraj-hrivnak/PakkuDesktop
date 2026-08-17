@@ -24,7 +24,7 @@ import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarCont
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
-import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackSideBar
+import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackRail
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -91,7 +91,7 @@ fun PakkuApplicationScope.ModpackView(
 
     Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
         Row(Modifier.matchParentSize()) {
-            ModpackSideBar(publish, model, appModel)
+            ModpackRail(publish, model, appModel)
 
             VerticalSplitLayout(
                 state = actionSplitState,

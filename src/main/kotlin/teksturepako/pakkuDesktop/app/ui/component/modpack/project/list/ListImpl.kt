@@ -64,7 +64,7 @@ fun ListImpl(
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(40.dp)
+                            .width(ProjectsListCheckboxColumnWidth)
                             .padding(top = 7.dp, end = 4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
