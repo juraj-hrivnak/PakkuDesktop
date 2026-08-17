@@ -14,8 +14,11 @@ import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 private class RemovalSimpleError(override val rawMessage: String) : ActionError()
 
 /**
- * Builds a removal plan via [createRemovalRequest] (CLI `pakku rm` prompts).
- * Does not mutate the lock file.
+ * Builds a removal plan via Pakku [createRemovalRequest] + [LockFile.getLinkedProjects].
+ * Does not mutate the lock file. Identity uses [Project.isAlmostTheSameAs], not pakkuId.
+ *
+ * Dep “still required” uses [LockFile.getLinkedProjects], ignoring the removal batch
+ * (parent + other selected roots). Older Pakku builds forgot to ignore the parent for deps.
  */
 suspend fun buildRemovalPlan(
     lockFile: LockFile,
@@ -25,46 +28,79 @@ suspend fun buildRemovalPlan(
         return RemovalPlan(messages = listOf(RemovalSimpleError("No projects selected to remove.")))
     }
 
+    val selected = projects.toList()
     val entries = mutableListOf<RemovalEntry>()
-    val orphaned = mutableListOf<RemovalEntry>()
+    val orphanedFlat = mutableListOf<RemovalEntry>()
     val messages = mutableListOf<ActionError>()
-    val seenDepIds = mutableSetOf<String>()
+    val seenMessageKeys = mutableSetOf<String>()
+
+    fun remainingDependants(of: Project, ignoring: Collection<Project>): List<Project> {
+        val id = lockFile.getProject(of)?.pakkuId ?: of.pakkuId ?: return emptyList()
+        return lockFile.getLinkedProjects(id).filter { dependant ->
+            ignoring.none { it isAlmostTheSameAs dependant }
+        }
+    }
 
     for (project in projects) {
-        var lastRequiredBy: ActionError? = null
+        var pendingRequiredBy: ProjRequiredBy? = null
+        val children = mutableListOf<RemovalEntry>()
+        val ignoringForThis = selected // whole batch leaves together
+
         project.createRemovalRequest(
             onError = { error ->
-                messages += error
-                lastRequiredBy = if (error is ProjRequiredBy) error else null
+                when (error) {
+                    is ProjRequiredBy -> pendingRequiredBy = error
+                    else -> {
+                        val key = error::class.simpleName + ":" + error.rawMessage
+                        if (seenMessageKeys.add(key)) messages += error
+                    }
+                }
             },
-            onRemoval = { proj, isRecommended ->
+            onRemoval = { proj, _ ->
+                // Recompute with LockFile links; ignore other selected roots too.
+                val remaining = remainingDependants(proj, ignoringForThis)
+                val warning = if (remaining.isEmpty()) null else ProjRequiredBy(proj, remaining)
                 entries += RemovalEntry(
                     project = proj,
-                    isRecommended = isRecommended,
-                    warning = lastRequiredBy,
+                    isRecommended = remaining.isEmpty(),
+                    warning = warning,
                 )
-                lastRequiredBy = null
+                pendingRequiredBy = null
             },
-            onDepRemoval = { dep, isRecommended ->
-                val id = dep.pakkuId ?: return@createRemovalRequest
-                if (!seenDepIds.add(id)) return@createRemovalRequest
-                if (projects.any { it.pakkuId == id }) return@createRemovalRequest
-                orphaned += RemovalEntry(
+            onDepRemoval = { dep, _ ->
+                pendingRequiredBy = null
+                if (selected.any { it isAlmostTheSameAs dep }) return@createRemovalRequest
+                if (orphanedFlat.any { it.project isAlmostTheSameAs dep }) return@createRemovalRequest
+
+                val remaining = remainingDependants(dep, ignoringForThis)
+                val warning = if (remaining.isEmpty()) null else ProjRequiredBy(dep, remaining)
+                val orphan = RemovalEntry(
                     project = dep,
-                    isRecommended = isRecommended,
-                    warning = lastRequiredBy,
+                    isRecommended = remaining.isEmpty(),
+                    warning = warning,
                 )
-                lastRequiredBy = null
+                children += orphan
+                orphanedFlat += orphan
             },
             lockFile = lockFile,
         )
+
+        val lastIdx = entries.indexOfLast { it.project isAlmostTheSameAs project }
+        if (lastIdx >= 0 && children.isNotEmpty()) {
+            entries[lastIdx] = entries[lastIdx].copy(orphanedChildren = children)
+        }
     }
 
-    return RemovalPlan(projects = entries, orphanedDeps = orphaned, messages = messages)
+    return RemovalPlan(
+        projects = entries,
+        orphanedDeps = orphanedFlat,
+        messages = messages,
+    )
 }
 
 /**
- * Removes every project in the plan (caller filters to accepted checklist items first).
+ * Removes every project in the plan (caller filters to accepted roots + their orphans).
+ * Emits one summary toast of what was removed (modal-style [ProjectRef]s).
  */
 suspend fun applyRemovalPlan(
     lockFile: LockFile,
@@ -76,34 +112,28 @@ suspend fun applyRemovalPlan(
         return
     }
 
-    val removedLabels = mutableListOf<String>()
+    val removed = mutableListOf<Project>()
 
     suspend fun removeOne(project: Project) {
-        val id = project.pakkuId ?: return
+        // Link cleanup still goes through current LockFile API (pakkuLinks) while it exists;
+        // identity for finding the project is isAlmostTheSameAs via [LockFile.getProject] / [LockFile.remove].
+        val linkId = lockFile.getProject(project)?.pakkuId
         if (lockFile.remove(project) == true) {
-            lockFile.removePakkuLinkFromAllProjects(id)
-            removedLabels += project.displayLabel()
+            linkId?.let { lockFile.removePakkuLinkFromAllProjects(it) }
+            removed += project
         }
     }
 
     for (entry in plan.projects) removeOne(entry.project)
     for (entry in plan.orphanedDeps) removeOne(entry.project)
 
-    when (removedLabels.size) {
-        0 -> onToast(actionInfoToast("No projects were removed."))
-        1 -> {
-            lockFile.write()
-            onToast(actionInfoToast("${removedLabels.single()} removed"))
-        }
-        in 2..3 -> {
-            lockFile.write()
-            onToast(actionInfoToast("Removed ${removedLabels.joinToString(", ")}"))
-        }
-        else -> {
-            lockFile.write()
-            onToast(actionInfoToast("Removed ${removedLabels.size} projects"))
-        }
+    if (removed.isEmpty()) {
+        onToast(actionInfoToast("No projects were removed."))
+        return
     }
+
+    lockFile.write()
+    onToast(actionRemovedToast(removed.distinctBy { it.uiKey() }))
 }
 
 /** Auto path: remove selected + recommended orphaned deps (CLI defaults). */
@@ -113,11 +143,19 @@ suspend fun removeSuspend(
     onToast: suspend (ToastData) -> Unit,
 ) {
     val plan = buildRemovalPlan(lockFile, projects)
+    val acceptedRoots = plan.projects.filter { it.isRecommended }
+    val acceptedIds = acceptedRoots.map { it.key }.toSet()
+    val recommendedDepIds = plan.projects
+        .filter { it.key in acceptedIds }
+        .flatMap { it.orphanedChildren }
+        .filter { it.isRecommended }
+        .map { it.key }
+        .toSet()
     applyRemovalPlan(
         lockFile,
         RemovalPlan(
-            projects = plan.projects.filter { it.isRecommended },
-            orphanedDeps = plan.orphanedDeps.filter { it.isRecommended },
+            projects = acceptedRoots,
+            orphanedDeps = plan.orphansFor(acceptedIds, recommendedDepIds),
             messages = plan.messages,
         ),
         onToast,

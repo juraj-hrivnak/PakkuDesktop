@@ -29,11 +29,16 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 
+/**
+ * @param focused Right-pane / inspector selection (cyan).
+ * @param checked List checkbox selection for batch actions (neutral tint).
+ */
 @Composable
 fun ProjectCard(
     project: Project,
     modifier: Modifier = Modifier,
-    selected: Boolean = false,
+    focused: Boolean = false,
+    checked: Boolean = false,
     updateInfo: ProjectUpdateInfo? = null,
     name: @Composable (String) -> Unit = {
         Text(it, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -43,13 +48,14 @@ fun ProjectCard(
     val applied = updateInfo?.applied == true
     val hasPendingUpdate = updateInfo != null && !applied
     val borderColor = when {
-        selected -> PakkuDesktopConstants.highlightColor
+        focused -> PakkuDesktopConstants.highlightColor
+        checked -> JewelTheme.contentColor.copy(alpha = 0.42f)
         applied -> PakkuDesktopConstants.green.copy(alpha = 0.9f)
         hasPendingUpdate -> PakkuDesktopConstants.amber.copy(alpha = 0.9f)
         else -> Color.Gray.copy(alpha = 0.28f)
     }
     val borderWidth = when {
-        selected || applied || hasPendingUpdate -> 1.5.dp
+        focused || checked || applied || hasPendingUpdate -> 1.5.dp
         else -> 1.dp
     }
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
@@ -62,7 +68,8 @@ fun ProjectCard(
             .clip(shape)
             .then(
                 when {
-                    selected -> Modifier.background(PakkuDesktopConstants.highlightColor.copy(alpha = 0.12f))
+                    focused -> Modifier.background(PakkuDesktopConstants.highlightColor.copy(alpha = 0.12f))
+                    checked -> Modifier.background(JewelTheme.contentColor.copy(alpha = 0.07f))
                     applied -> Modifier.background(PakkuDesktopConstants.green.copy(alpha = 0.10f))
                     hasPendingUpdate -> Modifier.background(PakkuDesktopConstants.amber.copy(alpha = 0.08f))
                     else -> Modifier

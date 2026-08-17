@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
-import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.LocalShiftPressed
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -50,11 +50,11 @@ fun ListImpl(
         ) {
             itemsIndexed(
                 items = filteredProjects,
-                key = { index, project -> "${project.pakkuId ?: "noid"}#$index" },
+                key = { index, project -> "${project.uiKey()}#$index" },
             ) { index, project ->
-                val checked = project.pakkuId in model.selectedPakkuIds
-                val focused = project.pakkuId != null &&
-                    project.pakkuId == model.selectedProject?.pakkuId
+                val projectKey = project.uiKey()
+                val checked = projectKey in model.selectedProjectKeys
+                val focused = projectKey == model.selectedProject?.uiKey()
 
                 Row(
                     modifier = Modifier
@@ -65,7 +65,7 @@ fun ListImpl(
                     Box(
                         modifier = Modifier
                             .width(ProjectsListCheckboxColumnWidth)
-                            .padding(top = 7.dp, end = 4.dp),
+                            .padding(top = 7.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Checkbox(
@@ -74,15 +74,14 @@ fun ListImpl(
                                 if (shiftPressed && lastClickedIndex.value != null) {
                                     val start = minOf(lastClickedIndex.value!!, index)
                                     val end = maxOf(lastClickedIndex.value!!, index)
-                                    val ids = filteredProjects.slice(start..end)
-                                        .mapNotNull(Project::pakkuId)
+                                    val keys = filteredProjects.slice(start..end)
+                                        .map { it.uiKey() }
                                         .toSet()
-                                    if (nextChecked) publish(ModpackMsg.ProjectsSelected(ids))
-                                    else publish(ModpackMsg.ProjectsDeselected(ids))
+                                    if (nextChecked) publish(ModpackMsg.ProjectsSelected(keys))
+                                    else publish(ModpackMsg.ProjectsDeselected(keys))
                                 } else {
-                                    val id = project.pakkuId ?: return@Checkbox
-                                    if (nextChecked) publish(ModpackMsg.ProjectsSelected(setOf(id)))
-                                    else publish(ModpackMsg.ProjectsDeselected(setOf(id)))
+                                    if (nextChecked) publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
+                                    else publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
                                     lastClickedIndex.value = index
                                 }
                             },
@@ -92,13 +91,18 @@ fun ListImpl(
 
                     ProjectCard(
                         project = project,
-                        selected = checked || focused,
-                        updateInfo = project.pakkuId?.let { model.updatePreviews?.get(it) },
+                        focused = focused,
+                        checked = checked,
+                        updateInfo = model.updatePreviews?.get(projectKey),
                         modifier = Modifier
                             .weight(1f)
                             .clickableHover(
                                 pressed = if (focused) true else null,
-                                enabled = !focused,
+                                onDoubleClick = {
+                                    if (checked) publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
+                                    else publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
+                                    lastClickedIndex.value = index
+                                },
                             ) {
                                 publish(ModpackMsg.ProjectSelected(project))
                                 lastClickedIndex.value = index

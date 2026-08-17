@@ -143,8 +143,14 @@ data class ModpackModel(
     /** True while the Modpack tab is in edit mode (auto-saves like project props). */
     val editingModpack: Boolean = false,
 
-    /** pakkuId → true for each selected project */
-    val selectedPakkuIds: Set<String> = emptySet(),
+    /** [teksturepako.pakkuDesktop.app.actions.uiKey] for each selected project */
+    val selectedProjectKeys: Set<String> = emptySet(),
+
+    /**
+     * Last used Projects FAB (Add / Update / Remove), like Jewel’s default button —
+     * Enter re-activates it when enabled.
+     */
+    val lastProjectsFab: ProjectsFabAction? = null,
 
     val sortOrder: SortOrder = SortOrder.Name(ascending = true),
     val projectsFilterText: String = "",
@@ -160,7 +166,7 @@ data class ModpackModel(
     val filterUpdatesOnly: Boolean = false,
     val wantsStatusCheck: Boolean = false,
     /**
-     * Last status check: [Project.pakkuId] → update info.
+     * Last status check: [teksturepako.pakkuDesktop.app.actions.uiKey] → update info.
      * null = not checked; empty = all up to date.
      */
     val updatePreviews: Map<String, ProjectUpdateInfo>? = null,
@@ -172,15 +178,13 @@ data class ModpackModel(
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
     val projectsFilterFocused: Boolean = false,
-    /** Add projects dialog (Projects list FAB) */
-    val addDialogVisible: Boolean = false,
-    /** Remove projects dialog (FAB / Delete) */
-    val removeDialogVisible: Boolean = false,
+    val addDialog: AddDialogModel = AddDialogModel(),
+    val removeDialog: RemoveDialogModel = RemoveDialogModel(),
     /** DnD / auto add query */
     val pendingAddQuery: String? = null,
     val pendingAdditionPlan: AdditionPlan? = null,
-    /** selected ids + recommended orphaned deps */
-    val pendingRemovalIds: Set<String>? = null,
+    /** selected [teksturepako.pakkuDesktop.app.actions.uiKey]s (+ recommended orphaned deps on apply) */
+    val pendingRemovalKeys: Set<String>? = null,
     val pendingRemovalPlan: RemovalPlan? = null,
     val wantsInit: Boolean = false,
 

@@ -14,12 +14,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import com.github.michaelbull.result.getError
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 
@@ -51,20 +53,18 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             {
                 if (!filterFocused &&
                     !model.hasModalOverlay() &&
-                    model.modpack.selectedPakkuIds.isNotEmpty() &&
+                    model.modpack.selectedProjectKeys.isNotEmpty() &&
                     model.modpack.actionName == null
                 ) {
+                    publish(AppMsg.Modpack(ModpackMsg.ProjectsFabRemembered(ProjectsFabAction.Remove)))
                     publish(AppMsg.Modpack(ModpackMsg.ShowRemoveDialog))
                     return true
                 }
             }
             Key.Enter, Key.NumPadEnter ->
             {
-                if (!filterFocused &&
-                    !model.hasModalOverlay() &&
-                    (model.modpack.selectedPakkuIds.isNotEmpty() || model.modpack.selectedProject != null)
-                ) {
-                    publish(AppMsg.Modpack(ModpackMsg.OpenDetailRequested))
+                if (!filterFocused && !model.hasModalOverlay()) {
+                    publish(AppMsg.Modpack(ModpackMsg.ActivateLastProjectsFab))
                     return true
                 }
             }
@@ -187,14 +187,21 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         publish(AppMsg.Modpack(ModpackMsg.GitDropdown(GitDropdownMsg.HidePushDialog)))
         true
     }
-    model.modpack.removeDialogVisible ->
+    model.modpack.removeDialog.visible ->
     {
         publish(AppMsg.Modpack(ModpackMsg.HideRemoveDialog))
         true
     }
-    model.modpack.addDialogVisible ->
+    model.modpack.addDialog.visible ->
     {
-        publish(AppMsg.Modpack(ModpackMsg.HideAddDialog))
+        val phase = model.modpack.addDialog.phase
+        val plan = model.modpack.addDialog.plan
+        val onReviewWithRoots = phase == AddDialogPhase.Review && plan != null && !plan.isEmpty
+        if (onReviewWithRoots) {
+            publish(AppMsg.Modpack(ModpackMsg.AddBackToInput))
+        } else {
+            publish(AppMsg.Modpack(ModpackMsg.HideAddDialog))
+        }
         true
     }
     model.screen == AppScreen.Modpack && model.modpack.selectedProject != null ->
@@ -213,8 +220,8 @@ private fun AppModel.hasModalOverlay(): Boolean =
         showCloneDialog ||
         showSettings ||
         modpack.gitDropdown.pushDialogVisible ||
-        modpack.removeDialogVisible ||
-        modpack.addDialogVisible
+        modpack.removeDialog.visible ||
+        modpack.addDialog.visible
 
 private fun AppModel.lockErrorVisible(): Boolean
 {

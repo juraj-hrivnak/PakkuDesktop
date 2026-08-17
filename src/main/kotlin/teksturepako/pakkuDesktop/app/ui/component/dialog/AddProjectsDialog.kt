@@ -4,11 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.dialog
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -16,147 +14,139 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.github.michaelbull.result.get
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.GroupHeader
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
-import teksturepako.pakku.api.actions.errors.ActionError
-import teksturepako.pakkuDesktop.app.actions.AdditionEntry
-import teksturepako.pakkuDesktop.app.actions.AdditionPlan
-import teksturepako.pakkuDesktop.app.actions.buildAdditionPlan
+import teksturepako.pakkuDesktop.app.actions.fingerprint
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
+import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
 
-private sealed interface AddStep {
-    data object Input : AddStep
-    data class Resolving(val status: String) : AddStep
-    data class Confirm(val plan: AdditionPlan) : AddStep
-}
-
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddProjectsDialog(
-    visible: Boolean,
-    onDismiss: () -> Unit,
+    publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
-    onConfirmPlan: (AdditionPlan) -> Unit,
 ) {
-    if (!visible) return
+    val dialog = model.addDialog
+    if (!dialog.visible || model.actionName != null) return
 
-    val lockFile = model.lockFile?.get()
-    val textFieldState = rememberTextFieldState()
-    val scope = rememberCoroutineScope()
+    val textFieldState = rememberTextFieldState(dialog.query)
     val inputFocus = remember { FocusRequester() }
-    var step by remember { mutableStateOf<AddStep>(AddStep.Input) }
-    var accepted by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var resolveJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val rootFocus = remember { FocusRequester() }
 
-    LaunchedEffect(step) {
-        if (step is AddStep.Input) {
-            kotlinx.coroutines.yield()
-            runCatching { inputFocus.requestFocus() }
-        }
-    }
-
-    fun dismiss() {
-        resolveJob?.cancel()
-        resolveJob = null
-        step = AddStep.Input
-        accepted = emptySet()
-        onDismiss()
-    }
-
-    fun goBackToInput() {
-        resolveJob?.cancel()
-        resolveJob = null
-        step = AddStep.Input
-        accepted = emptySet()
-    }
-
-    fun submitQuery() {
-        val query = textFieldState.text.toString()
-        if (query.isBlank() || lockFile == null) return
-        resolveJob?.cancel()
-        resolveJob = scope.launch {
-            step = AddStep.Resolving("Resolving…")
-            val plan = withContext(Dispatchers.IO) {
-                buildAdditionPlan(
-                    lockFile = lockFile,
-                    query = query,
-                    onProgress = { status ->
-                        withContext(Dispatchers.Main) { step = AddStep.Resolving(status) }
-                    },
-                )
+    LaunchedEffect(dialog.visible, dialog.phase) {
+        when (dialog.phase) {
+            AddDialogPhase.Input -> {
+                kotlinx.coroutines.yield()
+                runCatching { inputFocus.requestFocus() }
             }
-            accepted = plan.entries.mapIndexedNotNull { i, e -> if (e.isRecommended) i else null }.toSet()
-            step = AddStep.Confirm(plan)
-        }
-    }
-
-    fun confirm() {
-        when (val current = step) {
-            is AddStep.Confirm -> {
-                if (current.plan.isEmpty) {
-                    goBackToInput()
-                    return
-                }
-                val selected = current.plan.entries.filterIndexed { i, _ -> i in accepted }
-                if (selected.isEmpty()) return
-                onConfirmPlan(AdditionPlan(selected, current.plan.messages))
-                dismiss()
+            else -> {
+                kotlinx.coroutines.yield()
+                runCatching { rootFocus.requestFocus() }
             }
-            is AddStep.Input -> submitQuery()
-            else -> Unit
         }
     }
 
-    fun onEscape() {
-        when (step) {
-            is AddStep.Input -> dismiss()
-            else -> goBackToInput()
+    LaunchedEffect(textFieldState) {
+        snapshotFlow { textFieldState.text.toString() }
+            .distinctUntilChanged()
+            .collect { publish(ModpackMsg.AddQueryChanged(it)) }
+    }
+
+    LaunchedEffect(dialog.visible) {
+        if (dialog.visible && dialog.phase == AddDialogPhase.Input && dialog.query.isEmpty()) {
+            textFieldState.edit {
+                replace(0, length, "")
+            }
         }
     }
 
-    Dialog(onDismissRequest = { dismiss() }) {
+    val plan = dialog.plan
+    val acceptedEntries = plan?.entries?.filter { it.key in dialog.acceptedRootIds }.orEmpty()
+    val shownFingerprints = mutableSetOf<String>()
+    val entryFingerprints = plan?.entries
+        ?.flatMap { it.warnings.map { w -> w.fingerprint() } }
+        ?.toSet()
+        .orEmpty()
+    val topMessages = plan?.messages
+        ?.filter { it.fingerprint() !in entryFingerprints }
+        ?.distinctBy { it.fingerprint() }
+        .orEmpty()
+
+    val emptyReview = plan == null || plan.isEmpty
+    val primaryEnabled = when (dialog.phase) {
+        AddDialogPhase.Input -> dialog.query.isNotBlank()
+        AddDialogPhase.Resolving -> false
+        AddDialogPhase.Review -> if (emptyReview) true else acceptedEntries.isNotEmpty()
+    }
+
+    val onPrimary: () -> Unit = {
+        when (dialog.phase) {
+            AddDialogPhase.Input -> publish(ModpackMsg.AddResolveRequested)
+            AddDialogPhase.Resolving -> Unit
+            AddDialogPhase.Review -> {
+                if (emptyReview) publish(ModpackMsg.AddBackToInput)
+                else publish(ModpackMsg.AddConfirmRequested)
+            }
+        }
+    }
+
+    val onSecondary: () -> Unit = {
+        when (dialog.phase) {
+            AddDialogPhase.Input, AddDialogPhase.Resolving -> publish(ModpackMsg.HideAddDialog)
+            AddDialogPhase.Review -> {
+                if (emptyReview) publish(ModpackMsg.HideAddDialog)
+                else publish(ModpackMsg.AddBackToInput)
+            }
+        }
+    }
+
+    val (primaryLabel, secondaryLabel) = when (dialog.phase) {
+        AddDialogPhase.Input -> "Add" to "Cancel"
+        AddDialogPhase.Resolving -> "Add" to "Cancel"
+        AddDialogPhase.Review -> if (emptyReview) {
+            "Back" to "Cancel"
+        } else {
+            primaryAddLabel(acceptedEntries.map { it.project }) to "Back"
+        }
+    }
+
+    Dialog(onDismissRequest = { publish(ModpackMsg.HideAddDialog) }) {
         ContentBox(
             Modifier
-                .dialogConfirmCancelKeys(onDismiss = { onEscape() }, onConfirm = { confirm() })
-                .widthIn(min = 360.dp, max = 520.dp),
+                .focusRequester(rootFocus)
+                .dialogConfirmCancelKeys(
+                    onDismiss = onSecondary,
+                    onConfirm = if (primaryEnabled) onPrimary else null,
+                )
+                .widthIn(min = 400.dp, max = 580.dp)
+                .animateContentSize(),
         ) {
             Column(
                 Modifier
                     .padding(PakkuDesktopConstants.commonPaddingSize)
-                    .heightIn(max = 480.dp),
+                    .heightIn(max = 580.dp)
+                    .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Header("Add projects")
 
-                when (val s = step) {
-                    is AddStep.Input -> {
+                when (dialog.phase) {
+                    AddDialogPhase.Input -> {
                         Text(
                             "Project names, slugs, or URLs — comma-separated.",
                             color = JewelTheme.contentColor.copy(alpha = 0.65f),
@@ -168,108 +158,60 @@ fun AddProjectsDialog(
                                 .focusRequester(inputFocus),
                             placeholder = { Text("sodium, iris, gh:owner/repo") },
                         )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            DefaultButton(onClick = { submitQuery() }) { Text("Add") }
-                            OutlinedButton(onClick = { dismiss() }) { Text("Cancel") }
-                        }
                     }
 
-                    is AddStep.Resolving -> {
-                        Text(s.status, color = JewelTheme.contentColor.copy(alpha = 0.75f))
+                    AddDialogPhase.Resolving -> {
+                        Text(
+                            dialog.resolveStatus ?: "Resolving…",
+                            color = JewelTheme.contentColor.copy(alpha = 0.75f),
+                        )
                     }
 
-                    is AddStep.Confirm -> {
-                        val onlyBack = s.plan.isEmpty
-                        s.plan.messages.forEach { ActionErrorContent(it) }
-                        if (!s.plan.isEmpty) {
-                            GroupHeader("Projects")
+                    AddDialogPhase.Review -> {
+                        topMessages.forEach { ActionErrorContent(it) }
+
+                        if (!emptyReview && plan != null) {
                             VerticallyScrollableContainer(
-                                Modifier.fillMaxWidth().heightIn(max = 280.dp),
+                                Modifier.fillMaxWidth().heightIn(max = 380.dp),
                             ) {
                                 Column(
                                     Modifier.fillMaxWidth().padding(end = 10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
                                 ) {
-                                    s.plan.entries.forEachIndexed { index, entry ->
-                                        YnPrompt(
-                                            question = { AdditionQuestion(entry) },
-                                            yes = index in accepted,
-                                            onYes = { accepted = accepted + index },
-                                            onNo = { accepted = accepted - index },
-                                            recommended = entry.isRecommended,
+                                    plan.entries.forEach { entry ->
+                                        val checked = entry.key in dialog.acceptedRootIds
+                                        ReviewRootRow(
+                                            project = entry.project,
+                                            checked = checked,
+                                            onCheckedChange = { on ->
+                                                val next = if (on) {
+                                                    dialog.acceptedRootIds + entry.key
+                                                } else {
+                                                    dialog.acceptedRootIds - entry.key
+                                                }
+                                                publish(ModpackMsg.AddRootSelectionChanged(next))
+                                            },
+                                            replacing = entry.replacing,
                                             warnings = entry.warnings,
+                                            shownFingerprints = shownFingerprints,
+                                            deps = entry.deps,
+                                            depSectionLabel = "Also adds",
+                                            depCue = "new",
                                         )
                                     }
                                 }
                             }
                         }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (onlyBack) {
-                                DefaultButton(onClick = { goBackToInput() }) { Text("Back") }
-                                OutlinedButton(onClick = { dismiss() }) { Text("Cancel") }
-                            } else {
-                                DefaultButton(
-                                    onClick = { confirm() },
-                                    enabled = accepted.isNotEmpty(),
-                                ) { Text("Add") }
-                                OutlinedButton(onClick = { goBackToInput() }) { Text("Back") }
-                            }
-                        }
                     }
                 }
-            }
-        }
-    }
-}
 
-@Composable
-private fun AdditionQuestion(entry: AdditionEntry) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-    ) {
-        if (entry.replacing != null) {
-            Text("Do you want to replace ", fontSize = 13.sp)
-            ProjectRef(entry.replacing)
-            Text(" with ", fontSize = 13.sp)
-            ProjectRef(entry.project)
-            Text("?", fontSize = 13.sp)
-        } else {
-            Text("Do you want to add ", fontSize = 13.sp)
-            ProjectRef(entry.project)
-            Text("?", fontSize = 13.sp)
-        }
-    }
-}
-
-/**
- * Recommended answer is [DefaultButton] (filled), the other is [OutlinedButton].
- */
-@Composable
-internal fun YnPrompt(
-    question: @Composable () -> Unit,
-    yes: Boolean,
-    onYes: () -> Unit,
-    onNo: () -> Unit,
-    recommended: Boolean,
-    warnings: List<ActionError> = emptyList(),
-    indent: Boolean = false,
-) {
-    Column(
-        Modifier.padding(start = if (indent) 12.dp else 0.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        question()
-        warnings.forEach { ActionErrorContent(it, compact = true) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (recommended) {
-                DefaultButton(onClick = onYes) { Text("Yes") }
-                OutlinedButton(onClick = onNo) { Text("No") }
-            } else {
-                OutlinedButton(onClick = onYes) { Text("Yes") }
-                DefaultButton(onClick = onNo) { Text("No") }
+                ReviewDialogFooter(
+                    primaryLabel = primaryLabel,
+                    primaryEnabled = primaryEnabled,
+                    onPrimary = onPrimary,
+                    secondaryLabel = secondaryLabel,
+                    onSecondary = onSecondary,
+                )
             }
         }
     }

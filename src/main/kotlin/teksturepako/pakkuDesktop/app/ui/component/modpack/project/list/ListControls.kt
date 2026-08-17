@@ -28,6 +28,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
@@ -35,6 +36,8 @@ import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
 /** Must match the checkbox column in [ListImpl] for pixel alignment. */
 internal val ProjectsListCheckboxColumnWidth = 40.dp
+
+private val SelectionActionButtonSize = 28.dp
 
 /** Master checkbox + select-all / clear + sort. Filters live in ProjectFilter. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -47,9 +50,9 @@ fun ListControls(
     val projects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
     val filteredProjects = projects.filter { it.matchesProjectsListFilters(model) }
     val sortOrder = model.sortOrder
-    val selectableIds = filteredProjects.mapNotNull { it.pakkuId }
-    val allSelected = selectableIds.isNotEmpty() && selectableIds.all { it in model.selectedPakkuIds }
-    val selectedCount = model.selectedPakkuIds.size
+    val selectableKeys = filteredProjects.map { it.uiKey() }
+    val allSelected = selectableKeys.isNotEmpty() && selectableKeys.all { it in model.selectedProjectKeys }
+    val selectedCount = model.selectedProjectKeys.size
 
     FlowRow(
         modifier = Modifier
@@ -59,20 +62,19 @@ fun ListControls(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Same slot as row checkboxes in ListImpl (40.dp + end pad + centered Checkbox).
+            // Same column width as row checkboxes in ListImpl.
             Box(
-                modifier = Modifier
-                    .width(ProjectsListCheckboxColumnWidth)
-                    .padding(end = 4.dp),
+                modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
                 contentAlignment = Alignment.Center,
             ) {
                 Checkbox(
                     checked = allSelected,
                     onCheckedChange = { checked ->
                         if (checked) {
-                            publish(ModpackMsg.ProjectsSelected(selectableIds.toSet()))
+                            publish(ModpackMsg.ProjectsSelected(selectableKeys.toSet()))
                         } else {
                             publish(ModpackMsg.ProjectsCleared())
                         }
@@ -82,18 +84,19 @@ fun ListControls(
                 )
             }
             IconButton(
-                enabled = selectableIds.isNotEmpty() && !allSelected,
+                enabled = selectableKeys.isNotEmpty() && !allSelected,
                 onClick = {
                     publish(ModpackMsg.SelectAllFilteredRequested)
                     lastClickedIndex.value = null
                 },
+                modifier = Modifier.size(SelectionActionButtonSize),
             ) {
                 Icon(
                     key = AllIconsKeys.Actions.Selectall,
                     contentDescription = "Select all",
                     tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                     hints = arrayOf(),
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             IconButton(
@@ -102,13 +105,14 @@ fun ListControls(
                     publish(ModpackMsg.ProjectsCleared())
                     lastClickedIndex.value = null
                 },
+                modifier = Modifier.size(SelectionActionButtonSize),
             ) {
                 Icon(
                     key = AllIconsKeys.Actions.Unselectall,
                     contentDescription = "Clear selection",
                     tint = JewelTheme.contentColor.copy(alpha = 0.9f),
                     hints = arrayOf(),
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }

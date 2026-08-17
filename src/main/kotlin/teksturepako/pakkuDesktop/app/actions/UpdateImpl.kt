@@ -43,7 +43,7 @@ suspend fun updateSuspend(
     val fromPreview = mutableListOf<Project>()
     val needNetwork = mutableListOf<Project>()
     for (project in projects) {
-        val preview = project.pakkuId?.let { updatePreviews?.get(it) }
+        val preview = updatePreviews?.get(project.uiKey())
             ?.takeUnless { it.applied }
         if (preview != null) fromPreview += preview.projectWithSelectedFiles()
         else needNetwork += project
@@ -66,7 +66,7 @@ suspend fun updateSuspend(
         )
     }
 
-    val updatedProjects = (fromPreview + fromNetwork).distinctBy { it.pakkuId }
+    val updatedProjects = (fromPreview + fromNetwork).distinctBy { it.uiKey() }
 
     // Same as CLI: replace by identity (`isAlmostTheSameAs`), never `updateAll`/`equals`.
     for (updatedProject in updatedProjects) {
@@ -83,5 +83,5 @@ suspend fun updateSuspend(
     }
 
     lockFile.write()
-    return updatedProjects.mapNotNull { it.pakkuId }.toSet()
+    return updatedProjects.map { it.uiKey() }.toSet()
 }

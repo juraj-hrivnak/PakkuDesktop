@@ -22,9 +22,11 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakkuDesktop.app.actions.addSuspend
 import teksturepako.pakkuDesktop.app.actions.applyAdditionPlan
+import teksturepako.pakkuDesktop.app.actions.buildAdditionPlan
 import teksturepako.pakkuDesktop.app.actions.checkUpdatesSuspend
 import teksturepako.pakkuDesktop.app.actions.exportSuspend
 import teksturepako.pakkuDesktop.app.actions.fetchSuspend
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.actions.updateSuspend
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
@@ -93,10 +95,10 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsUpdate) return@LaunchedEffect
         val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
         val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
-        val ids = latestModel.modpack.selectedPakkuIds
-        val projects = lockFile.getAllProjects().filter { it.pakkuId in ids }
+        val keys = latestModel.modpack.selectedProjectKeys
+        val projects = lockFile.getAllProjects().filter { it.uiKey() in keys }
         launchAction("Updating") {
-            val updatedIds = updateSuspend(
+            val updatedKeys = updateSuspend(
                 lockFile = lockFile,
                 configFile = configFile,
                 projects = projects,
@@ -111,8 +113,8 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             val newConfigFile = ConfigFile.readToResult()
             withContext(Dispatchers.Main) {
                 latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = true)))
-                if (updatedIds.isNotEmpty()) {
-                    latestPublish(AppMsg.Modpack(ModpackMsg.UpdatesApplied(updatedIds)))
+                if (updatedKeys.isNotEmpty()) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.UpdatesApplied(updatedKeys)))
                 }
             }
         }
@@ -132,6 +134,31 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             withContext(Dispatchers.Main) {
                 latestPublish(AppMsg.Modpack(ModpackMsg.StatusCheckCompleted(previews)))
             }
+        }
+    }
+
+    // Add dialog: resolve plan (Pakku createAdditionRequest + dep preview)
+    LaunchedEffect(model.modpack.addDialog.pendingResolveQuery) {
+        val query = model.modpack.addDialog.pendingResolveQuery ?: return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val plan = withContext(Dispatchers.IO) {
+            buildAdditionPlan(
+                lockFile = lockFile,
+                query = query,
+                onProgress = { status ->
+                    withContext(Dispatchers.Main) {
+                        latestPublish(AppMsg.Modpack(ModpackMsg.AddResolveProgress(status)))
+                    }
+                },
+                onToast = { toast ->
+                    withContext(Dispatchers.Main) {
+                        latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                    }
+                },
+            )
+        }
+        withContext(Dispatchers.Main) {
+            latestPublish(AppMsg.Modpack(ModpackMsg.AddPlanBuilt(plan)))
         }
     }
 

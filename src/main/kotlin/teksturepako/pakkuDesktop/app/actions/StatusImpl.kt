@@ -26,7 +26,7 @@ private const val UPDATE_CANDIDATE_FILES = 10
 
 /**
  * Pakku `status`-equivalent: network check via [updateMultipleProjectsWithFiles]
- * without writing the lock file. Returns update previews keyed by current [Project.pakkuId].
+ * without writing the lock file. Returns update previews keyed by [Project.uiKey].
  *
  * Candidate lists come from [Platform.requestMultipleProjectsWithFiles] (and GitHub), because
  * Pakku's update combine currently collapses to one file per provider even when
@@ -89,7 +89,7 @@ suspend fun buildUpdatePreview(
     val map = linkedMapOf<String, ProjectUpdateInfo>()
     for (updated in updatedProjects) {
         val current = currentProjects.firstOrNull { it isAlmostTheSameAs updated } ?: continue
-        val id = current.pakkuId ?: continue
+        val id = current.uiKey()
         val candidatesByType = fetchCandidateFiles(updated, platforms, mcVersions, loaders)
         val changes = mutableListOf<ProjectFileChange>()
         for (provider in updated.getProviders()) {

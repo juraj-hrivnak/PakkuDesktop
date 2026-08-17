@@ -16,12 +16,16 @@ import teksturepako.pakku.api.projects.Project
 /**
  * Desktop port of CLI [teksturepako.pakku.cli.resolveDependencies] without Mordant [Terminal].
  * Dependencies are added automatically (same as CLI — no per-dep yes/no).
+ *
+ * [onDependencyAdded] is called for each newly added dependency (not already in the pack).
+ * Progress strings go to [onInfo] only when provided — apply paths should leave it empty.
  */
 suspend fun Project.resolveDependenciesDesktop(
     reqHandlers: RequestHandlers,
     lockFile: LockFile,
     projectProvider: Provider,
     platforms: List<Platform>,
+    onDependencyAdded: suspend (Project) -> Unit = {},
     onInfo: suspend (String) -> Unit = {},
     onDependencyReq: suspend (
         project: Project, provider: Provider, lockfile: LockFile
@@ -46,10 +50,16 @@ suspend fun Project.resolveDependenciesDesktop(
                         onSuccess = { dependency, _, _, depReqHandlers ->
                             lockFile.add(dependency)
                             lockFile.addPakkuLink(dependency.pakkuId!!, this@resolveDependenciesDesktop)
+                            onDependencyAdded(dependency)
                             dependency.resolveDependenciesDesktop(
-                                depReqHandlers, lockFile, projectProvider, platforms, onInfo, onDependencyReq
+                                depReqHandlers,
+                                lockFile,
+                                projectProvider,
+                                platforms,
+                                onDependencyAdded,
+                                onInfo,
+                                onDependencyReq,
                             )
-                            onInfo("${dependency.displayLabel()} added")
                         },
                         lockFile = lockFile,
                         platforms = platforms,

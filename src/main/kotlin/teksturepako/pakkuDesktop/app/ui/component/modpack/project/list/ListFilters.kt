@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 
@@ -15,7 +16,7 @@ fun Project.matchesProjectsListFilters(model: ModpackModel): Boolean {
         model.projectsFilterText in this
 
     val updatesOk = !model.filterUpdatesOnly ||
-        (pakkuId != null && model.updatePreviews?.containsKey(pakkuId) == true)
+        model.updatePreviews?.containsKey(uiKey()) == true
 
     val typeOk = model.filterTypes.isEmpty() || type in model.filterTypes
 

@@ -24,7 +24,7 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 /** Thin status strip: totals / updates on the left, selection on the right. */
 @Composable
 fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val selectedCount = model.selectedPakkuIds.size
+    val selectedCount = model.selectedProjectKeys.size
     val allProjects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
     val totalCount = allProjects.size
     val pendingUpdateCount = model.updatePreviews?.count { !it.value.applied }

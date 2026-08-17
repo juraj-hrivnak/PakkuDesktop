@@ -13,8 +13,10 @@ import kotlinx.coroutines.withContext
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakkuDesktop.app.actions.applyRemovalPlan
+import teksturepako.pakkuDesktop.app.actions.buildRemovalPlan
 import teksturepako.pakkuDesktop.app.actions.initSuspend
 import teksturepako.pakkuDesktop.app.actions.removeSuspend
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.InitSpec
@@ -42,11 +44,27 @@ val projectMutationDriver: Driver<AppModel, AppMsg> = { publish, model, content 
         }
     }
 
-    // Remove by ids (auto recommended deps) — e.g. fallback paths
-    LaunchedEffect(model.modpack.pendingRemovalIds) {
-        val ids = model.modpack.pendingRemovalIds ?: return@LaunchedEffect
+    // Remove dialog: build plan via Pakku createRemovalRequest (never block Main).
+    LaunchedEffect(model.modpack.removeDialog.wantsBuildPlan, model.modpack.removeDialog.visible) {
+        if (!model.modpack.removeDialog.visible || !model.modpack.removeDialog.wantsBuildPlan) {
+            return@LaunchedEffect
+        }
+        // Let Loading UI paint before heavy work.
+        kotlinx.coroutines.yield()
+        val keys = latestModel.modpack.selectedProjectKeys
+        val plan = withContext(Dispatchers.IO) {
+            val lockFile = latestModel.modpack.lockFile?.get() ?: return@withContext null
+            val projects = lockFile.getAllProjects().filter { it.uiKey() in keys }
+            buildRemovalPlan(lockFile, projects)
+        } ?: return@LaunchedEffect
+        latestPublish(AppMsg.Modpack(ModpackMsg.RemovePlanBuilt(plan)))
+    }
+
+    // Remove by keys (auto recommended deps) — e.g. fallback paths
+    LaunchedEffect(model.modpack.pendingRemovalKeys) {
+        val keys = model.modpack.pendingRemovalKeys ?: return@LaunchedEffect
         val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val projects = lockFile.getAllProjects().filter { it.pakkuId in ids }
+        val projects = lockFile.getAllProjects().filter { it.uiKey() in keys }
 
         withContext(Dispatchers.IO) {
             removeSuspend(lockFile, projects, ::toast)

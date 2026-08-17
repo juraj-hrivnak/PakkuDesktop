@@ -55,7 +55,14 @@ data class ProjectFileChange(
 
 private fun ProjectFile.fileKey(): String = id.ifEmpty { fileName }
 
-/** status-check result for one project (by pakkuId) */
+/** Projects-list FAB that can be remembered as the Enter default (Jewel-style). */
+enum class ProjectsFabAction {
+    Add,
+    Update,
+    Remove,
+}
+
+/** status-check result for one project (by [teksturepako.pakkuDesktop.app.actions.uiKey]) */
 data class ProjectUpdateInfo(
     val updatedProject: Project,
     val fileChanges: List<ProjectFileChange>,
@@ -74,6 +81,45 @@ data class ProjectUpdateInfo(
         return updatedProject.copy(files = files)
     }
 }
+
+// -- Add / Remove dialogs (fractal child models) --
+
+sealed interface AddDialogPhase {
+    data object Input : AddDialogPhase
+    data object Resolving : AddDialogPhase
+    data object Review : AddDialogPhase
+}
+
+data class AddDialogModel(
+    val visible: Boolean = false,
+    val query: String = "",
+    val phase: AddDialogPhase = AddDialogPhase.Input,
+    val resolveStatus: String? = null,
+    val plan: AdditionPlan? = null,
+    /** Root project [teksturepako.pakkuDesktop.app.actions.uiKey]s (provider identity); deps follow. */
+    val acceptedRootIds: Set<String> = emptySet(),
+    /** Non-null → ActionDriver builds addition plan. */
+    val pendingResolveQuery: String? = null,
+)
+
+sealed interface RemoveDialogPhase {
+    /** Selected every project in the pack — require explicit ack first. */
+    data object ConfirmAll : RemoveDialogPhase
+    data object Loading : RemoveDialogPhase
+    data object Ready : RemoveDialogPhase
+}
+
+data class RemoveDialogModel(
+    val visible: Boolean = false,
+    val phase: RemoveDialogPhase = RemoveDialogPhase.Loading,
+    val plan: RemovalPlan? = null,
+    /** Selected root [uiKey]s. */
+    val acceptedProjectIds: Set<String> = emptySet(),
+    /** Individually chosen linked deps (CLI ynPrompt per dep). */
+    val acceptedDepIds: Set<String> = emptySet(),
+    /** True → ProjectMutationDriver builds removal plan. */
+    val wantsBuildPlan: Boolean = false,
+)
 
 // -- ModpackDropdown --
 
@@ -148,8 +194,8 @@ sealed interface ModpackMsg {
     /** Modpack tab edit mode */
     data class ModpackEditing(val editing: Boolean) : ModpackMsg
 
-    data class ProjectsSelected(val pakkuIds: Set<String>) : ModpackMsg
-    data class ProjectsDeselected(val pakkuIds: Set<String>) : ModpackMsg
+    data class ProjectsSelected(val keys: Set<String>) : ModpackMsg
+    data class ProjectsDeselected(val keys: Set<String>) : ModpackMsg
     data class ProjectsCleared(val dummy: Unit = Unit) : ModpackMsg
 
     // -- Sort / filter --
@@ -170,25 +216,45 @@ sealed interface ModpackMsg {
     /** Add projects dialog (FAB) */
     data object ShowAddDialog : ModpackMsg
     data object HideAddDialog : ModpackMsg
+    data class AddQueryChanged(val query: String) : ModpackMsg
+    data object AddResolveRequested : ModpackMsg
+    data class AddResolveProgress(val status: String) : ModpackMsg
+    data class AddPlanBuilt(val plan: AdditionPlan) : ModpackMsg
+    data class AddRootSelectionChanged(val acceptedRootIds: Set<String>) : ModpackMsg
+    data object AddBackToInput : ModpackMsg
 
     /** Remove projects dialog (Delete / FAB) */
     data object ShowRemoveDialog : ModpackMsg
     data object HideRemoveDialog : ModpackMsg
+    /** User acknowledged wipe-all confirm → proceed to build plan. */
+    data object RemoveAllAcknowledged : ModpackMsg
+    data class RemovePlanBuilt(val plan: RemovalPlan) : ModpackMsg
+    data class RemoveRootSelectionChanged(val acceptedProjectIds: Set<String>) : ModpackMsg
+    data class RemoveDepSelectionChanged(val acceptedDepIds: Set<String>) : ModpackMsg
+    /** Confirm from dialog (filters from model in update). */
+    data object AddConfirmRequested : ModpackMsg
+    data object RemoveConfirmRequested : ModpackMsg
+
+    /** Remember last Projects FAB (Jewel default-button style). */
+    data class ProjectsFabRemembered(val action: ProjectsFabAction) : ModpackMsg
+
+    /** Enter: re-activate [ModpackModel.lastProjectsFab], else open detail. */
+    data object ActivateLastProjectsFab : ModpackMsg
 
     /** select all filtered (Ctrl/Cmd+A) */
     data object SelectAllFilteredRequested : ModpackMsg
 
-    /** open detail for primary selection (Enter) */
+    /** open detail for primary selection */
     data object OpenDetailRequested : ModpackMsg
 
     /** `pakku status` network check (no write) */
     data object StatusCheckRequested : ModpackMsg
     data class StatusCheckCompleted(val previews: Map<String, ProjectUpdateInfo>) : ModpackMsg
     /** mark previews applied after update */
-    data class UpdatesApplied(val pakkuIds: Set<String>) : ModpackMsg
+    data class UpdatesApplied(val keys: Set<String>) : ModpackMsg
     /** pick candidate file on a status preview */
     data class UpdateFileSelected(
-        val pakkuId: String,
+        val projectKey: String,
         val providerShortName: String,
         val fileId: String,
     ) : ModpackMsg
@@ -197,12 +263,12 @@ sealed interface ModpackMsg {
 
     data object ExportRequested : ModpackMsg
     data object FetchRequested : ModpackMsg
-    data class UpdateRequested(val pakkuIds: Set<String>) : ModpackMsg
+    data class UpdateRequested(val keys: Set<String>) : ModpackMsg
     /** DnD auto-add; skips non-recommended */
     data class AddRequested(val query: String) : ModpackMsg
     data class AddPlanConfirmed(val plan: AdditionPlan) : ModpackMsg
-    /** direct remove by ids (+ recommended orphaned deps) */
-    data class RemoveRequested(val pakkuIds: Set<String>) : ModpackMsg
+    /** direct remove by provider identity keys (+ recommended orphaned deps) */
+    data class RemoveRequested(val keys: Set<String>) : ModpackMsg
     data class RemovePlanConfirmed(val plan: RemovalPlan) : ModpackMsg
     data class InitRequested(val spec: InitSpec) : ModpackMsg
     data class FilesDropped(val paths: List<String>) : ModpackMsg

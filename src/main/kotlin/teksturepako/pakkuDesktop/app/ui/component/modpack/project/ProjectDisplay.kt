@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakku.api.platforms.Provider
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -29,7 +30,8 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     val project = model.selectedProject ?: return
     val scrollState = rememberScrollState()
-    val updateInfo = project.pakkuId?.let { model.updatePreviews?.get(it) }
+    val projectKey = project.uiKey()
+    val updateInfo = model.updatePreviews?.get(projectKey)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -41,7 +43,7 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         ) {
             ProjectCard(
                 project = project,
-                selected = true,
+                focused = true,
                 updateInfo = updateInfo,
             ) {
                 GradientHeader(it)
@@ -56,14 +58,13 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                         it.providerShortName == shortName && it.oldFile.fileName == projectFile.fileName
                     }
 
-                    if (change != null && updateInfo?.applied != true && project.pakkuId != null) {
-                        val pakkuId = project.pakkuId!!
+                    if (change != null && updateInfo?.applied != true) {
                         ProjectFileUpdateCard(
                             change = change,
                             onSelectFile = { fileId ->
                                 publish(
                                     ModpackMsg.UpdateFileSelected(
-                                        pakkuId = pakkuId,
+                                        projectKey = projectKey,
                                         providerShortName = change.providerShortName,
                                         fileId = fileId,
                                     ),

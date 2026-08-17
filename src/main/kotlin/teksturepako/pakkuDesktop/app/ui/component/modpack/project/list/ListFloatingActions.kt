@@ -52,16 +52,14 @@ import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val selectedCount = model.selectedPakkuIds.size
-    val allProjects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
-    val selectedProjects = allProjects.filter { it.pakkuId in model.selectedPakkuIds }
+    val selectedCount = model.selectedProjectKeys.size
     val busy = model.actionName != null
-    val lockFile = model.lockFile?.get()
-    val canRemove = selectedCount > 0 && !busy && lockFile != null
+    val canRemove = selectedCount > 0 && !busy && model.lockFile?.get() != null
 
     val palette = JewelTheme.colorPalette
     val addAccent = PakkuDesktopConstants.highlightColor
@@ -69,6 +67,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         ?: PakkuDesktopConstants.coral
     val updateAccent = PakkuDesktopConstants.amber
     val canUpdate = selectedCount > 0 && !busy
+    val lastFab = model.lastProjectsFab
 
     Row(
         modifier = Modifier
@@ -78,10 +77,14 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FloatingActionIcon(
-            onClick = { if (!busy) publish(ModpackMsg.ShowAddDialog) },
+            onClick = {
+                publish(ModpackMsg.ProjectsFabRemembered(ProjectsFabAction.Add))
+                publish(ModpackMsg.ShowAddDialog)
+            },
             enabled = !busy,
             buttonSize = 44.dp,
             accent = addAccent,
+            isDefault = lastFab == ProjectsFabAction.Add,
         ) { _ ->
             Icon(
                 key = AllIconsKeys.General.InlineAdd,
@@ -94,18 +97,20 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
 
         FloatingActionIcon(
             onClick = {
-                if (canUpdate) publish(ModpackMsg.UpdateRequested(model.selectedPakkuIds))
+                publish(ModpackMsg.ProjectsFabRemembered(ProjectsFabAction.Update))
+                publish(ModpackMsg.UpdateRequested(model.selectedProjectKeys))
             },
             enabled = canUpdate,
             buttonSize = 44.dp,
             accent = updateAccent,
+            isDefault = lastFab == ProjectsFabAction.Update,
         ) { hovered ->
             Icon(
                 key = AllIconsKeys.Actions.CheckOut,
                 contentDescription = "Update selected projects",
                 tint = when {
                     !canUpdate -> Color.Gray
-                    hovered -> updateAccent
+                    hovered || lastFab == ProjectsFabAction.Update -> updateAccent
                     else -> JewelTheme.contentColor
                 },
                 hints = arrayOf(),
@@ -114,17 +119,21 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         }
 
         FloatingActionIcon(
-            onClick = { if (canRemove) publish(ModpackMsg.ShowRemoveDialog) },
+            onClick = {
+                publish(ModpackMsg.ProjectsFabRemembered(ProjectsFabAction.Remove))
+                publish(ModpackMsg.ShowRemoveDialog)
+            },
             enabled = canRemove,
             buttonSize = 44.dp,
             accent = removeAccent,
+            isDefault = lastFab == ProjectsFabAction.Remove,
         ) { hovered ->
             Icon(
                 key = AllIconsKeys.General.Delete,
                 contentDescription = "Remove selected projects",
                 tint = when {
                     !canRemove -> Color.Gray
-                    hovered -> removeAccent
+                    hovered || lastFab == ProjectsFabAction.Remove -> removeAccent
                     else -> JewelTheme.contentColor
                 },
                 hints = arrayOf(),
@@ -134,27 +143,22 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
     }
 
     AddProjectsDialog(
-        visible = model.addDialogVisible && !busy,
-        onDismiss = { publish(ModpackMsg.HideAddDialog) },
+        publish = publish,
         model = model,
-        onConfirmPlan = { plan -> publish(ModpackMsg.AddPlanConfirmed(plan)) },
     )
 
-    if (lockFile != null) {
-        RemoveProjectsDialog(
-            visible = model.removeDialogVisible && selectedCount > 0 && !busy,
-            onDismiss = { publish(ModpackMsg.HideRemoveDialog) },
-            lockFile = lockFile,
-            projects = selectedProjects,
-            onConfirm = { plan -> publish(ModpackMsg.RemovePlanConfirmed(plan)) },
-        )
-    }
+    RemoveProjectsDialog(
+        publish = publish,
+        model = model,
+    )
 }
 
 /**
  * Per-button hover (not layout-coupled). Scale is graphicsLayer-only so siblings
  * stay put. Outline/glow use [accent] only while hovered/pressed (same pattern as
  * [teksturepako.pakkuDesktop.pkui.component.PkUiDropdown]).
+ *
+ * [isDefault] keeps a Jewel-style default-button accent ring so Enter can re-fire it.
  */
 @Composable
 private fun FloatingActionIcon(
@@ -162,6 +166,7 @@ private fun FloatingActionIcon(
     enabled: Boolean,
     buttonSize: Dp,
     accent: Color,
+    isDefault: Boolean = false,
     content: @Composable (hovered: Boolean) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -193,6 +198,7 @@ private fun FloatingActionIcon(
             !enabled -> 0f
             isPressed -> 0.35f
             isHovered -> 0.25f
+            isDefault -> 0.12f
             else -> 0f
         },
     )
@@ -205,7 +211,7 @@ private fun FloatingActionIcon(
         ),
     )
 
-    val showAccentOutline = enabled && (isHovered || isPressed)
+    val showAccentOutline = enabled && (isHovered || isPressed || isDefault)
 
     Box(
         modifier = Modifier
@@ -259,9 +265,13 @@ private fun FloatingActionIcon(
                 if (showAccentOutline) {
                     drawCircle(
                         color = accent.copy(
-                            alpha = if (isPressed) 0.4f else 0.25f,
+                            alpha = when {
+                                isPressed -> 0.4f
+                                isHovered -> 0.25f
+                                else -> 0.55f // default / remembered
+                            },
                         ),
-                        style = Stroke(width = 1.5f),
+                        style = Stroke(width = if (isDefault && !isHovered) 2f else 1.5f),
                     )
                 }
 

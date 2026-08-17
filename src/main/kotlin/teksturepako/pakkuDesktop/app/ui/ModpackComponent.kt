@@ -7,12 +7,20 @@ package teksturepako.pakkuDesktop.app.ui
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.Modifier
 import com.github.michaelbull.result.get
+import teksturepako.pakkuDesktop.app.actions.AdditionPlan
+import teksturepako.pakkuDesktop.app.actions.RemovalPlan
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredAndSortedProjects
+import teksturepako.pakkuDesktop.app.ui.model.AddDialogModel
+import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
+import teksturepako.pakkuDesktop.app.ui.model.RemoveDialogModel
+import teksturepako.pakkuDesktop.app.ui.model.RemoveDialogPhase
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pro.git.wrapper.gitFolderIds
 import teksturepako.pakkuDesktop.pro.git.wrapper.mergeChangelistExpandedFolders
@@ -32,8 +40,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     is ModpackMsg.Loaded -> {
         val updatedSelectedProject = if (model.selectedProject != null) {
+            val selectedKey = model.selectedProject.uiKey()
             msg.lockFile.get()?.getAllProjects()?.find { p ->
-                p.pakkuId == model.selectedProject.pakkuId
+                p.uiKey() == selectedKey
             }
         } else null
         model.copy(
@@ -54,9 +63,35 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.ProjectSelected    -> model.copy(selectedProject = msg.project, editingProject = false)
     is ModpackMsg.ProjectEditing     -> model.copy(editingProject = msg.editing)
     is ModpackMsg.ModpackEditing     -> model.copy(editingModpack = msg.editing)
-    is ModpackMsg.ProjectsSelected   -> model.copy(selectedPakkuIds = model.selectedPakkuIds + msg.pakkuIds)
-    is ModpackMsg.ProjectsDeselected -> model.copy(selectedPakkuIds = model.selectedPakkuIds - msg.pakkuIds)
-    is ModpackMsg.ProjectsCleared    -> model.copy(selectedPakkuIds = emptySet())
+    is ModpackMsg.ProjectsSelected   -> model.copy(selectedProjectKeys = model.selectedProjectKeys + msg.keys)
+    is ModpackMsg.ProjectsDeselected -> model.copy(selectedProjectKeys = model.selectedProjectKeys - msg.keys)
+    is ModpackMsg.ProjectsCleared    -> model.copy(selectedProjectKeys = emptySet())
+    is ModpackMsg.ProjectsFabRemembered -> model.copy(lastProjectsFab = msg.action)
+    ModpackMsg.ActivateLastProjectsFab -> {
+        fun canRun(action: ProjectsFabAction): Boolean = when (action) {
+            ProjectsFabAction.Add -> model.actionName == null
+            ProjectsFabAction.Update ->
+                model.actionName == null && model.selectedProjectKeys.isNotEmpty()
+            ProjectsFabAction.Remove ->
+                model.actionName == null &&
+                    model.selectedProjectKeys.isNotEmpty() &&
+                    model.lockFile?.get() != null
+        }
+        when (val fab = model.lastProjectsFab) {
+            ProjectsFabAction.Add if canRun(fab) ->
+                modpackUpdate(ModpackMsg.ShowAddDialog, model)
+            ProjectsFabAction.Update if canRun(fab) ->
+                modpackUpdate(ModpackMsg.UpdateRequested(model.selectedProjectKeys), model)
+            ProjectsFabAction.Remove if canRun(fab) ->
+                modpackUpdate(ModpackMsg.ShowRemoveDialog, model)
+            else -> {
+                // No remembered FAB, or it can't run — same as before: open detail.
+                if (model.selectedProjectKeys.isNotEmpty() || model.selectedProject != null) {
+                    modpackUpdate(ModpackMsg.OpenDetailRequested, model)
+                } else model
+            }
+        }
+    }
     is ModpackMsg.SortOrderChanged   -> model.copy(sortOrder = msg.order)
     is ModpackMsg.FilterTextChanged  -> model.copy(projectsFilterText = msg.text)
     is ModpackMsg.FilterUpdatesOnlyChanged -> model.copy(filterUpdatesOnly = msg.enabled)
@@ -70,21 +105,185 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.FocusProjectsFilterRequested -> model.copy(wantsFocusProjectsFilter = true)
     ModpackMsg.FocusProjectsFilterConsumed -> model.copy(wantsFocusProjectsFilter = false)
     is ModpackMsg.ProjectsFilterFocusChanged -> model.copy(projectsFilterFocused = msg.focused)
-    ModpackMsg.ShowAddDialog -> model.copy(addDialogVisible = true)
-    ModpackMsg.HideAddDialog -> model.copy(addDialogVisible = false)
-    ModpackMsg.ShowRemoveDialog -> model.copy(removeDialogVisible = true)
-    ModpackMsg.HideRemoveDialog -> model.copy(removeDialogVisible = false)
+
+    ModpackMsg.ShowAddDialog -> model.copy(
+        addDialog = AddDialogModel(visible = true),
+    )
+    ModpackMsg.HideAddDialog -> model.copy(addDialog = AddDialogModel())
+    is ModpackMsg.AddQueryChanged -> model.copy(
+        addDialog = model.addDialog.copy(query = msg.query),
+    )
+    ModpackMsg.AddResolveRequested -> {
+        val query = model.addDialog.query
+        if (query.isBlank()) model
+        else model.copy(
+            addDialog = model.addDialog.copy(
+                phase = AddDialogPhase.Resolving,
+                resolveStatus = "Resolving…",
+                plan = null,
+                acceptedRootIds = emptySet(),
+                pendingResolveQuery = query,
+            ),
+        )
+    }
+    is ModpackMsg.AddResolveProgress -> model.copy(
+        addDialog = model.addDialog.copy(resolveStatus = msg.status),
+    )
+    is ModpackMsg.AddPlanBuilt -> {
+        if (!model.addDialog.visible) return model
+        val accepted = msg.plan.entries
+            .filter { it.isRecommended }
+            .map { it.key }
+            .toSet()
+        model.copy(
+            addDialog = model.addDialog.copy(
+                phase = AddDialogPhase.Review,
+                resolveStatus = null,
+                plan = msg.plan,
+                acceptedRootIds = accepted,
+                pendingResolveQuery = null,
+            ),
+        )
+    }
+    is ModpackMsg.AddRootSelectionChanged -> model.copy(
+        addDialog = model.addDialog.copy(acceptedRootIds = msg.acceptedRootIds),
+    )
+    ModpackMsg.AddBackToInput -> model.copy(
+        addDialog = model.addDialog.copy(
+            phase = AddDialogPhase.Input,
+            resolveStatus = null,
+            plan = null,
+            acceptedRootIds = emptySet(),
+            pendingResolveQuery = null,
+        ),
+    )
+    ModpackMsg.AddConfirmRequested -> {
+        val dialog = model.addDialog
+        val plan = dialog.plan ?: return model
+        val selected = plan.entries.filter { it.key in dialog.acceptedRootIds }
+        if (selected.isEmpty()) return model
+        model.copy(
+            addDialog = AddDialogModel(),
+            pendingAdditionPlan = AdditionPlan(selected, plan.messages),
+        )
+    }
+
+    ModpackMsg.ShowRemoveDialog -> {
+        // Keep update cheap so the dialog can paint immediately; exact cover is size equality.
+        val packSize = model.lockFile?.get()?.getAllProjects()?.size ?: 0
+        val removingAll = packSize > 0 && model.selectedProjectKeys.size == packSize
+        if (removingAll) {
+            model.copy(
+                removeDialog = RemoveDialogModel(
+                    visible = true,
+                    phase = RemoveDialogPhase.ConfirmAll,
+                    wantsBuildPlan = false,
+                ),
+            )
+        } else {
+            model.copy(
+                removeDialog = RemoveDialogModel(
+                    visible = true,
+                    phase = RemoveDialogPhase.Loading,
+                    wantsBuildPlan = true,
+                ),
+            )
+        }
+    }
+    ModpackMsg.HideRemoveDialog -> model.copy(removeDialog = RemoveDialogModel())
+    ModpackMsg.RemoveAllAcknowledged -> {
+        if (!model.removeDialog.visible) return model
+        if (model.removeDialog.phase != RemoveDialogPhase.ConfirmAll) return model
+        model.copy(
+            removeDialog = model.removeDialog.copy(
+                phase = RemoveDialogPhase.Loading,
+                wantsBuildPlan = true,
+            ),
+        )
+    }
+    is ModpackMsg.RemovePlanBuilt -> {
+        if (!model.removeDialog.visible) return model
+        val acceptedRoots = msg.plan.projects
+            .filter { it.isRecommended }
+            .map { it.key }
+            .toSet()
+        // CLI defaults: orphaned deps yes, still-required deps no.
+        val acceptedDeps = msg.plan.projects
+            .filter { it.key in acceptedRoots }
+            .flatMap { it.orphanedChildren }
+            .filter { it.isRecommended }
+            .map { it.key }
+            .toSet()
+        model.copy(
+            removeDialog = model.removeDialog.copy(
+                phase = RemoveDialogPhase.Ready,
+                plan = msg.plan,
+                acceptedProjectIds = acceptedRoots,
+                acceptedDepIds = acceptedDeps,
+                wantsBuildPlan = false,
+            ),
+        )
+    }
+    is ModpackMsg.RemoveRootSelectionChanged -> {
+        val plan = model.removeDialog.plan
+        val nextRoots = msg.acceptedProjectIds
+        val prevRoots = model.removeDialog.acceptedProjectIds
+        val added = nextRoots - prevRoots
+        val removed = prevRoots - nextRoots
+        var nextDeps = model.removeDialog.acceptedDepIds
+        if (plan != null) {
+            for (key in removed) {
+                val childKeys = plan.projects.find { it.key == key }
+                    ?.orphanedChildren?.map { it.key }?.toSet().orEmpty()
+                nextDeps = nextDeps - childKeys
+            }
+            for (key in added) {
+                val recommended = plan.projects.find { it.key == key }
+                    ?.orphanedChildren
+                    ?.filter { it.isRecommended }
+                    ?.map { it.key }
+                    ?.toSet()
+                    .orEmpty()
+                nextDeps = nextDeps + recommended
+            }
+        }
+        model.copy(
+            removeDialog = model.removeDialog.copy(
+                acceptedProjectIds = nextRoots,
+                acceptedDepIds = nextDeps,
+            ),
+        )
+    }
+    is ModpackMsg.RemoveDepSelectionChanged -> model.copy(
+        removeDialog = model.removeDialog.copy(acceptedDepIds = msg.acceptedDepIds),
+    )
+    ModpackMsg.RemoveConfirmRequested -> {
+        val dialog = model.removeDialog
+        val plan = dialog.plan ?: return model
+        val roots = plan.projects.filter { it.key in dialog.acceptedProjectIds }
+        if (roots.isEmpty()) return model
+        val orphans = plan.orphansFor(dialog.acceptedProjectIds, dialog.acceptedDepIds)
+        model.copy(
+            removeDialog = RemoveDialogModel(),
+            pendingRemovalPlan = RemovalPlan(
+                projects = roots,
+                orphanedDeps = orphans,
+                messages = plan.messages,
+            ),
+        )
+    }
+
     ModpackMsg.SelectAllFilteredRequested -> {
         val projects = model.lockFile?.get()?.getAllProjects() ?: return model
-        val ids = model.filteredAndSortedProjects(projects).mapNotNull { it.pakkuId }.toSet()
-        model.copy(selectedPakkuIds = ids)
+        val keys = model.filteredAndSortedProjects(projects).map { it.uiKey() }.toSet()
+        model.copy(selectedProjectKeys = keys)
     }
     ModpackMsg.OpenDetailRequested -> {
         val projects = model.lockFile?.get()?.getAllProjects() ?: return model
-        val id = model.selectedPakkuIds.firstOrNull()
-            ?: model.selectedProject?.pakkuId
+        val key = model.selectedProjectKeys.firstOrNull()
+            ?: model.selectedProject?.uiKey()
             ?: return model
-        val project = projects.find { it.pakkuId == id } ?: return model
+        val project = projects.find { it.uiKey() == key } ?: return model
         model.copy(selectedProject = project, editingProject = false)
     }
 
@@ -95,23 +294,23 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     )
     is ModpackMsg.UpdatesApplied -> {
         val previews = model.updatePreviews ?: return model
-        if (msg.pakkuIds.isEmpty()) return model
+        if (msg.keys.isEmpty()) return model
         model.copy(
             updatePreviews = previews.mapValues { (id, info) ->
-                if (id in msg.pakkuIds) info.copy(applied = true) else info
+                if (id in msg.keys) info.copy(applied = true) else info
             },
         )
     }
     is ModpackMsg.UpdateFileSelected -> {
         val previews = model.updatePreviews ?: return model
-        val info = previews[msg.pakkuId] ?: return model
+        val info = previews[msg.projectKey] ?: return model
         val nextChanges = info.fileChanges.map { change ->
             if (change.providerShortName != msg.providerShortName) change
             else if (change.newFiles.none { (it.id.ifEmpty { it.fileName }) == msg.fileId }) change
             else change.copy(selectedFileId = msg.fileId)
         }
         model.copy(
-            updatePreviews = previews + (msg.pakkuId to info.copy(fileChanges = nextChanges)),
+            updatePreviews = previews + (msg.projectKey to info.copy(fileChanges = nextChanges)),
         )
     }
 
@@ -119,11 +318,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.FetchRequested  -> model.copy(wantsFetch = true)
     is ModpackMsg.UpdateRequested -> model.copy(
         wantsUpdate = true,
-        selectedPakkuIds = msg.pakkuIds.ifEmpty { model.selectedPakkuIds },
+        selectedProjectKeys = msg.keys.ifEmpty { model.selectedProjectKeys },
     )
     is ModpackMsg.AddRequested -> model.copy(pendingAddQuery = msg.query)
     is ModpackMsg.AddPlanConfirmed -> model.copy(pendingAdditionPlan = msg.plan)
-    is ModpackMsg.RemoveRequested -> model.copy(pendingRemovalIds = msg.pakkuIds)
+    is ModpackMsg.RemoveRequested -> model.copy(pendingRemovalKeys = msg.keys)
     is ModpackMsg.RemovePlanConfirmed -> model.copy(pendingRemovalPlan = msg.plan)
     is ModpackMsg.InitRequested -> model.copy(wantsInit = true, pendingInitSpec = msg.spec)
     is ModpackMsg.FilesDropped -> model // handled at app level
@@ -148,7 +347,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     )
     ModpackMsg.TerminateAction -> model.copy(wantsTerminateAction = true)
     ModpackMsg.MutationCompleted -> model.copy(
-        pendingRemovalIds = null,
+        pendingRemovalKeys = null,
         pendingRemovalPlan = null,
         pendingAddQuery = null,
         pendingAdditionPlan = null,

@@ -92,7 +92,7 @@ fun ProjectRef(
         if (project.getProviders().isEmpty()) {
             val fallback = project.name.values.firstOrNull()
                 ?: project.slug.values.firstOrNull()
-                ?: project.pakkuId
+                ?: project.id.values.firstOrNull()
                 ?: "?"
             Text(text = fallback, fontSize = fontSize)
         }

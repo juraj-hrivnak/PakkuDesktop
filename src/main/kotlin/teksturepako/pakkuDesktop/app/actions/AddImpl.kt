@@ -27,9 +27,8 @@ private val addLogger = logger("AddImpl")
 private class SimpleError(override val rawMessage: String) : ActionError()
 
 /**
- * Resolves args via [createAdditionRequest] (CLI `pakku add` preview step).
- * Does not mutate the lock file and does not preview dependencies —
- * deps are auto-added on [applyAdditionPlan], same as CLI.
+ * Resolves args via Pakku [createAdditionRequest] and previews deps via [previewDependenciesDesktop].
+ * Does not mutate the lock file — deps are auto-added on [applyAdditionPlan].
  */
 suspend fun buildAdditionPlan(
     lockFile: LockFile,
@@ -53,12 +52,15 @@ suspend fun buildAdditionPlan(
 
     val entries = mutableListOf<AdditionEntry>()
     val messages = mutableListOf<ActionError>()
+    val accountedDeps = mutableListOf<Project>()
 
     for (arg in args) {
         onProgress("Resolving $arg…")
         val projectIn = resolveProjectWithFiles(arg, lockFile, projectProvider).getOrElse { error ->
             addLogger.error(error.toUiMessage())
-            messages += error
+            if (messages.none { it.fingerprint() == error.fingerprint() }) {
+                messages += error
+            }
             onToast(actionErrorToast(error))
             null
         } ?: continue
@@ -67,19 +69,27 @@ suspend fun buildAdditionPlan(
             projectIn = projectIn,
             lockFile = lockFile,
             platforms = platforms,
+            projectProvider = projectProvider,
             onToast = onToast,
             messages = messages,
+            onProgress = onProgress,
+            accountedDeps = accountedDeps,
             strict = true,
         ) ?: continue
 
+        // Roots also occupy the accounted set so they aren't re-listed as deps of each other.
+        if (accountedDeps.none { it isAlmostTheSameAs entry.project }) {
+            accountedDeps += entry.project
+        }
         entries += entry
     }
 
-    return AdditionPlan(entries = entries, messages = messages)
+    return AdditionPlan(entries = entries, messages = messages.distinctBy { it.fingerprint() })
 }
 
 /**
  * Applies accepted entries: add/update + link + auto [resolveDependenciesDesktop] (CLI path).
+ * Emits one summary toast of what was added (modal-style [ProjectRef]s).
  */
 suspend fun applyAdditionPlan(
     lockFile: LockFile,
@@ -102,16 +112,15 @@ suspend fun applyAdditionPlan(
         return
     }
 
-    var added = 0
+    val addedLines = mutableListOf<AddedProjectLine>()
     for (entry in plan.entries) {
         entry.project.createAdditionRequest(
             onError = { error ->
                 if (error !is AlreadyAdded) {
                     addLogger.error(error.toUiMessage())
                     onToast(actionErrorToast(error))
-                } else {
-                    onToast(actionInfoToast(error.toUiMessage()))
                 }
+                // AlreadyAdded: skip silently — user already reviewed this in the modal.
                 if (error is CurseForge.Unauthenticated) {
                     onToast(actionInfoToast("Set a CurseForge API key in Settings to add CurseForge projects."))
                 }
@@ -119,23 +128,18 @@ suspend fun applyAdditionPlan(
             onSuccess = { project, _, replacing, reqHandlers ->
                 if (replacing == null) lockFile.add(project) else lockFile.update(project)
                 lockFile.linkProjectToDependents(project)
-                added++
+                addedLines += AddedProjectLine(project, replacing)
                 if (resolveDeps) {
                     project.resolveDependenciesDesktop(
                         reqHandlers = reqHandlers,
                         lockFile = lockFile,
                         projectProvider = projectProvider,
                         platforms = platforms,
-                        onInfo = { msg -> onToast(actionInfoToast(msg)) },
+                        onDependencyAdded = { dep ->
+                            addedLines += AddedProjectLine(dep)
+                        },
                     )
                 }
-                val label = project.displayLabel()
-                onToast(
-                    actionInfoToast(
-                        if (replacing == null) "$label added"
-                        else "${replacing.displayLabel()} replaced with $label"
-                    )
-                )
             },
             lockFile = lockFile,
             platforms = platforms,
@@ -143,9 +147,10 @@ suspend fun applyAdditionPlan(
         )
     }
 
-    if (added > 0) {
+    if (addedLines.isNotEmpty()) {
         lockFile.write()
         configFile.write()
+        onToast(actionAddedToast(addedLines.distinctBy { it.project.uiKey() }))
     } else {
         onToast(actionInfoToast(plan.messages.firstOrNull()?.toUiMessage() ?: "No projects were added."))
     }
@@ -178,31 +183,41 @@ private suspend fun buildEntryForProject(
     projectIn: Project,
     lockFile: LockFile,
     platforms: List<Platform>,
+    projectProvider: Provider,
     onToast: suspend (ToastData) -> Unit,
     messages: MutableList<ActionError>,
+    onProgress: suspend (String) -> Unit,
+    accountedDeps: MutableList<Project>,
     strict: Boolean,
 ): AdditionEntry? {
-    val warnings = mutableListOf<ActionError>()
+    val entryWarnings = mutableListOf<ActionError>()
     var result: AdditionEntry? = null
     var retryWithoutStrict = false
 
     projectIn.createAdditionRequest(
         onError = { error ->
-            // Mirror CLI `pError`: always surface every ActionError.
-            messages += error
             when {
                 error is AlreadyAdded -> {
-                    warnings += error
+                    entryWarnings += error
                 }
                 error is NotFoundOn && strict -> {
+                    // Expected when probing all platforms; retry without strict — do not surface.
                     retryWithoutStrict = true
                 }
-                error is CurseForge.Unauthenticated -> {
-                    onToast(actionErrorToast(error))
-                    onToast(actionInfoToast("Set a CurseForge API key in Settings to add CurseForge projects."))
+                error is NotFoundOn -> {
+                    // Soft multi-provider miss after success path — omit from GUI (row already shows project).
                 }
-                error.severity == ErrorSeverity.FATAL -> {
-                    onToast(actionErrorToast(error))
+                else -> {
+                    entryWarnings += error
+                    when {
+                        error is CurseForge.Unauthenticated -> {
+                            onToast(actionErrorToast(error))
+                            onToast(actionInfoToast("Set a CurseForge API key in Settings to add CurseForge projects."))
+                        }
+                        error.severity == ErrorSeverity.FATAL -> {
+                            onToast(actionErrorToast(error))
+                        }
+                    }
                 }
             }
         },
@@ -211,7 +226,7 @@ private suspend fun buildEntryForProject(
                 project = project,
                 isRecommended = isRecommended,
                 replacing = replacing,
-                warnings = warnings.toList(),
+                warnings = entryWarnings.distinctBy { it.fingerprint() },
             )
         },
         lockFile = lockFile,
@@ -221,10 +236,26 @@ private suspend fun buildEntryForProject(
 
     if (retryWithoutStrict && result == null) {
         return buildEntryForProject(
-            projectIn, lockFile, platforms, onToast, messages, strict = false,
+            projectIn, lockFile, platforms, projectProvider, onToast, messages, onProgress, accountedDeps, strict = false,
         )
     }
-    return result
+
+    val entry = result
+    if (entry == null) {
+        // True failures only — not duplicated under a row.
+        for (error in entryWarnings.distinctBy { it.fingerprint() }) {
+            if (messages.none { it.fingerprint() == error.fingerprint() }) {
+                messages += error
+            }
+        }
+        return null
+    }
+
+    onProgress("Resolving dependencies for ${entry.project.displayLabel()}…")
+    val deps = entry.project.previewDependenciesDesktop(
+        lockFile, projectProvider, platforms, accountedDeps,
+    )
+    return entry.copy(deps = deps)
 }
 
 internal fun splitQueryArgs(query: String): List<String> =
