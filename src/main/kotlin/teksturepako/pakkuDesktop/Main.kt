@@ -51,6 +51,7 @@ fun main() {
             drivers = listOf(
                 themeDriver,
                 mainWindowDriver(applicationScope = this),
+                uiScaleDriver,
                 themedBoxDriver,
                 clipboardDriver,
                 profileDiskDriver,

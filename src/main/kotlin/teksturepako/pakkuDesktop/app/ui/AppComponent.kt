@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.toProjectsUiData
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
@@ -50,7 +51,7 @@ private fun ModpackMsg.persistsProjectsListPrefs(): Boolean = when (this) {
 
 // -- appUpdate handlers --
 
-private fun AppModel.syncDropdownProfileData(data: teksturepako.pakkuDesktop.app.data.ProfileData): AppModel = copy(
+private fun AppModel.syncDropdownProfileData(data: ProfileData): AppModel = copy(
     welcome = welcome.copy(
         profileData = data,
         dropdown = welcome.dropdown.copy(profileData = data),
@@ -62,12 +63,13 @@ private fun AppModel.syncDropdownProfileData(data: teksturepako.pakkuDesktop.app
 
 private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.ProfileLoaded -> {
-        val newProfile = model.profile.copy(data = msg.data, loaded = true, pendingPath = null)
-        val synced = model.copy(profile = newProfile).syncDropdownProfileData(msg.data)
-        if (msg.data.currentProfile != null && model.screen == AppScreen.Welcome) {
+        val data = msg.data.copy(uiScale = ProfileData.coerceUiScale(msg.data.uiScale))
+        val newProfile = model.profile.copy(data = data, loaded = true, pendingPath = null)
+        val synced = model.copy(profile = newProfile).syncDropdownProfileData(data)
+        if (data.currentProfile != null && model.screen == AppScreen.Welcome) {
             synced.copy(
                 screen = AppScreen.Modpack,
-                modpack = synced.seededModpack(ModpackDropdownModel(profileData = msg.data)),
+                modpack = synced.seededModpack(ModpackDropdownModel(profileData = data)),
             )
         } else synced
     }
@@ -89,6 +91,13 @@ private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg
 
     is AppMsg.ThemeChanged -> {
         model.copy(profile = model.profile.copy(data = msg.data)).syncDropdownProfileData(msg.data)
+    }
+
+    is AppMsg.UiScaleChangeRequested -> {
+        val newData = model.profile.data.copy(
+            uiScale = ProfileData.coerceUiScale(msg.uiScale),
+        )
+        model.copy(profile = model.profile.copy(data = newData)).syncDropdownProfileData(newData)
     }
 
     else -> model
@@ -278,7 +287,8 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.ProfileLoaded,
     is AppMsg.ProfileCurrentResolved,
     is AppMsg.ThemeChangeRequested,
-    is AppMsg.ThemeChanged           -> handleProfileMsg(msg, model)
+    is AppMsg.ThemeChanged,
+    is AppMsg.UiScaleChangeRequested -> handleProfileMsg(msg, model)
 
     // -- Directory picker (app-level) --
     is AppMsg.DirectoryPicked        -> handleDirectoryPicked(msg.path, model)

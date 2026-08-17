@@ -99,7 +99,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    LaunchedEffect(model.profile.data.theme, model.profile.loaded) {
+    LaunchedEffect(model.profile.data.theme, model.profile.data.uiScale, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             model.profile.data.write()

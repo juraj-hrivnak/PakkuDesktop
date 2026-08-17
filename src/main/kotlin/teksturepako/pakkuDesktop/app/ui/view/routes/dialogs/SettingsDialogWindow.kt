@@ -15,19 +15,24 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.GroupHeader
+import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -53,62 +58,101 @@ fun SettingsDialog(
     }
 
     val saving = model.pendingCredentialsUpdate != null
+    val uiScale = ProfileData.coerceUiScale(model.profile.data.uiScale)
+    val scaleIndex = uiScalePresetIndex(uiScale)
+    // Dialog is a separate window at OS density. Keep its content there too so changing
+    // scale does not remount the combo or mismatch window size vs layout.
+    val parentDensity = LocalDensity.current
+    val dialogDensity = remember(parentDensity.density, parentDensity.fontScale, uiScale) {
+        Density(
+            density = parentDensity.density / uiScale,
+            fontScale = parentDensity.fontScale,
+        )
+    }
 
     Dialog(onDismissRequest = { publish(AppMsg.HideSettings) }) {
-        ContentBox(
-            Modifier
-                .focusRequester(focusRequester)
-                .dialogConfirmCancelKeys(onDismiss = { publish(AppMsg.HideSettings) })
-                .widthIn(min = 360.dp, max = 520.dp),
-        ) {
-            Column(
+        CompositionLocalProvider(LocalDensity provides dialogDensity) {
+            ContentBox(
                 Modifier
-                    .padding(PakkuDesktopConstants.commonPaddingSize)
-                    .heightIn(max = 480.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .focusRequester(focusRequester)
+                    .dialogConfirmCancelKeys(onDismiss = { publish(AppMsg.HideSettings) })
+                    .widthIn(min = 360.dp, max = 520.dp),
             ) {
-                Header("Settings", Modifier.padding(vertical = 4.dp))
+                Column(
+                    Modifier
+                        .padding(PakkuDesktopConstants.commonPaddingSize)
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Header("Settings", Modifier.padding(vertical = 4.dp))
 
-                GroupHeader("Appearance")
-                ThemeButton(publish, model.profile.data.intUiTheme)
-                Text(
-                    when (model.profile.data.intUiTheme) {
-                        IntUiThemes.Dark -> "Dark theme (click icon to switch)"
-                        IntUiThemes.Light -> "Light theme (click icon to switch)"
-                        else -> "Theme"
-                    },
-                    color = JewelTheme.contentColor.copy(alpha = 0.65f),
-                )
+                    GroupHeader("Appearance")
+                    ThemeButton(publish, model.profile.data.intUiTheme)
+                    Text(
+                        when (model.profile.data.intUiTheme) {
+                            IntUiThemes.Dark -> "Dark theme (click icon to switch)"
+                            IntUiThemes.Light -> "Light theme (click icon to switch)"
+                            else -> "Theme"
+                        },
+                        color = JewelTheme.contentColor.copy(alpha = 0.65f),
+                    )
 
-                GroupHeader("Credentials")
-                Text(
-                    "Stored in ~/.pakku/credentials",
-                    color = JewelTheme.contentColor.copy(alpha = 0.55f),
-                )
-
-                val creds = model.settingsCredentials
-                if (creds == null) {
-                    Text("Loading…", color = JewelTheme.contentColor.copy(alpha = 0.65f))
-                } else {
-                    key(creds) {
-                        SettingsCredentialsForm(
-                            creds = creds,
-                            saving = saving,
-                            status = model.credentialsStatus,
-                            onSave = { cf, gh ->
-                                publish(
-                                    AppMsg.CredentialsUpdateRequested(
-                                        curseForgeApiKey = cf,
-                                        gitHubAccessToken = gh,
-                                    ),
-                                )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("UI scale", color = JewelTheme.contentColor.copy(alpha = 0.75f))
+                        ListComboBox(
+                            items = uiScaleLabels,
+                            selectedIndex = scaleIndex,
+                            onSelectedItemChange = { index ->
+                                if (index == scaleIndex) return@ListComboBox
+                                val scale = ProfileData.UI_SCALE_PRESETS.getOrNull(index) ?: return@ListComboBox
+                                if (scale == uiScale) return@ListComboBox
+                                publish(AppMsg.UiScaleChangeRequested(scale))
                             },
+                            modifier = Modifier.fillMaxWidth(),
                         )
+                    }
+
+                    GroupHeader("Credentials")
+                    Text(
+                        "Stored in ~/.pakku/credentials",
+                        color = JewelTheme.contentColor.copy(alpha = 0.55f),
+                    )
+
+                    val creds = model.settingsCredentials
+                    if (creds == null) {
+                        Text("Loading…", color = JewelTheme.contentColor.copy(alpha = 0.65f))
+                    } else {
+                        key(creds) {
+                            SettingsCredentialsForm(
+                                creds = creds,
+                                saving = saving,
+                                status = model.credentialsStatus,
+                                onSave = { cf, gh ->
+                                    publish(
+                                        AppMsg.CredentialsUpdateRequested(
+                                            curseForgeApiKey = cf,
+                                            gitHubAccessToken = gh,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+private val uiScaleLabels = ProfileData.UI_SCALE_PRESETS.map { scale ->
+    "${(scale * 100).toInt()}%"
+}
+
+private fun uiScalePresetIndex(uiScale: Float): Int {
+    val coerced = ProfileData.coerceUiScale(uiScale)
+    return ProfileData.UI_SCALE_PRESETS.indices.minBy { index ->
+        kotlin.math.abs(ProfileData.UI_SCALE_PRESETS[index] - coerced)
     }
 }
 

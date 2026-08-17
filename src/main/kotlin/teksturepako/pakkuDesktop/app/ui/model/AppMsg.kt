@@ -17,6 +17,7 @@ sealed interface AppMsg {
     data class ProfileCurrentResolved(val data: ProfileData) : AppMsg
     data class ThemeChangeRequested(val theme: IntUiThemes) : AppMsg
     data class ThemeChanged(val data: ProfileData) : AppMsg
+    data class UiScaleChangeRequested(val uiScale: Float) : AppMsg
 
     /** directoryPickerDriver */
     data class DirectoryPicked(val path: String) : AppMsg
