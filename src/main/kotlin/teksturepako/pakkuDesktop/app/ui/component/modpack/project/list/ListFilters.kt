@@ -20,12 +20,18 @@ fun Project.matchesProjectsListFilters(model: ModpackModel): Boolean {
 
     val typeOk = model.filterTypes.isEmpty() || type in model.filterTypes
 
-    val sideOk = model.filterSides.isEmpty() || side in model.filterSides
+    val sideFilterActive = model.filterSides.isNotEmpty() || model.filterMissingSide
+    val sideOk = !sideFilterActive ||
+        (side != null && side in model.filterSides) ||
+        (side == null && model.filterMissingSide)
 
     val providerOk = model.filterProviders.isEmpty() ||
         getProviders().any { it.serialName in model.filterProviders }
 
-    return textOk && updatesOk && typeOk && sideOk && providerOk
+    val redistributableOk = model.filterRedistributable == null ||
+        redistributable == model.filterRedistributable
+
+    return textOk && updatesOk && typeOk && sideOk && providerOk && redistributableOk
 }
 
 fun ModpackModel.filteredAndSortedProjects(projects: List<Project>): List<Project> {

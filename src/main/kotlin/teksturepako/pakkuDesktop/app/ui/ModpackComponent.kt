@@ -70,8 +70,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.ActivateLastProjectsFab -> {
         fun canRun(action: ProjectsFabAction): Boolean = when (action) {
             ProjectsFabAction.Add -> model.actionName == null
-            ProjectsFabAction.Update ->
-                model.actionName == null && model.selectedProjectKeys.isNotEmpty()
+            ProjectsFabAction.Update -> model.actionName == null
             ProjectsFabAction.Remove ->
                 model.actionName == null &&
                     model.selectedProjectKeys.isNotEmpty() &&
@@ -81,7 +80,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             ProjectsFabAction.Add if canRun(fab) ->
                 modpackUpdate(ModpackMsg.ShowAddDialog, model)
             ProjectsFabAction.Update if canRun(fab) ->
-                modpackUpdate(ModpackMsg.UpdateRequested(model.selectedProjectKeys), model)
+                if (model.selectedProjectKeys.isEmpty()) {
+                    modpackUpdate(ModpackMsg.StatusCheckRequested, model)
+                } else {
+                    modpackUpdate(ModpackMsg.UpdateRequested(model.selectedProjectKeys), model)
+                }
             ProjectsFabAction.Remove if canRun(fab) ->
                 modpackUpdate(ModpackMsg.ShowRemoveDialog, model)
             else -> {
@@ -97,7 +100,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.FilterUpdatesOnlyChanged -> model.copy(filterUpdatesOnly = msg.enabled)
     is ModpackMsg.FilterTypesChanged -> model.copy(filterTypes = msg.types)
     is ModpackMsg.FilterSidesChanged -> model.copy(filterSides = msg.sides)
+    is ModpackMsg.FilterMissingSideChanged -> model.copy(filterMissingSide = msg.enabled)
     is ModpackMsg.FilterProvidersChanged -> model.copy(filterProviders = msg.providers)
+    is ModpackMsg.FilterRedistributableChanged -> model.copy(filterRedistributable = msg.value)
     is ModpackMsg.ProjectsSplitRatioChanged -> model.copy(
         projectsSplitRatio = msg.ratio.coerceIn(0.05f, 0.95f),
     )
@@ -463,11 +468,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         when (msg.msg) {
             ModpackDropdownMsg.Export                -> base.copy(wantsExport = true)
             ModpackDropdownMsg.Fetch                 -> base.copy(wantsFetch = true)
+            ModpackDropdownMsg.CheckUpdates          -> base.copy(wantsStatusCheck = true)
             // parent
             is ModpackDropdownMsg.CloseRequested,
             ModpackDropdownMsg.ShowSettings,
             is ModpackDropdownMsg.DirectoryPicked    -> model
-            else                                     -> base
         }
     }
     is ModpackMsg.GitDropdown -> {

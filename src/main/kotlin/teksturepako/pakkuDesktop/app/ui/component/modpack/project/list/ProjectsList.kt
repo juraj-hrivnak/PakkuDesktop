@@ -32,13 +32,13 @@ fun ProjectsList(
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
 
     Column(Modifier.fillMaxSize()) {
-        // Toolbar: search / filters / updates + select-all / sort
+        // Toolbar: search / filters + selection / sort
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
-                .padding(top = 8.dp, bottom = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(top = 6.dp, bottom = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             ProjectFilter(
                 publish = publish,

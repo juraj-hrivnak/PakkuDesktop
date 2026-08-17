@@ -4,10 +4,16 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -59,6 +65,7 @@ import teksturepako.pakkuDesktop.elm.animatedColor
 fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     val selectedCount = model.selectedProjectKeys.size
     val busy = model.actionName != null
+    val checking = model.actionName == "Checking updates"
     val canRemove = selectedCount > 0 && !busy && model.lockFile?.get() != null
 
     val palette = JewelTheme.colorPalette
@@ -66,8 +73,24 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
     val removeAccent = palette.red.getOrNull(palette.red.lastIndex / 2)
         ?: PakkuDesktopConstants.coral
     val updateAccent = PakkuDesktopConstants.amber
-    val canUpdate = selectedCount > 0 && !busy
+    val checkAccent = palette.blue.getOrNull(palette.blue.lastIndex / 2)
+        ?: PakkuDesktopConstants.highlightColor
+    val checkMode = selectedCount == 0
+    val showCheckIcon = checkMode || checking
+    val canCheckOrUpdate = !busy
+    val updateFabAccent = if (showCheckIcon) checkAccent else updateAccent
     val lastFab = model.lastProjectsFab
+
+    val spinTransition = rememberInfiniteTransition(label = "checkUpdatesSpin")
+    val spinDegrees by spinTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "checkUpdatesRotation",
+    )
 
     Row(
         modifier = Modifier
@@ -98,24 +121,48 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         FloatingActionIcon(
             onClick = {
                 publish(ModpackMsg.ProjectsFabRemembered(ProjectsFabAction.Update))
-                publish(ModpackMsg.UpdateRequested(model.selectedProjectKeys))
+                if (checkMode) {
+                    publish(ModpackMsg.StatusCheckRequested)
+                } else {
+                    publish(ModpackMsg.UpdateRequested(model.selectedProjectKeys))
+                }
             },
-            enabled = canUpdate,
+            enabled = canCheckOrUpdate,
             buttonSize = 44.dp,
-            accent = updateAccent,
+            accent = updateFabAccent,
             isDefault = lastFab == ProjectsFabAction.Update,
         ) { hovered ->
-            Icon(
-                key = AllIconsKeys.Actions.CheckOut,
-                contentDescription = "Update selected projects",
-                tint = when {
-                    !canUpdate -> Color.Gray
-                    hovered || lastFab == ProjectsFabAction.Update -> updateAccent
-                    else -> JewelTheme.contentColor
-                },
-                hints = arrayOf(),
-                modifier = Modifier.size(20.dp),
-            )
+            val accentHot = hovered || lastFab == ProjectsFabAction.Update || checking
+            if (showCheckIcon) {
+                Icon(
+                    key = AllIconsKeys.Actions.Refresh,
+                    contentDescription = if (checking) "Checking for updates" else "Check for updates",
+                    tint = when {
+                        checking -> checkAccent
+                        busy -> Color.Gray
+                        accentHot -> checkAccent
+                        else -> JewelTheme.contentColor
+                    },
+                    hints = arrayOf(),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer {
+                            rotationZ = if (checking) spinDegrees else 0f
+                        },
+                )
+            } else {
+                Icon(
+                    key = AllIconsKeys.Actions.CheckOut,
+                    contentDescription = "Update selected projects",
+                    tint = when {
+                        busy -> Color.Gray
+                        accentHot -> updateAccent
+                        else -> JewelTheme.contentColor
+                    },
+                    hints = arrayOf(),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
 
         FloatingActionIcon(

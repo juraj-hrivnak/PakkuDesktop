@@ -6,8 +6,6 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,8 +37,7 @@ internal val ProjectsListCheckboxColumnWidth = 40.dp
 
 private val SelectionActionButtonSize = 28.dp
 
-/** Master checkbox + select-all / clear + sort. Filters live in ProjectFilter. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Master checkbox + clear selection; Name / Last updated sort on the right. */
 @Composable
 fun ListControls(
     publish: (ModpackMsg) -> Unit,
@@ -54,18 +51,17 @@ fun ListControls(
     val allSelected = selectableKeys.isNotEmpty() && selectableKeys.all { it in model.selectedProjectKeys }
     val selectedCount = model.selectedProjectKeys.size
 
-    FlowRow(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 0.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Same column width as row checkboxes in ListImpl.
             Box(
                 modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
                 contentAlignment = Alignment.Center,
@@ -83,41 +79,27 @@ fun ListControls(
                     modifier = Modifier.padding(4.dp),
                 )
             }
-            IconButton(
-                enabled = selectableKeys.isNotEmpty() && !allSelected,
-                onClick = {
-                    publish(ModpackMsg.SelectAllFilteredRequested)
-                    lastClickedIndex.value = null
-                },
-                modifier = Modifier.size(SelectionActionButtonSize),
-            ) {
-                Icon(
-                    key = AllIconsKeys.Actions.Selectall,
-                    contentDescription = "Select all",
-                    tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                    hints = arrayOf(),
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            IconButton(
-                enabled = selectedCount > 0,
-                onClick = {
-                    publish(ModpackMsg.ProjectsCleared())
-                    lastClickedIndex.value = null
-                },
-                modifier = Modifier.size(SelectionActionButtonSize),
-            ) {
-                Icon(
-                    key = AllIconsKeys.Actions.Unselectall,
-                    contentDescription = "Clear selection",
-                    tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                    hints = arrayOf(),
-                    modifier = Modifier.size(16.dp),
-                )
+            if (selectedCount > 0) {
+                IconButton(
+                    enabled = true,
+                    onClick = {
+                        publish(ModpackMsg.ProjectsCleared())
+                        lastClickedIndex.value = null
+                    },
+                    modifier = Modifier.size(SelectionActionButtonSize),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.Unselectall,
+                        contentDescription = "Clear selection",
+                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                        hints = arrayOf(),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.weight(1f))
 
         SortLabel(
             label = "Name",

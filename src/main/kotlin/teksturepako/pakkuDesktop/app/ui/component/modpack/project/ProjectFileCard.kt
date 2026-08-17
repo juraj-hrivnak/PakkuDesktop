@@ -28,27 +28,39 @@ import kotlinx.datetime.format.DateTimeComponents
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.badgeStyle
 import org.jetbrains.jewel.ui.theme.colorPalette
+import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
+import teksturepako.pakkuDesktop.app.integration.revealInFileManager
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.button.CopyToClipboardButton
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 import teksturepako.pakkuDesktop.app.ui.model.ProjectFileChange
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
+import java.nio.file.Path
+import kotlin.io.path.exists
 
 @Composable
 fun ProjectFileCard(
     project: Project,
     projectFile: ProjectFile,
+    configFile: ConfigFile? = null,
 ) {
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
     val isLatest = latest != null && projectFile == latest
+    val relativePath = projectFile.getRelativePathString(project, configFile)
+    val diskPath = remember(project, projectFile, configFile) {
+        projectFile.getPath(project, configFile)
+    }
+    val canOpenLocation = isLatest && diskPath != null && diskPath.exists()
 
     FileCardShell(
         borderColor = if (isLatest) {
@@ -60,6 +72,8 @@ fun ProjectFileCard(
         FileCardBody(
             projectFile = projectFile,
             label = if (isLatest) "current" else null,
+            relativePath = relativePath,
+            openInFolderPath = if (canOpenLocation) diskPath else null,
         )
     }
 }
@@ -215,10 +229,14 @@ private fun FileCardBody(
     projectFile: ProjectFile,
     label: String?,
     showHashes: Boolean = true,
+    relativePath: String? = null,
+    openInFolderPath: Path? = null,
 ) {
     val published = projectFile.datePublished
         .takeUnless { it == Instant.DISTANT_PAST }
         ?.formatPublished()
+    val pathText = relativePath ?: projectFile.fileName
+    val codeBg = JewelTheme.globalColors.borders.disabled.copy(alpha = 0.45f)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -235,13 +253,44 @@ private fun FileCardBody(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SelectableText(
-                    text = projectFile.fileName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                CopyToClipboardButton(text = projectFile.fileName)
+                Box(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(codeBg)
+                        .border(
+                            width = 1.dp,
+                            color = JewelTheme.globalColors.borders.normal.copy(alpha = 0.55f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    SelectableText(
+                        text = pathText,
+                        color = JewelTheme.contentColor.copy(alpha = 0.9f),
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                CopyToClipboardButton(text = pathText)
+                if (openInFolderPath != null) {
+                    PkUiTooltip(tooltip = { Text("Show in folder") }) {
+                        IconButton(
+                            onClick = { revealInFileManager(openInFolderPath) },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                key = AllIconsKeys.General.OpenDisk,
+                                contentDescription = "Show in folder",
+                                tint = Color.Gray,
+                                hints = arrayOf(),
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
+                }
                 if (label != null) {
                     Badge(style = JewelTheme.badgeStyle.blueSecondary) {
                         Text(label)

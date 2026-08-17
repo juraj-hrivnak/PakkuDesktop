@@ -156,10 +156,17 @@ data class ModpackModel(
     val projectsFilterText: String = "",
     /** Empty = no type filter; otherwise project type must be in the set. */
     val filterTypes: Set<ProjectType> = emptySet(),
-    /** Empty = no side filter; otherwise project side must be in the set. */
+    /** Empty = no side filter; otherwise project side must be in the set (null sides ignored unless [filterMissingSide]). */
     val filterSides: Set<ProjectSide> = emptySet(),
+    /** Include projects with [teksturepako.pakku.api.projects.Project.side] == null. */
+    val filterMissingSide: Boolean = false,
     /** Empty = no provider filter; values are provider [serialName]s. */
     val filterProviders: Set<String> = emptySet(),
+    /**
+     * null = no redistributable filter;
+     * true = only redistributable; false = only not redistributable.
+     */
+    val filterRedistributable: Boolean? = null,
     /** First-pane weight for the Projects list|inspector split (list share). */
     val projectsSplitRatio: Float = ProjectsUiData.DEFAULT_SPLIT_RATIO,
     /** only projects with a pending update from the last status check */

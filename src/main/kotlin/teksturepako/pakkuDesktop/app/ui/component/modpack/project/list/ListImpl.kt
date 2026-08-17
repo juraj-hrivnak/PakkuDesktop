@@ -94,6 +94,7 @@ fun ListImpl(
                         focused = focused,
                         checked = checked,
                         updateInfo = model.updatePreviews?.get(projectKey),
+                        statusChecked = model.updatePreviews != null,
                         modifier = Modifier
                             .weight(1f)
                             .clickableHover(

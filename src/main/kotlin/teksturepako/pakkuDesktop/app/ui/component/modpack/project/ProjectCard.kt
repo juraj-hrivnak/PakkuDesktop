@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.Instant
@@ -32,6 +33,7 @@ import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 /**
  * @param focused Right-pane / inspector selection (cyan).
  * @param checked List checkbox selection for batch actions (neutral tint).
+ * @param statusChecked True after a status check has run ([ModpackModel.updatePreviews] != null).
  */
 @Composable
 fun ProjectCard(
@@ -40,6 +42,7 @@ fun ProjectCard(
     focused: Boolean = false,
     checked: Boolean = false,
     updateInfo: ProjectUpdateInfo? = null,
+    statusChecked: Boolean = false,
     name: @Composable (String) -> Unit = {
         Text(it, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     },
@@ -47,6 +50,7 @@ fun ProjectCard(
     val shape = RoundedCornerShape(16.dp)
     val applied = updateInfo?.applied == true
     val hasPendingUpdate = updateInfo != null && !applied
+    val upToDate = statusChecked && updateInfo == null
     val borderColor = when {
         focused -> PakkuDesktopConstants.highlightColor
         checked -> JewelTheme.contentColor.copy(alpha = 0.42f)
@@ -79,14 +83,15 @@ fun ProjectCard(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        FlowRow(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Row(
+            FlowRow(
+                modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 project.name.values.firstOrNull()?.let { name(it) }
                 when {
@@ -96,19 +101,29 @@ fun ProjectCard(
                     hasPendingUpdate -> Badge(style = JewelTheme.badgeStyle.blueSecondary) {
                         Text("Update")
                     }
+                    upToDate -> Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                        Text("Up to date")
+                    }
                 }
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                modifier = Modifier.wrapContentWidth(),
+                horizontalAlignment = Alignment.End,
+            ) {
                 Text(
                     text = project.type.prettyName,
                     color = Color.Gray,
                     fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 published?.let {
                     Text(
                         text = it,
                         color = Color.Gray.copy(alpha = 0.65f),
                         fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

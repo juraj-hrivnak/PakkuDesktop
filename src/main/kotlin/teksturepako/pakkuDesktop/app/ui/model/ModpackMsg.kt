@@ -134,6 +134,7 @@ sealed interface ModpackDropdownMsg {
     data class CloseRequested(val force: Boolean = false) : ModpackDropdownMsg
     data object Export : ModpackDropdownMsg
     data object Fetch : ModpackDropdownMsg
+    data object CheckUpdates : ModpackDropdownMsg
     data object ShowSettings : ModpackDropdownMsg
     data class DirectoryPicked(val path: String) : ModpackDropdownMsg
 }
@@ -205,7 +206,9 @@ sealed interface ModpackMsg {
     data class FilterUpdatesOnlyChanged(val enabled: Boolean) : ModpackMsg
     data class FilterTypesChanged(val types: Set<ProjectType>) : ModpackMsg
     data class FilterSidesChanged(val sides: Set<ProjectSide>) : ModpackMsg
+    data class FilterMissingSideChanged(val enabled: Boolean) : ModpackMsg
     data class FilterProvidersChanged(val providers: Set<String>) : ModpackMsg
+    data class FilterRedistributableChanged(val value: Boolean?) : ModpackMsg
     data class ProjectsSplitRatioChanged(val ratio: Float) : ModpackMsg
 
     /** focus filter (Ctrl/Cmd+F) */

@@ -32,6 +32,7 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
             is ModpackDropdownMsg.CloseRequested,
             ModpackDropdownMsg.Export,
             ModpackDropdownMsg.Fetch,
+            ModpackDropdownMsg.CheckUpdates,
             ModpackDropdownMsg.ShowSettings,
             is ModpackDropdownMsg.DirectoryPicked -> model
         }
@@ -129,6 +130,17 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
                         },
                         label = "Fetch",
                         shortcut = acceleratorLabel("Shift+F"),
+                        dark = dark,
+                    )
+                }
+
+                selectableItem(
+                    selected = false,
+                    onClick = { publish(ModpackDropdownMsg.CheckUpdates) },
+                    enabled = model.actionEnabled,
+                ) {
+                    DropdownRow(
+                        label = "Check for updates",
                         dark = dark,
                     )
                 }

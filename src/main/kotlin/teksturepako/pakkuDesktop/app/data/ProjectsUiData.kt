@@ -28,8 +28,15 @@ data class ProjectsUiData(
     @SerialName("filter_types") val filterTypes: Set<String> = emptySet(),
     /** [ProjectSide.name] values; empty = no side filter. */
     @SerialName("filter_sides") val filterSides: Set<String> = emptySet(),
+    /** Include projects with no side set. */
+    @SerialName("filter_missing_side") val filterMissingSide: Boolean = false,
     /** Provider [teksturepako.pakku.api.platforms.Provider.serialName] values; empty = no provider filter. */
     @SerialName("filter_providers") val filterProviders: Set<String> = emptySet(),
+    /**
+     * null = no redistributable filter;
+     * true = only redistributable; false = only not redistributable.
+     */
+    @SerialName("filter_redistributable") val filterRedistributable: Boolean? = null,
     /** First-pane weight for the Projects list|inspector split (list share, 0–1). */
     @SerialName("split_ratio") val splitRatio: Float = DEFAULT_SPLIT_RATIO,
     /**
@@ -89,7 +96,9 @@ fun ModpackModel.toProjectsUiData(): ProjectsUiData = ProjectsUiData(
     filterText = projectsFilterText,
     filterTypes = filterTypes.map { it.name }.toSet(),
     filterSides = filterSides.map { it.name }.toSet(),
+    filterMissingSide = filterMissingSide,
     filterProviders = filterProviders,
+    filterRedistributable = filterRedistributable,
     splitRatio = projectsSplitRatio.coerceIn(0.05f, 0.95f),
     splitVersion = ProjectsUiData.SPLIT_VERSION_LIST_FIRST,
 )
@@ -99,6 +108,8 @@ fun ModpackModel.withProjectsUi(data: ProjectsUiData): ModpackModel = copy(
     projectsFilterText = data.filterText,
     filterTypes = data.toProjectTypes(),
     filterSides = data.toProjectSides(),
+    filterMissingSide = data.filterMissingSide,
     filterProviders = data.filterProviders,
+    filterRedistributable = data.filterRedistributable,
     projectsSplitRatio = data.listSplitRatio(),
 )

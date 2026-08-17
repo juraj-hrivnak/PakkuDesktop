@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakku.api.platforms.Provider
@@ -45,6 +46,7 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                 project = project,
                 focused = true,
                 updateInfo = updateInfo,
+                statusChecked = model.updatePreviews != null,
             ) {
                 GradientHeader(it)
             }
@@ -75,6 +77,7 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                         ProjectFileCard(
                             project = project,
                             projectFile = projectFile,
+                            configFile = model.configFile?.get(),
                         )
                     }
                 }
