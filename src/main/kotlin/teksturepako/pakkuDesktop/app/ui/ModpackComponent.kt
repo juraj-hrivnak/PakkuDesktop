@@ -70,8 +70,10 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.FocusProjectsFilterRequested -> model.copy(wantsFocusProjectsFilter = true)
     ModpackMsg.FocusProjectsFilterConsumed -> model.copy(wantsFocusProjectsFilter = false)
     is ModpackMsg.ProjectsFilterFocusChanged -> model.copy(projectsFilterFocused = msg.focused)
-    ModpackMsg.RemovePopupRequested -> model.copy(wantsRemovePopup = true)
-    ModpackMsg.RemovePopupConsumed -> model.copy(wantsRemovePopup = false)
+    ModpackMsg.ShowAddDialog -> model.copy(addDialogVisible = true)
+    ModpackMsg.HideAddDialog -> model.copy(addDialogVisible = false)
+    ModpackMsg.ShowRemoveDialog -> model.copy(removeDialogVisible = true)
+    ModpackMsg.HideRemoveDialog -> model.copy(removeDialogVisible = false)
     ModpackMsg.SelectAllFilteredRequested -> {
         val projects = model.lockFile?.get()?.getAllProjects() ?: return model
         val ids = model.filteredAndSortedProjects(projects).mapNotNull { it.pakkuId }.toSet()

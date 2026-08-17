@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -221,98 +222,98 @@ private fun FileCardBody(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        ProviderTypeIcon(projectFile.type)
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.weight(1f),
         ) {
-            ProviderTypeIcon(projectFile.type)
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                modifier = Modifier.weight(1f, fill = false),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SelectableText(
-                        text = projectFile.fileName,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (label != null) {
-                        Badge(style = JewelTheme.badgeStyle.blueSecondary) {
-                            Text(label)
-                        }
+                SelectableText(
+                    text = projectFile.fileName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                CopyToClipboardButton(text = projectFile.fileName)
+                if (label != null) {
+                    Badge(style = JewelTheme.badgeStyle.blueSecondary) {
+                        Text(label)
                     }
                 }
-                published?.let {
-                    Text(
-                        text = it,
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 11.sp,
-                    )
-                }
+            }
+            published?.let {
+                Text(
+                    text = it,
+                    color = Color.Gray.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                )
             }
         }
-
-        CopyToClipboardButton(
-            text = projectFile.fileName,
-            modifier = Modifier.size(25.dp),
-        )
     }
 
-    val hashes = projectFile.hashes
-    if (showHashes && !hashes.isNullOrEmpty()) {
-        Column(
-            modifier = Modifier.padding(start = 29.dp, top = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            hashes.entries
-                .sortedBy { it.key.lowercase() }
-                .forEach { (alg, hash) ->
-                    HashRow(algorithm = alg, hash = hash)
-                }
+    if (showHashes) {
+        val sha1 = projectFile.hashes
+            ?.entries
+            ?.firstOrNull { it.key.equals("sha1", ignoreCase = true) }
+            ?.value
+        if (!sha1.isNullOrBlank()) {
+            HashRow(hash = sha1)
         }
     }
 }
 
 @Composable
-private fun HashRow(
-    algorithm: String,
-    hash: String,
-) {
+private fun HashRow(hash: String) {
+    val short = shortHash(hash)
+    val codeBg = JewelTheme.globalColors.borders.disabled.copy(alpha = 0.45f)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.padding(start = 29.dp, top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = algorithm.lowercase(),
+            text = "sha1",
             color = Color.Gray.copy(alpha = 0.7f),
             fontSize = 11.sp,
             fontFamily = FontFamily.Monospace,
-            modifier = Modifier.widthIn(min = 52.dp),
         )
-        SelectableText(
-            text = hash,
-            color = JewelTheme.contentColor.copy(alpha = 0.85f),
-            fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(codeBg)
+                .border(
+                    width = 1.dp,
+                    color = JewelTheme.globalColors.borders.normal.copy(alpha = 0.55f),
+                    shape = RoundedCornerShape(4.dp),
+                )
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            SelectableText(
+                text = short,
+                color = JewelTheme.contentColor.copy(alpha = 0.9f),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         CopyToClipboardButton(
             text = hash,
-            modifier = Modifier.size(22.dp),
-            useSimpleTooltip = true,
         )
     }
 }
+
+/** GitHub-style abbreviated hash for display; copy still uses the full value. */
+private fun shortHash(hash: String, length: Int = 7): String =
+    if (hash.length <= length) hash else hash.take(length)
 
 @Composable
 private fun ProviderTypeIcon(type: String) {

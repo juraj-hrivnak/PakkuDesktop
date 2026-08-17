@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,17 +63,6 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
     val lockFile = model.lockFile?.get()
     val canRemove = selectedCount > 0 && !busy && lockFile != null
 
-    var addVisible by remember { mutableStateOf(false) }
-    var removeVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(model.wantsRemovePopup) {
-        if (!model.wantsRemovePopup) return@LaunchedEffect
-        if (canRemove) {
-            removeVisible = true
-        }
-        publish(ModpackMsg.RemovePopupConsumed)
-    }
-
     val palette = JewelTheme.colorPalette
     val addAccent = PakkuDesktopConstants.highlightColor
     val removeAccent = palette.red.getOrNull(palette.red.lastIndex / 2)
@@ -88,7 +76,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FloatingActionIcon(
-            onClick = { if (!busy) addVisible = true },
+            onClick = { if (!busy) publish(ModpackMsg.ShowAddDialog) },
             enabled = !busy,
             buttonSize = 44.dp,
             accent = addAccent,
@@ -103,7 +91,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
         }
 
         FloatingActionIcon(
-            onClick = { if (canRemove) removeVisible = true },
+            onClick = { if (canRemove) publish(ModpackMsg.ShowRemoveDialog) },
             enabled = canRemove,
             buttonSize = 44.dp,
             accent = removeAccent,
@@ -123,16 +111,16 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
     }
 
     AddProjectsDialog(
-        visible = addVisible && !busy,
-        onDismiss = { addVisible = false },
+        visible = model.addDialogVisible && !busy,
+        onDismiss = { publish(ModpackMsg.HideAddDialog) },
         model = model,
         onConfirmPlan = { plan -> publish(ModpackMsg.AddPlanConfirmed(plan)) },
     )
 
     if (lockFile != null) {
         RemoveProjectsDialog(
-            visible = removeVisible && selectedCount > 0 && !busy,
-            onDismiss = { removeVisible = false },
+            visible = model.removeDialogVisible && selectedCount > 0 && !busy,
+            onDismiss = { publish(ModpackMsg.HideRemoveDialog) },
             lockFile = lockFile,
             projects = selectedProjects,
             onConfirm = { plan -> publish(ModpackMsg.RemovePlanConfirmed(plan)) },

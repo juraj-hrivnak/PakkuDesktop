@@ -12,21 +12,25 @@ import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.asAwtTransferable
 import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.integration.readClipboardText
+import teksturepako.pakkuDesktop.app.integration.writeClipboardText
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
+import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
 /**
- * Overrides Compose clipboard locals so paste works when AWT cannot see the
+ * Overrides Compose clipboard locals so paste/copy work when AWT cannot see the
  * Wayland clipboard (common on Linux). Must sit inside [mainWindowDriver].
  *
- * Always prefers [readClipboardText] (wl-paste on Wayland) over the platform
- * AWT clipboard, which may hold stale X11 content.
+ * Reads prefer [readClipboardText] (`wl-paste` on Wayland). Writes go through
+ * [writeClipboardText] (`wl-copy` + AWT) so native clients and in-app paste both
+ * see what the copy buttons put on the clipboard.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 val clipboardDriver: Driver<AppModel, AppMsg> = { _, _, content ->
@@ -56,7 +60,24 @@ private class FallbackClipboard(
 
     override suspend fun setClipEntry(clipEntry: ClipEntry?)
     {
-        delegate.setClipEntry(clipEntry)
+        if (clipEntry == null)
+        {
+            delegate.setClipEntry(null)
+            return
+        }
+        val text = withContext(Dispatchers.IO) {
+            clipEntry.asAwtTransferable
+                ?.takeIf { it.isDataFlavorSupported(DataFlavor.stringFlavor) }
+                ?.let { it.getTransferData(DataFlavor.stringFlavor) as? String }
+        }
+        if (text != null)
+        {
+            withContext(Dispatchers.IO) { writeClipboardText(text) }
+        }
+        else
+        {
+            delegate.setClipEntry(clipEntry)
+        }
     }
 
     override val nativeClipboard: Any
@@ -72,7 +93,7 @@ private class FallbackClipboardManager(
 
     override fun setText(annotatedString: AnnotatedString)
     {
-        delegate.setText(annotatedString)
+        writeClipboardText(annotatedString.text)
     }
 
     override fun hasText(): Boolean = getText() != null

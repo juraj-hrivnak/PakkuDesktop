@@ -40,10 +40,11 @@ fun ModpackSideBar(
             Modifier
                 .fillMaxHeight()
                 .width(48.dp)
-                .padding(vertical = 6.dp, horizontal = 4.dp)
+                // Align under the title-bar Pakku icon (8.dp inset, 28.dp glyph → center ~22.dp).
+                .padding(start = 2.dp, top = 6.dp, bottom = 6.dp)
                 .background(panelBackground),
             verticalArrangement = Arrangement.spacedBy(6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start,
         ) {
             RailButton(
                 tooltip = "Projects",
@@ -54,7 +55,8 @@ fun ModpackSideBar(
                     key = PakkuDesktopIcons.Modpack.manage,
                     contentDescription = "projects icon",
                     tint = it,
-                    hints = arrayOf()
+                    hints = arrayOf(),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             RailButton(
@@ -66,7 +68,8 @@ fun ModpackSideBar(
                     key = PakkuDesktopIcons.properties,
                     contentDescription = "modpack icon",
                     tint = it,
-                    hints = arrayOf()
+                    hints = arrayOf(),
+                    modifier = Modifier.size(20.dp),
                 )
             }
             Pro(appModel) {
@@ -79,7 +82,8 @@ fun ModpackSideBar(
                         key = AllIconsKeys.Toolwindows.ToolWindowCommit,
                         contentDescription = "commit icon",
                         tint = it,
-                        hints = arrayOf()
+                        hints = arrayOf(),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

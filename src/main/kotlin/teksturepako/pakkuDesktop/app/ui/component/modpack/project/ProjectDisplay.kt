@@ -4,27 +4,30 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakku.api.platforms.Provider
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
 fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     val project = model.selectedProject ?: return
-    val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
     val scrollState = rememberScrollState()
     val updateInfo = project.pakkuId?.let { model.updatePreviews?.get(it) }
 
@@ -33,8 +36,8 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(PakkuDesktopConstants.commonPaddingSize),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ProjectCard(
                 project = project,
@@ -44,9 +47,8 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                 GradientHeader(it)
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Project Files")
-
+            GroupHeader("Project files")
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 project.files.forEach { projectFile ->
                     val provider = Provider.getProvider(projectFile.type)
                     val shortName = provider?.shortName ?: projectFile.type
@@ -76,13 +78,6 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                     }
                 }
             }
-
-            Spacer(
-                modifier = Modifier
-                    .background(borderColor)
-                    .height(1.dp)
-                    .fillMaxWidth(),
-            )
 
             ProjectProperties(publish, model)
         }

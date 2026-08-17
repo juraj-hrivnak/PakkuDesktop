@@ -4,10 +4,15 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
@@ -24,29 +29,28 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
 fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    Column(verticalArrangement = Arrangement.SpaceBetween) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1F)) {
-                Text("Properties")
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Edit: ")
-                    Switch(
-                        checked = model.editingProject,
-                        onCheckedChange = {
-                            if (!model.editingProject) {
-                                publish(ModpackMsg.ProjectEditing(true))
-                            } else {
-                                publish(ModpackMsg.ProjectEditing(false))
-                                // disk driver reloads on its own
-                            }
+            // GroupHeader’s endComponent slot is height-capped at 16.dp — keep Edit outside it.
+            GroupHeader("Properties", modifier = Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Edit: ")
+                Switch(
+                    checked = model.editingProject,
+                    onCheckedChange = {
+                        if (!model.editingProject) {
+                            publish(ModpackMsg.ProjectEditing(true))
+                        } else {
+                            publish(ModpackMsg.ProjectEditing(false))
                         }
-                    )
-                }
+                    },
+                )
             }
         }
 

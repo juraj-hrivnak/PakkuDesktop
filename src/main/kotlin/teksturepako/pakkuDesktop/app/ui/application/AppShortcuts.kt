@@ -12,10 +12,13 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import com.github.michaelbull.result.getError
+import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
+import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
@@ -33,6 +36,12 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
     val filterFocused = model.modpack.projectsFilterFocused
     val accelerator = event.isCtrlPressed || event.isMetaPressed
 
+    // Esc: topmost modal first (window preview runs before dialog content).
+    if (!accelerator && event.key == Key.Escape)
+    {
+        return handleEscape(model, publish)
+    }
+
     // Projects-tab keys that do not require Ctrl/Cmd
     if (onProjectsTab && !accelerator)
     {
@@ -41,27 +50,21 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             Key.Delete, Key.Backspace ->
             {
                 if (!filterFocused &&
+                    !model.hasModalOverlay() &&
                     model.modpack.selectedPakkuIds.isNotEmpty() &&
                     model.modpack.actionName == null
                 ) {
-                    publish(AppMsg.Modpack(ModpackMsg.RemovePopupRequested))
+                    publish(AppMsg.Modpack(ModpackMsg.ShowRemoveDialog))
                     return true
                 }
             }
             Key.Enter, Key.NumPadEnter ->
             {
                 if (!filterFocused &&
+                    !model.hasModalOverlay() &&
                     (model.modpack.selectedPakkuIds.isNotEmpty() || model.modpack.selectedProject != null)
                 ) {
                     publish(AppMsg.Modpack(ModpackMsg.OpenDetailRequested))
-                    return true
-                }
-            }
-            Key.Escape ->
-            {
-                if (model.modpack.selectedProject != null)
-                {
-                    publish(AppMsg.Modpack(ModpackMsg.ProjectSelected(null)))
                     return true
                 }
             }
@@ -108,7 +111,7 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
         }
         Key.A ->
         {
-            if (onProjectsTab && !filterFocused)
+            if (onProjectsTab && !filterFocused && !model.hasModalOverlay())
             {
                 publish(AppMsg.Modpack(ModpackMsg.SelectAllFilteredRequested))
                 true
@@ -141,4 +144,86 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
         }
         else -> false
     }
+}
+
+/**
+ * Dismiss the highest-priority open overlay, then the project inspector.
+ * Order matches [AppComponent] urgency: close/exit before errors before app dialogs.
+ */
+private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = when
+{
+    model.closeDialog != null ->
+    {
+        publish(AppMsg.DismissCloseDialog)
+        true
+    }
+    model.lockErrorVisible() ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.DismissLockError))
+        true
+    }
+    model.configErrorVisible() ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.DismissConfigError))
+        true
+    }
+    model.showNewModpack ->
+    {
+        publish(AppMsg.HideNewModpack)
+        true
+    }
+    model.showCloneDialog ->
+    {
+        publish(AppMsg.HideCloneDialog)
+        true
+    }
+    model.showSettings ->
+    {
+        publish(AppMsg.HideSettings)
+        true
+    }
+    model.modpack.gitDropdown.pushDialogVisible ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.GitDropdown(GitDropdownMsg.HidePushDialog)))
+        true
+    }
+    model.modpack.removeDialogVisible ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.HideRemoveDialog))
+        true
+    }
+    model.modpack.addDialogVisible ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.HideAddDialog))
+        true
+    }
+    model.screen == AppScreen.Modpack && model.modpack.selectedProject != null ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.ProjectSelected(null)))
+        true
+    }
+    else -> false
+}
+
+private fun AppModel.hasModalOverlay(): Boolean =
+    closeDialog != null ||
+        lockErrorVisible() ||
+        configErrorVisible() ||
+        showNewModpack ||
+        showCloneDialog ||
+        showSettings ||
+        modpack.gitDropdown.pushDialogVisible ||
+        modpack.removeDialogVisible ||
+        modpack.addDialogVisible
+
+private fun AppModel.lockErrorVisible(): Boolean
+{
+    val error = modpack.lockFile?.getError()?.takeUnless { it is FileNotFound }
+    return error != null && !modpack.lockErrorDismissed
+}
+
+private fun AppModel.configErrorVisible(): Boolean
+{
+    val error = modpack.configFile?.getError()?.takeUnless { it is FileNotFound }
+    return error != null && !modpack.configErrorDismissed
 }

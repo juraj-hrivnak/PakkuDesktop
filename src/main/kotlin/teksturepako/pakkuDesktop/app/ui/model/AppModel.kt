@@ -172,7 +172,10 @@ data class ModpackModel(
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
     val projectsFilterFocused: Boolean = false,
-    val wantsRemovePopup: Boolean = false,
+    /** Add projects dialog (Projects list FAB) */
+    val addDialogVisible: Boolean = false,
+    /** Remove projects dialog (FAB / Delete) */
+    val removeDialogVisible: Boolean = false,
     /** DnD / auto add query */
     val pendingAddQuery: String? = null,
     val pendingAdditionPlan: AdditionPlan? = null,

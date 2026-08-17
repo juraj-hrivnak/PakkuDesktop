@@ -46,7 +46,12 @@ fun ErrorDialog(error: ActionError, onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.Center,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    CopyToClipboardButton(error.rawMessage, Modifier.size(35.dp), useSimpleTooltip = true)
+                    CopyToClipboardButton(
+                        text = error.rawMessage,
+                        buttonSize = 35.dp,
+                        iconSize = 18.dp,
+                        useSimpleTooltip = true,
+                    )
                 }
                 TextArea(
                     TextFieldState(error.rawMessage),

@@ -6,7 +6,9 @@ package teksturepako.pakkuDesktop.app.integration
 
 import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 /**
@@ -17,7 +19,7 @@ import java.util.concurrent.TimeUnit
  * still hold *stale* text. Prefer `wl-paste` whenever we appear to be on Wayland.
  *
  * IDE / Gradle launches often omit `~/.nix-profile/bin` from PATH, so we also
- * resolve `wl-paste` from well-known Nix locations.
+ * resolve `wl-paste` / `wl-copy` from well-known Nix locations.
  */
 fun readClipboardText(): String?
 {
@@ -27,6 +29,25 @@ fun readClipboardText(): String?
     }
     readAwtClipboardText()?.let { return it }
     return readClipboardViaProcess()
+}
+
+/**
+ * Writes plain text to the system clipboard.
+ *
+ * Always updates AWT. On Wayland also pipes through `wl-copy` so native clients
+ * (and our own [readClipboardText] via `wl-paste`) see the new contents.
+ */
+fun writeClipboardText(text: String)
+{
+    writeAwtClipboardText(text)
+    if (isWaylandSession())
+    {
+        writeViaWlCopy(text)
+    }
+    else
+    {
+        writeClipboardViaProcess(text)
+    }
 }
 
 private fun isWaylandSession(): Boolean
@@ -41,6 +62,13 @@ private fun readAwtClipboardText(): String? = runCatching {
     (contents.getTransferData(DataFlavor.stringFlavor) as? String)?.takeIf { it.isNotEmpty() }
 }.getOrNull()
 
+private fun writeAwtClipboardText(text: String)
+{
+    runCatching {
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+    }
+}
+
 private fun readClipboardViaProcess(): String?
 {
     for (command in listOf(
@@ -53,21 +81,38 @@ private fun readClipboardViaProcess(): String?
     return null
 }
 
+private fun writeClipboardViaProcess(text: String)
+{
+    for (command in listOf(
+        listOf("xclip", "-selection", "clipboard"),
+        listOf("xsel", "--clipboard", "--input"),
+    ))
+    {
+        if (writeViaProcess(command, text)) return
+    }
+}
+
 private fun readViaWlPaste(): String?
 {
-    val binary = resolveWlPaste() ?: return null
+    val binary = resolveWlBinary("wl-paste") ?: return null
     return readViaProcess(listOf(binary, "-n"))
 }
 
-private fun resolveWlPaste(): String?
+private fun writeViaWlCopy(text: String)
 {
-    val home = System.getProperty("user.home") ?: return pathOrNull("wl-paste")
+    val binary = resolveWlBinary("wl-copy") ?: return
+    writeViaProcess(listOf(binary, "-n"), text)
+}
+
+private fun resolveWlBinary(name: String): String?
+{
+    val home = System.getProperty("user.home") ?: return pathOrNull(name)
     val candidates = listOf(
-        pathOrNull("wl-paste"),
-        "$home/.nix-profile/bin/wl-paste",
-        "/run/current-system/sw/bin/wl-paste",
-        "/usr/bin/wl-paste",
-        "/bin/wl-paste",
+        pathOrNull(name),
+        "$home/.nix-profile/bin/$name",
+        "/run/current-system/sw/bin/$name",
+        "/usr/bin/$name",
+        "/bin/$name",
     )
     return candidates.firstOrNull { it != null && File(it).canExecute() }
 }
@@ -95,3 +140,20 @@ private fun readViaProcess(command: List<String>): String? = runCatching {
     if (process.exitValue() != 0) return@runCatching null
     output.takeIf { it.isNotEmpty() }
 }.getOrNull()
+
+private fun writeViaProcess(command: List<String>, text: String): Boolean = runCatching {
+    val process = ProcessBuilder(command)
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
+        .start()
+    process.outputStream.use { stream ->
+        stream.write(text.toByteArray(StandardCharsets.UTF_8))
+        stream.flush()
+    }
+    if (!process.waitFor(2, TimeUnit.SECONDS))
+    {
+        // wl-copy may keep a child alive to own the selection; parent should exit after stdin closes.
+        process.destroyForcibly()
+        return@runCatching false
+    }
+    process.exitValue() == 0
+}.getOrDefault(false)

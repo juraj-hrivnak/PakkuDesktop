@@ -45,7 +45,7 @@ fun PakkuApplicationScope.MainTitleBar(
                     Icon(
                         PakkuDesktopIcons.pakku,
                         "pakku",
-                        Modifier.size(25.dp)
+                        Modifier.size(28.dp),
                     )
                 }
 

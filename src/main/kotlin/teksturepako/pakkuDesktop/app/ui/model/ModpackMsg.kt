@@ -167,9 +167,13 @@ sealed interface ModpackMsg {
     data object FocusProjectsFilterConsumed : ModpackMsg
     data class ProjectsFilterFocusChanged(val focused: Boolean) : ModpackMsg
 
-    /** remove popup (Delete) */
-    data object RemovePopupRequested : ModpackMsg
-    data object RemovePopupConsumed : ModpackMsg
+    /** Add projects dialog (FAB) */
+    data object ShowAddDialog : ModpackMsg
+    data object HideAddDialog : ModpackMsg
+
+    /** Remove projects dialog (Delete / FAB) */
+    data object ShowRemoveDialog : ModpackMsg
+    data object HideRemoveDialog : ModpackMsg
 
     /** select all filtered (Ctrl/Cmd+A) */
     data object SelectAllFilteredRequested : ModpackMsg
