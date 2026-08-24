@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.acceleratorLabel
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
@@ -32,6 +33,7 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
             is ModpackDropdownMsg.CloseRequested,
             ModpackDropdownMsg.Export,
             ModpackDropdownMsg.Fetch,
+            ModpackDropdownMsg.Sync,
             ModpackDropdownMsg.CheckUpdates,
             ModpackDropdownMsg.ShowSettings,
             is ModpackDropdownMsg.DirectoryPicked -> model
@@ -130,6 +132,25 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
                         },
                         label = "Fetch",
                         shortcut = acceleratorLabel("Shift+F"),
+                        dark = dark,
+                    )
+                }
+
+                selectableItem(
+                    selected = false,
+                    onClick = { publish(ModpackDropdownMsg.Sync) },
+                    enabled = model.actionEnabled,
+                ) {
+                    DropdownRow(
+                        icon = {
+                            Icon(
+                                key = AllIconsKeys.Actions.Refresh,
+                                contentDescription = "sync",
+                                Modifier.size(15.dp),
+                                tint = if (dark) Color.White else Color.Black,
+                            )
+                        },
+                        label = "Sync",
                         dark = dark,
                     )
                 }

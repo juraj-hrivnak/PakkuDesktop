@@ -88,6 +88,62 @@ suspend fun buildAdditionPlan(
 }
 
 /**
+ * Same review plan as [buildAdditionPlan] for a typed query, starting from projects
+ * already on disk (Files sync Add / Update).
+ */
+suspend fun buildAdditionPlan(
+    lockFile: LockFile,
+    projects: List<Project>,
+    onProgress: suspend (String) -> Unit = {},
+    onToast: suspend (ToastData) -> Unit = {},
+): AdditionPlan {
+    if (projects.isEmpty()) {
+        return AdditionPlan(messages = listOf(SimpleError("No projects to add.")))
+    }
+
+    val platforms = lockFile.getPlatforms().getOrElse { error ->
+        onToast(actionErrorToast(error))
+        return AdditionPlan(messages = listOf(error))
+    }
+    val projectProvider = lockFile.getProjectProvider().getOrElse { error ->
+        onToast(actionErrorToast(error))
+        return AdditionPlan(messages = listOf(error))
+    }
+
+    val entries = mutableListOf<AdditionEntry>()
+    val messages = mutableListOf<ActionError>()
+    val accountedDeps = mutableListOf<Project>()
+
+    for (projectIn in projects) {
+        onProgress("Resolving ${projectIn.displayLabel()}…")
+        val entry = buildEntryForProject(
+            projectIn = projectIn,
+            lockFile = lockFile,
+            platforms = platforms,
+            projectProvider = projectProvider,
+            onToast = onToast,
+            messages = messages,
+            onProgress = onProgress,
+            accountedDeps = accountedDeps,
+            strict = true,
+        ) ?: lockFile.getAllProjects().find { it isAlmostTheSameAs projectIn }?.let { replacing ->
+            AdditionEntry(
+                project = projectIn,
+                isRecommended = true,
+                replacing = replacing,
+            )
+        } ?: continue
+
+        if (accountedDeps.none { it isAlmostTheSameAs entry.project }) {
+            accountedDeps += entry.project
+        }
+        entries += entry
+    }
+
+    return AdditionPlan(entries = entries, messages = messages.distinctBy { it.fingerprint() })
+}
+
+/**
  * Applies accepted entries: add/update + link + auto [resolveDependenciesDesktop] (CLI path).
  * Emits one summary toast of what was added (modal-style [ProjectRef]s).
  */
@@ -114,6 +170,11 @@ suspend fun applyAdditionPlan(
 
     val addedLines = mutableListOf<AddedProjectLine>()
     for (entry in plan.entries) {
+        if (entry.replacing != null) {
+            lockFile.update(entry.project)
+            addedLines += AddedProjectLine(entry.project, entry.replacing)
+            continue
+        }
         entry.project.createAdditionRequest(
             onError = { error ->
                 if (error !is AlreadyAdded) {

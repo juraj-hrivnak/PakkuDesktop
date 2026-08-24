@@ -54,8 +54,6 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
-import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
@@ -188,16 +186,6 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
             )
         }
     }
-
-    AddProjectsDialog(
-        publish = publish,
-        model = model,
-    )
-
-    RemoveProjectsDialog(
-        publish = publish,
-        model = model,
-    )
 }
 
 /**
@@ -208,7 +196,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackMo
  * [isDefault] keeps a Jewel-style default-button accent ring so Enter can re-fire it.
  */
 @Composable
-private fun FloatingActionIcon(
+fun FloatingActionIcon(
     onClick: () -> Unit,
     enabled: Boolean,
     buttonSize: Dp,

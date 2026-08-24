@@ -18,16 +18,25 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakkuDesktop.app.actions.actionErrorToast
 import teksturepako.pakkuDesktop.app.actions.addSuspend
 import teksturepako.pakkuDesktop.app.actions.applyAdditionPlan
 import teksturepako.pakkuDesktop.app.actions.buildAdditionPlan
 import teksturepako.pakkuDesktop.app.actions.checkUpdatesSuspend
 import teksturepako.pakkuDesktop.app.actions.exportSuspend
-import teksturepako.pakkuDesktop.app.actions.fetchSuspend
+import teksturepako.pakkuDesktop.app.actions.fetchApplySuspend
+import teksturepako.pakkuDesktop.app.actions.fetchDetectSuspend
+import teksturepako.pakkuDesktop.app.actions.actionInfoToast
+import teksturepako.pakkuDesktop.app.actions.syncApplySuspend
+import teksturepako.pakkuDesktop.app.actions.syncDetectSuspend
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.actions.updateSuspend
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.selectedFetchCleanupPaths
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.selectedFetchDownloads
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.selectedFetchOverridePaths
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -53,6 +62,19 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                     latestPublish(AppMsg.Modpack(ModpackMsg.ActionStarted(name)))
                     try {
                         withContext(Dispatchers.IO) { block() }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
+                        withContext(Dispatchers.Main) {
+                            latestPublish(
+                                AppMsg.Modpack(
+                                    ModpackMsg.ToastAdded(
+                                        actionErrorToast(e.message ?: e::class.simpleName ?: "Unexpected error"),
+                                    ),
+                                ),
+                            )
+                        }
                     } finally {
                         currentJob.value = null
                         latestPublish(AppMsg.Modpack(ModpackMsg.ActionFinished))
@@ -76,16 +98,58 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    // React to fetch intent
+    // Refresh: scan lock vs disk without writing
+    LaunchedEffect(model.modpack.wantsFetchDetect) {
+        if (!model.modpack.wantsFetchDetect) return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get()
+        launchAction("Scanning files") {
+            val result = fetchDetectSuspend(lockFile, configFile) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.FetchDetectCompleted(result)))
+                if (result.isEmpty) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to fetch."))))
+                }
+            }
+        }
+    }
+
+    // Fetch apply: selected preview rows (download / override copy / cleanup)
     LaunchedEffect(model.modpack.wantsFetch) {
         if (!model.modpack.wantsFetch) return@LaunchedEffect
         val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
         val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val downloads = latestModel.modpack.selectedFetchDownloads()
+        val overrides = latestModel.modpack.selectedFetchOverridePaths()
+        val cleanup = latestModel.modpack.selectedFetchCleanupPaths()
         launchAction("Fetching") {
-            fetchSuspend(lockFile, configFile) { toast ->
+            fetchApplySuspend(
+                lockFile = lockFile,
+                configFile = configFile,
+                downloadProjects = downloads,
+                overrideRelativePaths = overrides,
+                cleanAbsolutePaths = cleanup,
+                onProgress = { completed, total ->
+                    withContext(Dispatchers.Main) {
+                        latestPublish(AppMsg.Modpack(ModpackMsg.FetchProgressUpdated(completed, total)))
+                    }
+                },
+                onPhase = { name ->
+                    withContext(Dispatchers.Main) {
+                        latestPublish(AppMsg.Modpack(ModpackMsg.ActionRenamed(name)))
+                    }
+                },
+            ) { toast ->
                 withContext(Dispatchers.Main) {
                     latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                 }
+            }
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.FilesPreviewCleared))
             }
         }
     }
@@ -137,28 +201,116 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    // Add dialog: resolve plan (Pakku createAdditionRequest + dep preview)
-    LaunchedEffect(model.modpack.addDialog.pendingResolveQuery) {
-        val query = model.modpack.addDialog.pendingResolveQuery ?: return@LaunchedEffect
+    // Sync detect (pakku sync — disk fingerprint vs lock, no lock write)
+    LaunchedEffect(model.modpack.wantsSyncDetect) {
+        if (!model.modpack.wantsSyncDetect) return@LaunchedEffect
         val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val plan = withContext(Dispatchers.IO) {
-            buildAdditionPlan(
+        val configFile = latestModel.modpack.configFile?.get()
+        launchAction("Detecting files") {
+            val result = syncDetectSuspend(lockFile, configFile) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            withContext(Dispatchers.Main) {
+                latestPublish(
+                    AppMsg.Modpack(
+                        ModpackMsg.SyncDetectCompleted(
+                            added = result.added.toList(),
+                            removed = result.removed.toList(),
+                            updated = result.updated.toList(),
+                        ),
+                    ),
+                )
+                if (result.added.isEmpty() && result.removed.isEmpty() && result.updated.isEmpty()) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to sync."))))
+                }
+            }
+        }
+    }
+
+    // Sync apply: add / remove / update lock from the last detect result
+    LaunchedEffect(model.modpack.pendingSyncApply) {
+        if (!model.modpack.pendingSyncApply) return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val added = latestModel.modpack.syncAdded
+        val removed = latestModel.modpack.syncRemoved
+        val updated = latestModel.modpack.syncUpdated
+        val keys = latestModel.modpack.selectedProjectKeys
+        launchAction("Syncing") {
+            syncApplySuspend(
                 lockFile = lockFile,
-                query = query,
-                onProgress = { status ->
+                configFile = configFile,
+                added = added,
+                removed = removed,
+                updated = updated,
+                acceptedKeys = keys,
+            ) { toast ->
+                withContext(Dispatchers.Main) {
+                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                }
+            }
+            val newLockFile = LockFile.readToResult()
+            val newConfigFile = ConfigFile.readToResult()
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
+            }
+        }
+    }
+
+    // Add dialog: resolve plan (Pakku createAdditionRequest + dep preview)
+    LaunchedEffect(
+        model.modpack.addDialog.pendingResolveQuery,
+        model.modpack.addDialog.pendingResolveProjects,
+    ) {
+        val query = model.modpack.addDialog.pendingResolveQuery
+        val projects = model.modpack.addDialog.pendingResolveProjects
+        if (query == null && projects == null) return@LaunchedEffect
+        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+        try {
+            val plan = withContext(Dispatchers.IO) {
+                val onProgress: suspend (String) -> Unit = { status ->
                     withContext(Dispatchers.Main) {
                         latestPublish(AppMsg.Modpack(ModpackMsg.AddResolveProgress(status)))
                     }
-                },
-                onToast = { toast ->
+                }
+                val onToast: suspend (teksturepako.pakkuDesktop.pkui.component.toast.ToastData) -> Unit = { toast ->
                     withContext(Dispatchers.Main) {
                         latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                     }
-                },
+                }
+                if (projects != null) {
+                    buildAdditionPlan(
+                        lockFile = lockFile,
+                        projects = projects,
+                        onProgress = onProgress,
+                        onToast = onToast,
+                    )
+                } else {
+                    buildAdditionPlan(
+                        lockFile = lockFile,
+                        query = query.orEmpty(),
+                        onProgress = onProgress,
+                        onToast = onToast,
+                    )
+                }
+            }
+            withContext(Dispatchers.Main) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.AddPlanBuilt(plan)))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            latestPublish(
+                AppMsg.Modpack(
+                    ModpackMsg.ToastAdded(
+                        actionErrorToast(e.message ?: e::class.simpleName ?: "Unexpected error"),
+                    ),
+                ),
             )
-        }
-        withContext(Dispatchers.Main) {
-            latestPublish(AppMsg.Modpack(ModpackMsg.AddPlanBuilt(plan)))
         }
     }
 

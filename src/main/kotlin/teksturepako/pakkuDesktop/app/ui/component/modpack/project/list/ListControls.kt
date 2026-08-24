@@ -26,6 +26,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -37,18 +38,15 @@ internal val ProjectsListCheckboxColumnWidth = 40.dp
 
 private val SelectionActionButtonSize = 28.dp
 
-/** Master checkbox + clear selection; Name / Last updated sort on the right. */
 @Composable
-fun ListControls(
+fun FilesSelectionControls(
     publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
     lastClickedIndex: MutableState<Int?>,
+    selectableKeys: Collection<String>,
 ) {
-    val projects = model.lockFile?.get()?.getAllProjects() ?: emptyList()
-    val filteredProjects = projects.filter { it.matchesProjectsListFilters(model) }
-    val sortOrder = model.sortOrder
-    val selectableKeys = filteredProjects.map { it.uiKey() }
-    val allSelected = selectableKeys.isNotEmpty() && selectableKeys.all { it in model.selectedProjectKeys }
+    val keys = selectableKeys.toList()
+    val allSelected = keys.isNotEmpty() && keys.all { it in model.selectedProjectKeys }
     val selectedCount = model.selectedProjectKeys.size
 
     Row(
@@ -62,6 +60,7 @@ fun ListControls(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Spacer(Modifier.width(3.dp))
             Box(
                 modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
                 contentAlignment = Alignment.Center,
@@ -70,7 +69,7 @@ fun ListControls(
                     checked = allSelected,
                     onCheckedChange = { checked ->
                         if (checked) {
-                            publish(ModpackMsg.ProjectsSelected(selectableKeys.toSet()))
+                            publish(ModpackMsg.ProjectsSelected(keys.toSet()))
                         } else {
                             publish(ModpackMsg.ProjectsCleared())
                         }
@@ -95,6 +94,77 @@ fun ListControls(
                         hints = arrayOf(),
                         modifier = Modifier.size(16.dp),
                     )
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
+/** Master checkbox + clear selection; Name / Last updated sort on the right. */
+@Composable
+fun ListControls(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+    lastClickedIndex: MutableState<Int?>? = null,
+    sourceProjects: List<Project>? = null,
+    ignoreUpdatesOnly: Boolean = false,
+    selectableKeys: Collection<String>? = null,
+    showSelection: Boolean = true,
+) {
+    val projects = sourceProjects ?: model.lockFile?.get()?.getAllProjects() ?: emptyList()
+    val filteredProjects = projects.filter { it.matchesProjectsListFilters(model, ignoreUpdatesOnly) }
+    val sortOrder = model.sortOrder
+    val keys = selectableKeys?.toList() ?: filteredProjects.map { it.uiKey() }
+    val allSelected = keys.isNotEmpty() && keys.all { it in model.selectedProjectKeys }
+    val selectedCount = model.selectedProjectKeys.size
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showSelection) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Checkbox(
+                        checked = allSelected,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                publish(ModpackMsg.ProjectsSelected(keys.toSet()))
+                            } else {
+                                publish(ModpackMsg.ProjectsCleared())
+                            }
+                            lastClickedIndex?.value = null
+                        },
+                        modifier = Modifier.padding(4.dp),
+                    )
+                }
+                if (selectedCount > 0) {
+                    IconButton(
+                        enabled = true,
+                        onClick = {
+                            publish(ModpackMsg.ProjectsCleared())
+                            lastClickedIndex?.value = null
+                        },
+                        modifier = Modifier.size(SelectionActionButtonSize),
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.Actions.Unselectall,
+                            contentDescription = "Clear selection",
+                            tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                            hints = arrayOf(),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }

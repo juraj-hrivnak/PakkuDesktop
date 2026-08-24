@@ -563,10 +563,10 @@ fun Project.shortDisplayName(): String =
         ?: id.values.firstOrNull()
         ?: "project"
 
-fun primaryAddLabel(accepted: List<Project>): String = when (accepted.size) {
-    0 -> "Add"
-    1 -> "Add ${accepted.single().shortDisplayName()}"
-    else -> "Add ${accepted.size} projects"
+fun primaryAddLabel(accepted: List<Project>, verb: String = "Add"): String = when (accepted.size) {
+    0 -> verb
+    1 -> "$verb ${accepted.single().shortDisplayName()}"
+    else -> "$verb ${accepted.size} projects"
 }
 
 fun primaryRemoveLabel(accepted: List<Project>): String = when (accepted.size) {

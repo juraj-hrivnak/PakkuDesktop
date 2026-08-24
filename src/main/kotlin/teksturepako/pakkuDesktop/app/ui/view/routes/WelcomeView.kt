@@ -171,23 +171,6 @@ fun PakkuApplicationScope.WelcomeView(
                                         }
                                     }
                                 }
-                                if (appModel.isProActivated != true) {
-                                    OutlinedButton(onClick = { appPublish(AppMsg.ShowActivation) }) {
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Icon(
-                                                key = AllIconsKeys.General.Vcs,
-                                                contentDescription = "Activate Pakku Pro",
-                                                tint = JewelTheme.contentColor,
-                                                hints = arrayOf(),
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                            Text("Activate Pakku Pro...")
-                                        }
-                                    }
-                                }
                             }
                         }
 

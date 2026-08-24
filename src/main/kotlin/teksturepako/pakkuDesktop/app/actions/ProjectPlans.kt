@@ -22,6 +22,13 @@ fun Project.displayLabel(): String {
  */
 fun Project.uiKey(): String = identityKey()
 
+/**
+ * Unique key for one row in a lazy list. [uiKey] can collide when the lock file holds
+ * multiple entries with the same provider identity; [pakkuId] disambiguates those rows.
+ */
+fun Project.listItemKey(fallbackIndex: Int): String =
+    pakkuId ?: "${uiKey()}#$fallbackIndex"
+
 /** Dependency preview node (from Pakku [requestDependencies] + optional [createAdditionRequest]). */
 data class DepNode(
     val project: Project,

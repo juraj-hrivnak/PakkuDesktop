@@ -4,18 +4,24 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
+import com.github.michaelbull.result.get
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 
-fun Project.matchesProjectsListFilters(model: ModpackModel): Boolean {
+fun Project.matchesProjectsListFilters(
+    model: ModpackModel,
+    ignoreUpdatesOnly: Boolean = false,
+): Boolean {
     val textOk = model.projectsFilterText.isEmpty() ||
         name.values.any { model.projectsFilterText.lowercase() in it.lowercase() } ||
         model.projectsFilterText in this
 
-    val updatesOk = !model.filterUpdatesOnly ||
+    val updatesOk = ignoreUpdatesOnly ||
+        !model.filterUpdatesOnly ||
         model.updatePreviews?.containsKey(uiKey()) == true
 
     val typeOk = model.filterTypes.isEmpty() || type in model.filterTypes
@@ -34,8 +40,11 @@ fun Project.matchesProjectsListFilters(model: ModpackModel): Boolean {
     return textOk && updatesOk && typeOk && sideOk && providerOk && redistributableOk
 }
 
-fun ModpackModel.filteredAndSortedProjects(projects: List<Project>): List<Project> {
-    val filtered = projects.filter { it.matchesProjectsListFilters(this) }
+fun ModpackModel.filteredAndSortedProjects(
+    projects: List<Project>,
+    ignoreUpdatesOnly: Boolean = false,
+): List<Project> {
+    val filtered = projects.filter { it.matchesProjectsListFilters(this, ignoreUpdatesOnly) }
     return when (val order = sortOrder) {
         is SortOrder.Name -> if (order.ascending) {
             filtered.sortedBy { it.name.values.firstOrNull() }
@@ -48,4 +57,36 @@ fun ModpackModel.filteredAndSortedProjects(projects: List<Project>): List<Projec
             filtered.sortedByDescending { it.getLatestFile(Provider.providers)?.datePublished }
         }
     }
+}
+
+/** One list row: a disk file, with platform files merged when they are the same jar. */
+data class FilesTabRow(
+    val project: Project,
+    val files: List<ProjectFile>,
+) {
+    val primary: ProjectFile get() = files.maxBy { it.datePublished }
+
+    fun rowKey(): String =
+        "${project.uiKey()}::${primary.fileName}::${files.map { it.type }.sorted().joinToString()}"
+}
+
+fun Project.filesTabRows(): List<FilesTabRow> {
+    val latestPerProvider = files.snapshotList()
+        .groupBy { it.type }
+        .mapNotNull { (_, group) -> group.maxByOrNull { it.datePublished } }
+    if (latestPerProvider.isEmpty()) return emptyList()
+
+    val clusters = mutableListOf<MutableList<ProjectFile>>()
+    for (file in latestPerProvider) {
+        val cluster = clusters.firstOrNull { member -> member.any { it.isSameDiskFileAs(file) } }
+        if (cluster != null) cluster += file else clusters += mutableListOf(file)
+    }
+    return clusters.map { FilesTabRow(this, it) }
+}
+
+private fun ProjectFile.isSameDiskFileAs(other: ProjectFile): Boolean {
+    if (fileName == other.fileName) return true
+    val thisSha = hashes?.entries?.firstOrNull { it.key.equals("sha1", ignoreCase = true) }?.value
+    val otherSha = other.hashes?.entries?.firstOrNull { it.key.equals("sha1", ignoreCase = true) }?.value
+    return !thisSha.isNullOrBlank() && thisSha == otherSha
 }

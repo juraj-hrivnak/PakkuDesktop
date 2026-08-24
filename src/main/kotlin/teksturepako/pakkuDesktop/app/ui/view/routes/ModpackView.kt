@@ -15,11 +15,16 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
+import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
+import teksturepako.pakkuDesktop.app.ui.component.dialog.GitCommitDialog
+import teksturepako.pakkuDesktop.app.ui.component.dialog.GitPullDialog
+import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
@@ -31,6 +36,7 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
+import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.FilesTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
@@ -38,7 +44,7 @@ import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
-import teksturepako.pakkuDesktop.pro.ui.component.Pro
+import teksturepako.pakkuDesktop.pro.ui.component.GitPushDialog
 
 @Composable
 fun PakkuApplicationScope.ModpackView(
@@ -67,14 +73,24 @@ fun PakkuApplicationScope.ModpackView(
         AlignedTitleBarContent(alignment = Alignment.Start) {
             DropdownHost {
                 ModpackDropdown(publish, model)
-                Pro(appModel) { GitDropdown(publish, model) }
+                GitDropdown(publish, model)
             }
             McLoaderLabel(model)
             if (model.actionName != null) {
                 Box(Modifier.padding(4.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(model.actionName)
-                        CircularProgressIndicator()
+                        val total = model.fetchProgressTotal
+                        if (model.actionName == "Fetching" && total > 0L) {
+                            val progress = (model.fetchProgressCompleted.toFloat() / total.toFloat())
+                                .coerceIn(0f, 1f)
+                            HorizontalProgressBar(progress, Modifier.width(120.dp))
+                        } else {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }
@@ -91,16 +107,17 @@ fun PakkuApplicationScope.ModpackView(
 
     Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
         Row(Modifier.matchParentSize()) {
-            ModpackRail(publish, model, appModel)
+            ModpackRail(publish, model)
 
             VerticalSplitLayout(
                 state = actionSplitState,
                 dividerStyle = animatedDividerStyle(),
                 first = {
-                    Column {
-                        Row {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.fillMaxSize()) {
                             when (model.selectedTab) {
                                 SelectedTab.PROJECTS -> ProjectsTab(publish, model)
+                                SelectedTab.FILES    -> FilesTab(publish, model)
                                 SelectedTab.MODPACK  -> ModpackTab(publish, model)
                                 SelectedTab.COMMIT   -> GitTab(publish, model)
                             }
@@ -124,6 +141,12 @@ fun PakkuApplicationScope.ModpackView(
             spacing = 8.dp,
             onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
         )
+
+        AddProjectsDialog(publish = publish, model = model)
+        RemoveProjectsDialog(publish = publish, model = model)
+        GitCommitDialog(publish = publish, model = model)
+        GitPullDialog(publish = publish, model = model)
+        GitPushDialog(publish = publish, model = model)
     }
 }
 

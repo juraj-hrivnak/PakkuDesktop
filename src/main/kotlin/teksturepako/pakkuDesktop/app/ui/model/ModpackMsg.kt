@@ -62,6 +62,76 @@ enum class ProjectsFabAction {
     Remove,
 }
 
+/** Files-tab FAB (Refresh / Sync detect on the left; Fetch / Add / Update / Remove on the right). */
+enum class FilesFabAction {
+    Refresh,
+    Sync,
+    Fetch,
+    Add,
+    Update,
+    Remove,
+}
+
+/** Git-tab FAB (Pull / Push / Commit). */
+enum class GitFabAction {
+    Pull,
+    Push,
+    Commit,
+}
+
+/** How a project appears in the last [teksturepako.pakku.api.actions.sync.SyncResult]. */
+enum class SyncKind {
+    Added,
+    Removed,
+    Updated,
+}
+
+/** Change kind on the Files tab current|new split. */
+enum class FilesChangeKind {
+    Fetch,
+    Override,
+    Cleanup,
+    Added,
+    Removed,
+    Updated,
+    HashMismatch,
+}
+
+enum class FilesPreviewMode {
+    None,
+    Fetch,
+    Sync,
+}
+
+data class FetchDownloadPreview(
+    val project: Project,
+    val projectFile: ProjectFile,
+)
+
+data class FetchOverridePreview(
+    val relativeOutputPath: String,
+    val sourcePath: String,
+    val fullOutputPath: String,
+)
+
+data class FetchCleanupPreview(
+    val relativePath: String,
+    val absolutePath: String,
+    val fileName: String,
+)
+
+data class FetchDetectResult(
+    val toDownload: List<FetchDownloadPreview> = emptyList(),
+    val toCopyOverrides: List<FetchOverridePreview> = emptyList(),
+    val toClean: List<FetchCleanupPreview> = emptyList(),
+    val hashMismatchKeys: Set<String> = emptySet(),
+    /** Every `.pakku/{overrides,server-overrides,client-overrides}` file, including already-copied. */
+    val allOverrides: List<FetchOverridePreview> = emptyList(),
+) {
+    val isEmpty: Boolean
+        get() = toDownload.isEmpty() && toCopyOverrides.isEmpty() && toClean.isEmpty()
+}
+
 /** status-check result for one project (by [teksturepako.pakkuDesktop.app.actions.uiKey]) */
 data class ProjectUpdateInfo(
     val updatedProject: Project,
@@ -98,8 +168,17 @@ data class AddDialogModel(
     val plan: AdditionPlan? = null,
     /** Root project [teksturepako.pakkuDesktop.app.actions.uiKey]s (provider identity); deps follow. */
     val acceptedRootIds: Set<String> = emptySet(),
-    /** Non-null → ActionDriver builds addition plan. */
+    /** Non-null → ActionDriver builds addition plan from a typed query. */
     val pendingResolveQuery: String? = null,
+    /**
+     * Non-null → ActionDriver builds addition plan from already-resolved projects
+     * (Files sync Add / Update). Skips the query field.
+     */
+    val pendingResolveProjects: List<Project>? = null,
+    /** When false, Review cannot go back to [AddDialogPhase.Input] (sync-opened). */
+    val allowInput: Boolean = true,
+    /** Primary action verb in the shared add/update review dialog (`Add` or `Update`). */
+    val confirmVerb: String = "Add",
 )
 
 sealed interface RemoveDialogPhase {
@@ -134,6 +213,7 @@ sealed interface ModpackDropdownMsg {
     data class CloseRequested(val force: Boolean = false) : ModpackDropdownMsg
     data object Export : ModpackDropdownMsg
     data object Fetch : ModpackDropdownMsg
+    data object Sync : ModpackDropdownMsg
     data object CheckUpdates : ModpackDropdownMsg
     data object ShowSettings : ModpackDropdownMsg
     data class DirectoryPicked(val path: String) : ModpackDropdownMsg
@@ -169,8 +249,10 @@ sealed interface ModpackMsg {
          * false → drop updatePreviews (project set may have changed).
          * default true keeps last status check across soft reloads.
          */
-        val retainUpdatePreviews: Boolean = true,
+        val         retainUpdatePreviews: Boolean = true,
     ) : ModpackMsg
+
+    data class ManualOverridesLoaded(val overrides: List<FetchOverridePreview>) : ModpackMsg
 
     data object Reset : ModpackMsg
 
@@ -209,7 +291,13 @@ sealed interface ModpackMsg {
     data class FilterMissingSideChanged(val enabled: Boolean) : ModpackMsg
     data class FilterProvidersChanged(val providers: Set<String>) : ModpackMsg
     data class FilterRedistributableChanged(val value: Boolean?) : ModpackMsg
+    data class FilterSyncKindsChanged(val kinds: Set<SyncKind>) : ModpackMsg
     data class ProjectsSplitRatioChanged(val ratio: Float) : ModpackMsg
+    data class FilesSplitRatioChanged(val ratio: Float) : ModpackMsg
+    data class FilesFilterTextChanged(val text: String) : ModpackMsg
+    data class FilesFilterFoldersChanged(val folders: Set<String>) : ModpackMsg
+    data class FilesFilterChangeKindsChanged(val kinds: Set<FilesChangeKind>) : ModpackMsg
+    data class FilesFilterFocusChanged(val focused: Boolean) : ModpackMsg
 
     /** focus filter (Ctrl/Cmd+F) */
     data object FocusProjectsFilterRequested : ModpackMsg
@@ -241,8 +329,22 @@ sealed interface ModpackMsg {
     /** Remember last Projects FAB (Jewel default-button style). */
     data class ProjectsFabRemembered(val action: ProjectsFabAction) : ModpackMsg
 
+    /** Remember last Files-tab FAB. */
+    data class FilesFabRemembered(val action: FilesFabAction) : ModpackMsg
+
     /** Enter: re-activate [ModpackModel.lastProjectsFab], else open detail. */
     data object ActivateLastProjectsFab : ModpackMsg
+
+    /** Enter on Files tab: re-activate [ModpackModel.lastFilesFab]. */
+    data object ActivateLastFilesFab : ModpackMsg
+
+    data class GitFabRemembered(val action: GitFabAction) : ModpackMsg
+    data object ActivateLastGitFab : ModpackMsg
+
+    data object ShowGitCommitDialog : ModpackMsg
+    data object HideGitCommitDialog : ModpackMsg
+    data object ShowGitPullDialog : ModpackMsg
+    data object HideGitPullDialog : ModpackMsg
 
     /** select all filtered (Ctrl/Cmd+A) */
     data object SelectAllFilteredRequested : ModpackMsg
@@ -265,7 +367,18 @@ sealed interface ModpackMsg {
     // -- Actions --
 
     data object ExportRequested : ModpackMsg
+    data object FetchDetectRequested : ModpackMsg
+    data class FetchDetectCompleted(val result: FetchDetectResult) : ModpackMsg
     data object FetchRequested : ModpackMsg
+    data class FetchProgressUpdated(val completed: Long, val total: Long) : ModpackMsg
+    data object FilesPreviewCleared : ModpackMsg
+    data object SyncDetectRequested : ModpackMsg
+    data class SyncDetectCompleted(
+        val added: List<Project>,
+        val removed: List<Project>,
+        val updated: List<Project>,
+    ) : ModpackMsg
+    data class SyncApplyRequested(val kind: SyncKind) : ModpackMsg
     data class UpdateRequested(val keys: Set<String>) : ModpackMsg
     /** DnD auto-add; skips non-recommended */
     data class AddRequested(val query: String) : ModpackMsg
@@ -276,6 +389,8 @@ sealed interface ModpackMsg {
     data class InitRequested(val spec: InitSpec) : ModpackMsg
     data class FilesDropped(val paths: List<String>) : ModpackMsg
     data class ActionStarted(val name: String) : ModpackMsg
+    /** Change the in-flight action label without resetting intent flags. */
+    data class ActionRenamed(val name: String) : ModpackMsg
     data object ActionFinished : ModpackMsg
     data object TerminateAction : ModpackMsg
 

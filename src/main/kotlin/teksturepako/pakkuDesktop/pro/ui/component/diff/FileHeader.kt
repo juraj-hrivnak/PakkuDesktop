@@ -16,12 +16,14 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.data.workingPath
-import teksturepako.pakkuDesktop.app.ui.component.HorizontalBar
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.TooltipPosition
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
@@ -34,9 +36,11 @@ fun FileHeader(diffContent: DiffContent)
     val file = Path(workingPath).resolve(diffContent.newPath)
     val parentDir = file.parent
 
-    HorizontalBar {
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -102,5 +106,6 @@ fun FileHeader(diffContent: DiffContent)
                 }
             }
         }
+        Divider(Orientation.Horizontal)
     }
 }

@@ -23,6 +23,11 @@ import teksturepako.pakkuDesktop.app.ui.driver.*
 import teksturepako.pakkuDesktop.elm.run
 
 fun main() {
+    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        System.err.println("PakkuDesktop: uncaught exception on thread '${thread.name}'")
+        throwable.printStackTrace()
+    }
+
     println(System.getenv("LD_LIBRARY_PATH"))
 
     loggingConfiguration {

@@ -151,6 +151,8 @@ data class ModpackModel(
      * Enter re-activates it when enabled.
      */
     val lastProjectsFab: ProjectsFabAction? = null,
+    val lastFilesFab: FilesFabAction? = null,
+    val lastGitFab: GitFabAction? = null,
 
     val sortOrder: SortOrder = SortOrder.Name(ascending = true),
     val projectsFilterText: String = "",
@@ -169,6 +171,8 @@ data class ModpackModel(
     val filterRedistributable: Boolean? = null,
     /** First-pane weight for the Projects list|inspector split (list share). */
     val projectsSplitRatio: Float = ProjectsUiData.DEFAULT_SPLIT_RATIO,
+    /** First-pane weight for the Files current|new split. */
+    val filesSplitRatio: Float = ProjectsUiData.DEFAULT_FILES_SPLIT_RATIO,
     /** only projects with a pending update from the last status check */
     val filterUpdatesOnly: Boolean = false,
     val wantsStatusCheck: Boolean = false,
@@ -182,6 +186,25 @@ data class ModpackModel(
     val wantsTerminateAction: Boolean = false,
     val wantsExport: Boolean = false,
     val wantsFetch: Boolean = false,
+    val wantsFetchDetect: Boolean = false,
+    val fetchProgressCompleted: Long = 0L,
+    val fetchProgressTotal: Long = 0L,
+    val wantsSyncDetect: Boolean = false,
+    val pendingSyncApply: Boolean = false,
+    val filesPreviewMode: FilesPreviewMode = FilesPreviewMode.None,
+    val fetchDownloads: List<FetchDownloadPreview> = emptyList(),
+    val fetchOverrides: List<FetchOverridePreview> = emptyList(),
+    /** All `.pakku` manual override files (shown on the Files tab even when already copied). */
+    val manualOverrides: List<FetchOverridePreview> = emptyList(),
+    val fetchCleanup: List<FetchCleanupPreview> = emptyList(),
+    val filesHashMismatchKeys: Set<String> = emptySet(),
+    val syncAdded: List<Project> = emptyList(),
+    val syncRemoved: List<Project> = emptyList(),
+    val syncUpdated: List<Project> = emptyList(),
+    val filesFilterText: String = "",
+    val filesFilterFolders: Set<String> = emptySet(),
+    val filesFilterChangeKinds: Set<FilesChangeKind> = emptySet(),
+    val filesFilterFocused: Boolean = false,
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
     val projectsFilterFocused: Boolean = false,
@@ -217,6 +240,8 @@ data class ModpackModel(
     val wantsGitPush: Boolean = false,
     val wantsGitCommit: Boolean = false,
     val gitCheckoutBranch: GitBranch? = null,
+    val gitCommitDialogVisible: Boolean = false,
+    val gitPullDialogVisible: Boolean = false,
 
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
@@ -226,11 +251,14 @@ data class ModpackModel(
 // -- Enums / sealed --
 
 enum class SelectedTab {
-    MODPACK, PROJECTS, COMMIT
+    MODPACK, PROJECTS, FILES, COMMIT
 }
 
 sealed class SortOrder(open val ascending: Boolean) {
     data class Name(override val ascending: Boolean) : SortOrder(ascending)
     data class LastUpdated(override val ascending: Boolean) : SortOrder(ascending)
 }
+
+fun ModpackModel.gitBusy(): Boolean =
+    wantsGitPull || wantsGitPush || wantsGitCommit || gitCheckoutBranch != null
 

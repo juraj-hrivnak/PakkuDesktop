@@ -74,6 +74,9 @@ fun ProjectFilter(
         (if (model.filterUpdatesOnly) 1 else 0)
     val anyFilterActive = activeCount > 0
     var filtersExpanded by remember { mutableStateOf(anyFilterActive) }
+    LaunchedEffect(anyFilterActive) {
+        if (anyFilterActive) filtersExpanded = true
+    }
 
     LaunchedEffect(textFieldState.text) {
         val text = textFieldState.text.toString()
@@ -249,8 +252,11 @@ fun ProjectFilter(
     }
 }
 
+private fun <T> Set<T>.toggle(value: T): Set<T> =
+    if (value in this) this - value else this + value
+
 @Composable
-private fun FilterToggle(
+internal fun FilterToggle(
     label: String,
     active: Boolean,
     onClick: () -> Unit,

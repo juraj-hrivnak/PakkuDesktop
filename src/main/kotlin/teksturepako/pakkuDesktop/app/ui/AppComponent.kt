@@ -45,7 +45,8 @@ private fun ModpackMsg.persistsProjectsListPrefs(): Boolean = when (this) {
     is ModpackMsg.FilterMissingSideChanged,
     is ModpackMsg.FilterProvidersChanged,
     is ModpackMsg.FilterRedistributableChanged,
-    is ModpackMsg.ProjectsSplitRatioChanged -> true
+    is ModpackMsg.ProjectsSplitRatioChanged,
+    is ModpackMsg.FilesSplitRatioChanged -> true
     else -> false
 }
 

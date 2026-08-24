@@ -110,6 +110,7 @@ fun AddProjectsDialog(
             AddDialogPhase.Input, AddDialogPhase.Resolving -> publish(ModpackMsg.HideAddDialog)
             AddDialogPhase.Review -> {
                 if (emptyReview) publish(ModpackMsg.HideAddDialog)
+                else if (!dialog.allowInput) publish(ModpackMsg.HideAddDialog)
                 else publish(ModpackMsg.AddBackToInput)
             }
         }
@@ -117,11 +118,12 @@ fun AddProjectsDialog(
 
     val (primaryLabel, secondaryLabel) = when (dialog.phase) {
         AddDialogPhase.Input -> "Add" to "Cancel"
-        AddDialogPhase.Resolving -> "Add" to "Cancel"
+        AddDialogPhase.Resolving -> dialog.confirmVerb to "Cancel"
         AddDialogPhase.Review -> if (emptyReview) {
-            "Back" to "Cancel"
+            if (dialog.allowInput) "Back" to "Cancel" else "OK" to "Cancel"
         } else {
-            primaryAddLabel(acceptedEntries.map { it.project }) to "Back"
+            primaryAddLabel(acceptedEntries.map { it.project }, dialog.confirmVerb) to
+                if (dialog.allowInput) "Back" else "Cancel"
         }
     }
 
@@ -143,7 +145,7 @@ fun AddProjectsDialog(
                     .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Header("Add projects")
+                Header("${dialog.confirmVerb} projects")
 
                 when (dialog.phase) {
                     AddDialogPhase.Input -> {

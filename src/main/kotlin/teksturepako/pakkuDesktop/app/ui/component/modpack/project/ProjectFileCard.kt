@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.datetime.Instant
@@ -41,9 +42,12 @@ import teksturepako.pakkuDesktop.app.integration.revealInFileManager
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.button.CopyToClipboardButton
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.statusColor
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
+import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.ProjectFileChange
+import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -53,30 +57,107 @@ fun ProjectFileCard(
     project: Project,
     projectFile: ProjectFile,
     configFile: ConfigFile? = null,
+    modifier: Modifier = Modifier,
+    focused: Boolean = false,
+    checked: Boolean = false,
+    mergedFiles: List<ProjectFile> = emptyList(),
+    showLatestLabel: Boolean = true,
+    syncKind: SyncKind? = null,
+    changeKind: FilesChangeKind? = null,
+    pathOverride: String? = null,
 ) {
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
     val isLatest = latest != null && projectFile == latest
-    val relativePath = projectFile.getRelativePathString(project, configFile)
+    val relativePath = pathOverride ?: projectFile.getRelativePathString(project, configFile)
     val diskPath = remember(project, projectFile, configFile) {
         projectFile.getPath(project, configFile)
     }
-    val canOpenLocation = isLatest && diskPath != null && diskPath.exists()
+    val canOpenLocation = diskPath != null && diskPath.exists()
+    val providerTypes = remember(projectFile, mergedFiles) {
+        (listOf(projectFile) + mergedFiles).map { it.type }.distinct()
+    }
+    val kind = changeKind ?: syncKind?.toFilesChangeKind()
+
+    val borderColor = fileCardBorder(focused, checked, kind, isLatest && showLatestLabel)
+    val fill = fileCardFill(focused, checked, kind)
 
     FileCardShell(
-        borderColor = if (isLatest) {
-            PakkuDesktopConstants.highlightColor.copy(alpha = 0.55f)
-        } else {
-            Color.Gray.copy(alpha = 0.3f)
-        },
+        borderColor = borderColor,
+        modifier = modifier,
+        fill = fill,
+        borderWidth = if (focused || checked || kind != null) 1.5.dp else 1.dp,
     ) {
         FileCardBody(
             projectFile = projectFile,
-            label = if (isLatest) "current" else null,
+            label = if (showLatestLabel && isLatest) "current" else null,
             relativePath = relativePath,
             openInFolderPath = if (canOpenLocation) diskPath else null,
+            changeKind = kind,
+            providerTypes = providerTypes,
         )
     }
 }
+
+@Composable
+fun ProjectFileCard(
+    relativePath: String,
+    changeKind: FilesChangeKind?,
+    checked: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val borderColor = fileCardBorder(focused = false, checked = checked, kind = changeKind, latest = false)
+    val fill = fileCardFill(focused = false, checked = checked, kind = changeKind)
+    FileCardShell(
+        borderColor = borderColor,
+        modifier = modifier,
+        fill = fill,
+        borderWidth = if (checked || changeKind != null) 1.5.dp else 1.dp,
+    ) {
+        FileCardBody(
+            projectFile = null,
+            label = null,
+            showHashes = false,
+            relativePath = relativePath,
+            changeKind = changeKind,
+            providerTypes = emptyList(),
+        )
+    }
+}
+
+private fun SyncKind.toFilesChangeKind(): FilesChangeKind = when (this) {
+    SyncKind.Added -> FilesChangeKind.Added
+    SyncKind.Removed -> FilesChangeKind.Removed
+    SyncKind.Updated -> FilesChangeKind.Updated
+}
+
+@Composable
+private fun fileCardBorder(
+    focused: Boolean,
+    checked: Boolean,
+    kind: FilesChangeKind?,
+    latest: Boolean,
+): Color = when {
+    focused -> PakkuDesktopConstants.highlightColor
+    checked -> JewelTheme.contentColor.copy(alpha = 0.42f)
+    kind != null -> kind.accentColor().copy(alpha = 0.9f)
+    latest -> PakkuDesktopConstants.highlightColor.copy(alpha = 0.55f)
+    else -> Color.Gray.copy(alpha = 0.3f)
+}
+
+@Composable
+private fun fileCardFill(
+    focused: Boolean,
+    checked: Boolean,
+    kind: FilesChangeKind?,
+): Color? = when {
+    focused -> PakkuDesktopConstants.highlightColor.copy(alpha = 0.12f)
+    checked -> JewelTheme.contentColor.copy(alpha = 0.07f)
+    kind != null -> kind.accentColor().copy(alpha = 0.10f)
+    else -> null
+}
+
+@Composable
+private fun FilesChangeKind.accentColor(): Color = statusColor()
 
 /**
  * Compact old → new update preview; extra candidates are a clickable list under the selected file.
@@ -207,14 +288,18 @@ private fun DiffFileRow(
 @Composable
 private fun FileCardShell(
     borderColor: Color,
+    modifier: Modifier = Modifier,
+    fill: Color? = null,
+    borderWidth: Dp = 1.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
+            .then(if (fill != null) Modifier.background(fill) else Modifier)
             .border(
-                width = 1.dp,
+                width = borderWidth,
                 color = borderColor,
                 shape = RoundedCornerShape(16.dp),
             )
@@ -226,24 +311,33 @@ private fun FileCardShell(
 
 @Composable
 private fun FileCardBody(
-    projectFile: ProjectFile,
+    projectFile: ProjectFile?,
     label: String?,
     showHashes: Boolean = true,
     relativePath: String? = null,
     openInFolderPath: Path? = null,
+    changeKind: FilesChangeKind? = null,
+    providerTypes: List<String> = projectFile?.let { listOf(it.type) }.orEmpty(),
 ) {
-    val published = projectFile.datePublished
-        .takeUnless { it == Instant.DISTANT_PAST }
+    val published = projectFile?.datePublished
+        ?.takeUnless { it == Instant.DISTANT_PAST }
         ?.formatPublished()
-    val pathText = relativePath ?: projectFile.fileName
+    val pathText = relativePath ?: projectFile?.fileName.orEmpty()
     val codeBg = JewelTheme.globalColors.borders.disabled.copy(alpha = 0.45f)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ProviderTypeIcon(projectFile.type)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            providerTypes.forEach { type ->
+                ProviderTypeIcon(type)
+            }
+        }
 
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -296,6 +390,30 @@ private fun FileCardBody(
                         Text(label)
                     }
                 }
+                when (changeKind) {
+                    FilesChangeKind.Fetch -> Badge(style = JewelTheme.badgeStyle.green) {
+                        Text("Download")
+                    }
+                    FilesChangeKind.Override -> Badge(style = JewelTheme.badgeStyle.green) {
+                        Text("Sync")
+                    }
+                    FilesChangeKind.Cleanup -> Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                        Text("Delete")
+                    }
+                    FilesChangeKind.Added -> Badge(style = JewelTheme.badgeStyle.green) {
+                        Text("Add")
+                    }
+                    FilesChangeKind.Removed -> Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                        Text("Remove")
+                    }
+                    FilesChangeKind.Updated -> Badge(style = JewelTheme.badgeStyle.blueSecondary) {
+                        Text("Update")
+                    }
+                    FilesChangeKind.HashMismatch -> Badge(style = JewelTheme.badgeStyle.blueSecondary) {
+                        Text("Hash mismatch")
+                    }
+                    null -> Unit
+                }
             }
             published?.let {
                 Text(
@@ -308,7 +426,7 @@ private fun FileCardBody(
     }
 
     if (showHashes) {
-        val sha1 = projectFile.hashes
+        val sha1 = projectFile?.hashes
             ?.entries
             ?.firstOrNull { it.key.equals("sha1", ignoreCase = true) }
             ?.value

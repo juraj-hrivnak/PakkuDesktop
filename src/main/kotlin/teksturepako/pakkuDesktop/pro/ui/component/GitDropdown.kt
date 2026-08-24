@@ -43,13 +43,6 @@ val gitDropdownComponent = component(
         // [PkUiDropdown] menuContent is MenuScope.() -> Unit (not @Composable); read menu colors here.
         val menuItemColors = JewelTheme.menuStyle.colors.itemColors
 
-        GitPushDialog(
-            gitState = gitState,
-            visible = model.pushDialogVisible,
-            onDismiss = { publish(GitDropdownMsg.HidePushDialog) },
-            onPush = { publish(GitDropdownMsg.PushRequested) },
-        )
-
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
             menuModifier = Modifier.width(300.dp),

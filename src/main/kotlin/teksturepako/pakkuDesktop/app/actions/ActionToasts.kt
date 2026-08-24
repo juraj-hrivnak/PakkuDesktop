@@ -52,6 +52,63 @@ internal fun actionInfoToast(message: String) = ToastData(content = {
     }
 })
 
+internal fun actionFetchSummaryToast(
+    fetched: Int,
+    overrides: List<String>,
+    shelved: List<String>,
+    deleted: List<String>,
+) = ToastData(content = {
+    val lines = buildList {
+        when (fetched) {
+            0 -> if (overrides.isEmpty() && shelved.isEmpty() && deleted.isEmpty()) {
+                add("Nothing new to fetch.")
+            }
+            1 -> add("Fetched 1 file")
+            else -> add("Fetched $fetched files")
+        }
+        when (overrides.size) {
+            0 -> Unit
+            1 -> add("Synced 1 manual override")
+            else -> add("Synced ${overrides.size} manual overrides")
+        }
+        overrides.take(6).forEach { add("  $it") }
+        if (overrides.size > 6) add("  +${overrides.size - 6} more")
+        when (shelved.size) {
+            0 -> Unit
+            1 -> add("Shelved 1 old file")
+            else -> add("Shelved ${shelved.size} old files")
+        }
+        shelved.take(6).forEach { add("  $it") }
+        if (shelved.size > 6) add("  +${shelved.size - 6} more")
+        when (deleted.size) {
+            0 -> Unit
+            1 -> add("Deleted 1 old file")
+            else -> add("Deleted ${deleted.size} old files")
+        }
+        deleted.take(6).forEach { add("  $it") }
+        if (deleted.size > 6) add("  +${deleted.size - 6} more")
+    }
+    Column(
+        Modifier
+            .padding(16.dp)
+            .widthIn(min = 240.dp, max = 360.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        lines.forEachIndexed { index, line ->
+            Text(
+                text = line,
+                fontWeight = if (index == 0 || !line.startsWith("  ")) FontWeight.SemiBold else FontWeight.Normal,
+                fontSize = if (line.startsWith("  ")) 12.sp else 14.sp,
+                color = if (line.startsWith("  ")) {
+                    JewelTheme.contentColor.copy(alpha = 0.75f)
+                } else {
+                    JewelTheme.contentColor
+                },
+            )
+        }
+    }
+})
+
 /** One added root (optional replace) for the summary toast. */
 data class AddedProjectLine(
     val project: Project,

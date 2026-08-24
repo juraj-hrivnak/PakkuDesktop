@@ -35,7 +35,16 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
 
     val onProjectsTab = model.screen == AppScreen.Modpack &&
         model.modpack.selectedTab == SelectedTab.PROJECTS
-    val filterFocused = model.modpack.projectsFilterFocused
+    val onFilesTab = model.screen == AppScreen.Modpack &&
+        model.modpack.selectedTab == SelectedTab.FILES
+    val onGitTab = model.screen == AppScreen.Modpack &&
+        model.modpack.selectedTab == SelectedTab.COMMIT
+    val onListTab = onProjectsTab || onFilesTab
+    val filterFocused = if (onFilesTab) {
+        model.modpack.filesFilterFocused
+    } else {
+        model.modpack.projectsFilterFocused
+    }
     val accelerator = event.isCtrlPressed || event.isMetaPressed
 
     // Esc: topmost modal first (window preview runs before dialog content).
@@ -65,6 +74,36 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             {
                 if (!filterFocused && !model.hasModalOverlay()) {
                     publish(AppMsg.Modpack(ModpackMsg.ActivateLastProjectsFab))
+                    return true
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    if (onFilesTab && !accelerator)
+    {
+        when (event.key)
+        {
+            Key.Enter, Key.NumPadEnter ->
+            {
+                if (!filterFocused && !model.hasModalOverlay()) {
+                    publish(AppMsg.Modpack(ModpackMsg.ActivateLastFilesFab))
+                    return true
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    if (onGitTab && !accelerator)
+    {
+        when (event.key)
+        {
+            Key.Enter, Key.NumPadEnter ->
+            {
+                if (!model.hasModalOverlay()) {
+                    publish(AppMsg.Modpack(ModpackMsg.ActivateLastGitFab))
                     return true
                 }
             }
@@ -111,7 +150,7 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
         }
         Key.A ->
         {
-            if (onProjectsTab && !filterFocused && !model.hasModalOverlay())
+            if (onListTab && !filterFocused && !model.hasModalOverlay())
             {
                 publish(AppMsg.Modpack(ModpackMsg.SelectAllFilteredRequested))
                 true
@@ -125,11 +164,11 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
                 // Ctrl/Cmd+Shift+F — Fetch projects
                 event.isShiftPressed && model.screen == AppScreen.Modpack && model.modpack.actionName == null ->
                 {
-                    publish(AppMsg.Modpack(ModpackMsg.FetchRequested))
+                    publish(AppMsg.Modpack(ModpackMsg.FetchDetectRequested))
                     true
                 }
                 // Ctrl/Cmd+F — focus projects filter
-                onProjectsTab ->
+                onListTab ->
                 {
                     publish(AppMsg.Modpack(ModpackMsg.FocusProjectsFilterRequested))
                     true
@@ -187,6 +226,16 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         publish(AppMsg.Modpack(ModpackMsg.GitDropdown(GitDropdownMsg.HidePushDialog)))
         true
     }
+    model.modpack.gitCommitDialogVisible ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.HideGitCommitDialog))
+        true
+    }
+    model.modpack.gitPullDialogVisible ->
+    {
+        publish(AppMsg.Modpack(ModpackMsg.HideGitPullDialog))
+        true
+    }
     model.modpack.removeDialog.visible ->
     {
         publish(AppMsg.Modpack(ModpackMsg.HideRemoveDialog))
@@ -197,7 +246,7 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         val phase = model.modpack.addDialog.phase
         val plan = model.modpack.addDialog.plan
         val onReviewWithRoots = phase == AddDialogPhase.Review && plan != null && !plan.isEmpty
-        if (onReviewWithRoots) {
+        if (onReviewWithRoots && model.modpack.addDialog.allowInput) {
             publish(AppMsg.Modpack(ModpackMsg.AddBackToInput))
         } else {
             publish(AppMsg.Modpack(ModpackMsg.HideAddDialog))
@@ -220,6 +269,8 @@ private fun AppModel.hasModalOverlay(): Boolean =
         showCloneDialog ||
         showSettings ||
         modpack.gitDropdown.pushDialogVisible ||
+        modpack.gitCommitDialogVisible ||
+        modpack.gitPullDialogVisible ||
         modpack.removeDialog.visible ||
         modpack.addDialog.visible
 

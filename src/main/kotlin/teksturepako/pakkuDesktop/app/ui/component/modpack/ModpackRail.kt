@@ -33,14 +33,11 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
-import teksturepako.pakkuDesktop.pro.ui.component.Pro
 
 private val RailButtonSize = 36.dp
 private val RailIconSize = 24.dp
@@ -51,7 +48,6 @@ private val RailButtonShape = RoundedCornerShape(6.dp)
 fun ModpackRail(
     publish: (ModpackMsg) -> Unit,
     modpack: ModpackModel,
-    appModel: AppModel,
 ) {
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
 
@@ -65,25 +61,29 @@ fun ModpackRail(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             RailButton(
-                key = PakkuDesktopIcons.Modpack.manage,
+                key = AllIconsKeys.Toolwindows.Dependencies,
                 tooltip = "Projects",
                 selected = modpack.selectedTab == SelectedTab.PROJECTS,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
             )
             RailButton(
-                key = PakkuDesktopIcons.properties,
+                key = AllIconsKeys.Toolwindows.ToolWindowProject,
+                tooltip = "Files",
+                selected = modpack.selectedTab == SelectedTab.FILES,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.FILES)) },
+            )
+            RailButton(
+                key = AllIconsKeys.Toolwindows.ToolWindowStructure,
                 tooltip = "Modpack",
                 selected = modpack.selectedTab == SelectedTab.MODPACK,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
             )
-            Pro(appModel) {
-                RailButton(
-                    key = AllIconsKeys.Toolwindows.ToolWindowCommit,
-                    tooltip = "Source control",
-                    selected = modpack.selectedTab == SelectedTab.COMMIT,
-                    onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
-                )
-            }
+            RailButton(
+                key = AllIconsKeys.Toolwindows.ToolWindowCommit,
+                tooltip = "Source control",
+                selected = modpack.selectedTab == SelectedTab.COMMIT,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
+            )
         }
         Spacer(Modifier.background(borderColor).width(1.dp).fillMaxHeight())
     }

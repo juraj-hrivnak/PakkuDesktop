@@ -24,15 +24,17 @@ import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.syncOf
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 
 @Composable
 fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
     val project = model.selectedProject ?: return
     val scrollState = rememberScrollState()
     val projectKey = project.uiKey()
-    val updateInfo = model.updatePreviews?.get(projectKey)
+    val updateInfo = if (model.selectedTab == SelectedTab.FILES) null else model.updatePreviews?.get(projectKey)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -46,39 +48,42 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
                 project = project,
                 focused = true,
                 updateInfo = updateInfo,
-                statusChecked = model.updatePreviews != null,
+                statusChecked = model.selectedTab != SelectedTab.FILES && model.updatePreviews != null,
+                syncKind = if (model.selectedTab == SelectedTab.FILES) model.syncOf(project) else null,
             ) {
                 GradientHeader(it)
             }
 
-            GroupHeader("Project files")
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                project.files.forEach { projectFile ->
-                    val provider = Provider.getProvider(projectFile.type)
-                    val shortName = provider?.shortName ?: projectFile.type
-                    val change = updateInfo?.fileChanges?.firstOrNull {
-                        it.providerShortName == shortName && it.oldFile.fileName == projectFile.fileName
-                    }
+            if (model.selectedTab != SelectedTab.FILES) {
+                GroupHeader("Project files")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    project.files.forEach { projectFile ->
+                        val provider = Provider.getProvider(projectFile.type)
+                        val shortName = provider?.shortName ?: projectFile.type
+                        val change = updateInfo?.fileChanges?.firstOrNull {
+                            it.providerShortName == shortName && it.oldFile.fileName == projectFile.fileName
+                        }
 
-                    if (change != null && updateInfo?.applied != true) {
-                        ProjectFileUpdateCard(
-                            change = change,
-                            onSelectFile = { fileId ->
-                                publish(
-                                    ModpackMsg.UpdateFileSelected(
-                                        projectKey = projectKey,
-                                        providerShortName = change.providerShortName,
-                                        fileId = fileId,
-                                    ),
-                                )
-                            },
-                        )
-                    } else {
-                        ProjectFileCard(
-                            project = project,
-                            projectFile = projectFile,
-                            configFile = model.configFile?.get(),
-                        )
+                        if (change != null && updateInfo?.applied != true) {
+                            ProjectFileUpdateCard(
+                                change = change,
+                                onSelectFile = { fileId ->
+                                    publish(
+                                        ModpackMsg.UpdateFileSelected(
+                                            projectKey = projectKey,
+                                            providerShortName = change.providerShortName,
+                                            fileId = fileId,
+                                        ),
+                                    )
+                                },
+                            )
+                        } else {
+                            ProjectFileCard(
+                                project = project,
+                                projectFile = projectFile,
+                                configFile = model.configFile?.get(),
+                            )
+                        }
                     }
                 }
             }

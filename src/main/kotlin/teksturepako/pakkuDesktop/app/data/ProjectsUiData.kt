@@ -39,6 +39,8 @@ data class ProjectsUiData(
     @SerialName("filter_redistributable") val filterRedistributable: Boolean? = null,
     /** First-pane weight for the Projects list|inspector split (list share, 0–1). */
     @SerialName("split_ratio") val splitRatio: Float = DEFAULT_SPLIT_RATIO,
+    /** First-pane weight for the Files current|new split (0–1). */
+    @SerialName("files_split_ratio") val filesSplitRatio: Float = DEFAULT_FILES_SPLIT_RATIO,
     /**
      * 1 = legacy detail-first split (ratio was detail weight).
      * 2 = list-first split (ratio is list weight).
@@ -72,6 +74,7 @@ data class ProjectsUiData(
         const val SORT_LAST_UPDATED = "last_updated"
         /** Default list share when the inspector is open. */
         const val DEFAULT_SPLIT_RATIO = 0.68f
+        const val DEFAULT_FILES_SPLIT_RATIO = 0.5f
         const val SPLIT_VERSION_LIST_FIRST = 2
 
         suspend fun readOrNew(): ProjectsUiData =
@@ -100,6 +103,7 @@ fun ModpackModel.toProjectsUiData(): ProjectsUiData = ProjectsUiData(
     filterProviders = filterProviders,
     filterRedistributable = filterRedistributable,
     splitRatio = projectsSplitRatio.coerceIn(0.05f, 0.95f),
+    filesSplitRatio = filesSplitRatio.coerceIn(0.05f, 0.95f),
     splitVersion = ProjectsUiData.SPLIT_VERSION_LIST_FIRST,
 )
 
@@ -112,4 +116,5 @@ fun ModpackModel.withProjectsUi(data: ProjectsUiData): ModpackModel = copy(
     filterProviders = data.filterProviders,
     filterRedistributable = data.filterRedistributable,
     projectsSplitRatio = data.listSplitRatio(),
+    filesSplitRatio = data.filesSplitRatio.coerceIn(0.05f, 0.95f),
 )

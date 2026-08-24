@@ -29,11 +29,13 @@ import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
+import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 
 /**
  * @param focused Right-pane / inspector selection (cyan).
  * @param checked List checkbox selection for batch actions (neutral tint).
  * @param statusChecked True after a status check has run ([ModpackModel.updatePreviews] != null).
+ * @param syncKind Result of the last disk sync detect; null if not detected / unchanged.
  */
 @Composable
 fun ProjectCard(
@@ -43,6 +45,7 @@ fun ProjectCard(
     checked: Boolean = false,
     updateInfo: ProjectUpdateInfo? = null,
     statusChecked: Boolean = false,
+    syncKind: SyncKind? = null,
     name: @Composable (String) -> Unit = {
         Text(it, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     },
@@ -56,10 +59,13 @@ fun ProjectCard(
         checked -> JewelTheme.contentColor.copy(alpha = 0.42f)
         applied -> PakkuDesktopConstants.green.copy(alpha = 0.9f)
         hasPendingUpdate -> PakkuDesktopConstants.amber.copy(alpha = 0.9f)
+        syncKind == SyncKind.Added -> PakkuDesktopConstants.green.copy(alpha = 0.9f)
+        syncKind == SyncKind.Removed -> PakkuDesktopConstants.coral.copy(alpha = 0.9f)
+        syncKind == SyncKind.Updated -> PakkuDesktopConstants.amber.copy(alpha = 0.9f)
         else -> Color.Gray.copy(alpha = 0.28f)
     }
     val borderWidth = when {
-        focused || checked || applied || hasPendingUpdate -> 1.5.dp
+        focused || checked || applied || hasPendingUpdate || syncKind != null -> 1.5.dp
         else -> 1.dp
     }
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
@@ -76,6 +82,9 @@ fun ProjectCard(
                     checked -> Modifier.background(JewelTheme.contentColor.copy(alpha = 0.07f))
                     applied -> Modifier.background(PakkuDesktopConstants.green.copy(alpha = 0.10f))
                     hasPendingUpdate -> Modifier.background(PakkuDesktopConstants.amber.copy(alpha = 0.08f))
+                    syncKind == SyncKind.Added -> Modifier.background(PakkuDesktopConstants.green.copy(alpha = 0.10f))
+                    syncKind == SyncKind.Removed -> Modifier.background(PakkuDesktopConstants.coral.copy(alpha = 0.08f))
+                    syncKind == SyncKind.Updated -> Modifier.background(PakkuDesktopConstants.amber.copy(alpha = 0.08f))
                     else -> Modifier
                 },
             )
@@ -94,6 +103,18 @@ fun ProjectCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 project.name.values.firstOrNull()?.let { name(it) }
+                when (syncKind) {
+                    SyncKind.Added -> Badge(style = JewelTheme.badgeStyle.green) {
+                        Text("Add")
+                    }
+                    SyncKind.Removed -> Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                        Text("Remove")
+                    }
+                    SyncKind.Updated -> Badge(style = JewelTheme.badgeStyle.blueSecondary) {
+                        Text("Update")
+                    }
+                    null -> Unit
+                }
                 when {
                     applied -> Badge(style = JewelTheme.badgeStyle.green) {
                         Text("Updated")

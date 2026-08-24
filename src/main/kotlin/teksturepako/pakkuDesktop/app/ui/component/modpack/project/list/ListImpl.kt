@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import teksturepako.pakkuDesktop.app.actions.listItemKey
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
@@ -40,7 +41,7 @@ fun ListImpl(
     val shiftPressed = LocalShiftKeyState.current.pressed
 
     val scrollState = remember { LazyListState(0, 0) }
-    val filteredProjects = model.filteredAndSortedProjects(lockFile.getAllProjects())
+    val filteredProjects = model.filteredAndSortedProjects(lockFile.getAllProjects().snapshotList())
 
     Row(Modifier.fillMaxSize().padding(vertical = 8.dp)) {
         LazyColumn(
@@ -54,7 +55,7 @@ fun ListImpl(
         ) {
             itemsIndexed(
                 items = filteredProjects,
-                key = { _, project -> project.uiKey() },
+                key = { index, project -> project.listItemKey(index) },
             ) { index, project ->
                 val projectKey = project.uiKey()
                 val checked = projectKey in model.selectedProjectKeys
