@@ -4,6 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.datetime.LocalDateTime
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
@@ -47,7 +50,7 @@ class ModpackUpdateSameInstanceTest {
     @Test
     fun mutationCompletedWhenAlreadyCleared() {
         assertNoOp(ModpackModel(), ModpackMsg.MutationCompleted)
-        val pending = ModpackModel(pendingRemovalKeys = setOf("a"))
+        val pending = ModpackModel(pendingRemovalKeys = persistentSetOf("a"))
         assertNotSame(pending, modpackUpdate(ModpackMsg.MutationCompleted, pending))
     }
 
@@ -65,14 +68,14 @@ class ModpackUpdateSameInstanceTest {
 
     @Test
     fun gitStateUpdatedWithEqualState() {
-        val first = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = listOf(file))), ModpackModel())
-        assertNoOp(first, ModpackMsg.GitStateUpdated(GitState(gitFiles = listOf(file.copy()))))
+        val first = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
+        assertNoOp(first, ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file.copy()))))
         assertNotSame(first, modpackUpdate(ModpackMsg.GitStateUpdated(GitState()), first))
     }
 
     @Test
     fun gitBulkTogglesAlreadyApplied() {
-        val model = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = listOf(file))), ModpackModel())
+        val model = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
         assertNoOp(model, ModpackMsg.GitChangelistExpandAllFolders)
         assertNoOp(ModpackModel(), ModpackMsg.GitChangelistCollapseAllFolders)
         assertNoOp(ModpackModel(), ModpackMsg.GitClearChangedFileSelection)
@@ -110,7 +113,7 @@ class ModpackUpdateSameInstanceTest {
         assertNoOp(ModpackModel(), ModpackMsg.ProjectEditing(false))
         assertNoOp(ModpackModel(), ModpackMsg.ModpackEditing(false))
         assertNoOp(ModpackModel(), ModpackMsg.ProjectsCleared())
-        val selected = ModpackModel(selectedProjectKeys = setOf("a", "b"))
+        val selected = ModpackModel(selectedProjectKeys = persistentSetOf("a", "b"))
         assertNoOp(selected, ModpackMsg.ProjectsSelected(setOf("a")))
         assertNoOp(selected, ModpackMsg.ProjectsDeselected(setOf("c")))
     }
@@ -159,7 +162,7 @@ class ModpackUpdateSameInstanceTest {
             files = mutableSetOf(projectFile),
         )
         val change = ProjectFileChange("mr", projectFile, listOf(projectFile), selectedFileId = "f1")
-        val model = ModpackModel(updatePreviews = mapOf("k" to ProjectUpdateInfo(project, listOf(change))))
+        val model = ModpackModel(updatePreviews = mapOf("k" to ProjectUpdateInfo(project, listOf(change))).toPersistentMap())
         assertNoOp(model, ModpackMsg.UpdateFileSelected("k", "mr", "f1"))
     }
 }

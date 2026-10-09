@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.driver
 
+import kotlinx.collections.immutable.mutate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -63,20 +64,22 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         )
 
         val existing = latestModel.profile.data
-        val updatedRecentProfiles = buildList {
-            val existingIdx = existing.recentProfiles.indexOfFirst { it.path == newProfile.path }
+        val updatedRecentProfiles = existing.recentProfiles.mutate { list ->
+            val existingIdx = list.indexOfFirst { it.path == newProfile.path }
             if (existingIdx >= 0) {
-                addAll(existing.recentProfiles.toMutableList().also { it[existingIdx] = newProfile })
+                list[existingIdx] = newProfile
             } else {
-                addAll(existing.recentProfiles + newProfile)
+                list.add(newProfile)
             }
         }
 
         val withOldCurrentInRecents = if (existing.currentProfile != null &&
             updatedRecentProfiles.none { it.path == existing.currentProfile.path }
         ) {
-            updatedRecentProfiles + existing.currentProfile
-        } else updatedRecentProfiles
+            updatedRecentProfiles.add(existing.currentProfile)
+        } else {
+            updatedRecentProfiles
+        }
 
         val newData = existing.copy(
             currentProfile = newProfile,

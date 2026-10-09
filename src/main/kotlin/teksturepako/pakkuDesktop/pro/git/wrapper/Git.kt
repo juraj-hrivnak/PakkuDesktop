@@ -4,6 +4,10 @@
 
 package teksturepako.pakkuDesktop.pro.git.wrapper
 
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
@@ -24,10 +28,10 @@ sealed class GitEvent {
 }
 
 data class GitState(
-    val gitFiles: List<GitFile> = emptyList(),
-    val selectedFiles: Set<GitFile> = emptySet(),
+    val gitFiles: PersistentList<GitFile> = persistentListOf(),
+    val selectedFiles: PersistentSet<GitFile> = persistentSetOf(),
     /** Posix paths of folders expanded in the commit changelist tree (UI only). */
-    val expandedFolderPaths: Set<String> = emptySet(),
+    val expandedFolderPaths: PersistentSet<String> = persistentSetOf(),
     val branches: Set<GitBranch> = emptySet(),
     val outgoingCommits: Set<GitCommit> = emptySet(),
     val commitMessage: String = "",

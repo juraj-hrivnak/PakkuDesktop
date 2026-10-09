@@ -42,6 +42,7 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.GitPushDialog
@@ -102,7 +103,7 @@ fun PakkuApplicationScope.ModpackView(
 
     if (hasNonFileNotFoundError) return
 
-    val toastState = remember { mutableStateOf(model.toasts) }
+    val toastState = remember { mutableStateOf<List<ToastData>>(model.toasts) }
     toastState.value = model.toasts
 
     Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {

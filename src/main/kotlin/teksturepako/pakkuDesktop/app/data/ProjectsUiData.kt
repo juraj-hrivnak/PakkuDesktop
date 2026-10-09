@@ -5,6 +5,9 @@
 package teksturepako.pakkuDesktop.app.data
 
 import com.github.michaelbull.result.get
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,13 +28,19 @@ data class ProjectsUiData(
     @SerialName("sort_ascending") val sortAscending: Boolean = true,
     @SerialName("filter_text") val filterText: String = "",
     /** [ProjectType.name] values; empty = no type filter. */
-    @SerialName("filter_types") val filterTypes: Set<String> = emptySet(),
+    @SerialName("filter_types")
+    @Serializable(with = StringPersistentSetSerializer::class)
+    val filterTypes: PersistentSet<String> = persistentSetOf(),
     /** [ProjectSide.name] values; empty = no side filter. */
-    @SerialName("filter_sides") val filterSides: Set<String> = emptySet(),
+    @SerialName("filter_sides")
+    @Serializable(with = StringPersistentSetSerializer::class)
+    val filterSides: PersistentSet<String> = persistentSetOf(),
     /** Include projects with no side set. */
     @SerialName("filter_missing_side") val filterMissingSide: Boolean = false,
     /** Provider [teksturepako.pakku.api.platforms.Provider.serialName] values; empty = no provider filter. */
-    @SerialName("filter_providers") val filterProviders: Set<String> = emptySet(),
+    @SerialName("filter_providers")
+    @Serializable(with = StringPersistentSetSerializer::class)
+    val filterProviders: PersistentSet<String> = persistentSetOf(),
     /**
      * null = no redistributable filter;
      * true = only redistributable; false = only not redistributable.
@@ -97,8 +106,8 @@ fun ModpackModel.toProjectsUiData(): ProjectsUiData = ProjectsUiData(
     sortBy = sortOrder.toProjectsUiSortBy(),
     sortAscending = sortOrder.ascending,
     filterText = projectsFilterText,
-    filterTypes = filterTypes.map { it.name }.toSet(),
-    filterSides = filterSides.map { it.name }.toSet(),
+    filterTypes = filterTypes.map { it.name }.toPersistentSet(),
+    filterSides = filterSides.map { it.name }.toPersistentSet(),
     filterMissingSide = filterMissingSide,
     filterProviders = filterProviders,
     filterRedistributable = filterRedistributable,
@@ -110,8 +119,8 @@ fun ModpackModel.toProjectsUiData(): ProjectsUiData = ProjectsUiData(
 fun ModpackModel.withProjectsUi(data: ProjectsUiData): ModpackModel = copy(
     sortOrder = data.toSortOrder(),
     projectsFilterText = data.filterText,
-    filterTypes = data.toProjectTypes(),
-    filterSides = data.toProjectSides(),
+    filterTypes = data.toProjectTypes().toPersistentSet(),
+    filterSides = data.toProjectSides().toPersistentSet(),
     filterMissingSide = data.filterMissingSide,
     filterProviders = data.filterProviders,
     filterRedistributable = data.filterRedistributable,

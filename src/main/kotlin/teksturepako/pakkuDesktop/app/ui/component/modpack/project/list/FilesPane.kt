@@ -4,6 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
+
 import com.github.michaelbull.result.get
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
@@ -58,15 +61,15 @@ fun FetchDetectResult.selectionKeys(): Set<String> =
 
 fun ModpackModel.clearFilesPreview(): ModpackModel = copy(
     filesPreviewMode = FilesPreviewMode.None,
-    fetchDownloads = emptyList(),
-    fetchOverrides = emptyList(),
-    fetchCleanup = emptyList(),
-    filesHashMismatchKeys = emptySet(),
-    syncAdded = emptyList(),
-    syncRemoved = emptyList(),
-    syncUpdated = emptyList(),
-    filesFilterChangeKinds = emptySet(),
-    selectedProjectKeys = emptySet(),
+    fetchDownloads = persistentListOf(),
+    fetchOverrides = persistentListOf(),
+    fetchCleanup = persistentListOf(),
+    filesHashMismatchKeys = persistentSetOf(),
+    syncAdded = persistentListOf(),
+    syncRemoved = persistentListOf(),
+    syncUpdated = persistentListOf(),
+    filesFilterChangeKinds = persistentSetOf(),
+    selectedProjectKeys = persistentSetOf(),
 )
 
 fun ModpackModel.canApplyFetch(): Boolean {

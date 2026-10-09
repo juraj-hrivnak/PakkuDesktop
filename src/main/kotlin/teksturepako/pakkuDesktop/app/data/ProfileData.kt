@@ -4,6 +4,8 @@
 
 package teksturepako.pakkuDesktop.app.data
 
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -18,7 +20,9 @@ import kotlin.io.path.Path
 @Serializable
 data class ProfileData(
     @SerialName("current_profile") val currentProfile: Profile? = null,
-    @SerialName("recent_profiles") val recentProfiles: List<Profile> = listOf(),
+    @SerialName("recent_profiles")
+    @Serializable(with = ProfileListSerializer::class)
+    val recentProfiles: PersistentList<Profile> = persistentListOf(),
     val theme: String = "Dark",
     @SerialName("ui_scale") val uiScale: Float = UI_SCALE_DEFAULT,
 

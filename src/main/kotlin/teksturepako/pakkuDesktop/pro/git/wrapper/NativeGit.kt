@@ -11,6 +11,7 @@ import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
+import kotlinx.collections.immutable.toPersistentList
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 import java.io.File
 import java.nio.file.Path
@@ -44,7 +45,7 @@ object NativeGit {
     fun buildState(workDir: File, preserve: GitState): GitState = preserve.copy(
         branches = readBranches(workDir),
         outgoingCommits = readOutgoingCommits(workDir),
-        gitFiles = parseGitStatus(workDir),
+        gitFiles = parseGitStatus(workDir).toPersistentList(),
     )
 
     private fun parseGitStatus(workDir: File): List<GitFile> {
