@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop
 
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
+import androidx.compose.runtime.remember
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.application.nucleusApplication
 import io.github.vinceglb.filekit.FileKit
@@ -51,9 +52,8 @@ fun main() {
     }
 
     nucleusApplication(backend = NucleusBackend.Tao) {
-        run(
-            appComponent,
-            drivers = listOf(
+        val drivers = remember {
+            listOf(
                 themeDriver,
                 mainWindowDriver(applicationScope = this),
                 uiScaleDriver,
@@ -76,7 +76,8 @@ fun main() {
                 projectMutationDriver,
                 credentialsDriver,
                 cloneDriver,
-            ),
-        )
+            )
+        }
+        run(appComponent, drivers = drivers)
     }
 }

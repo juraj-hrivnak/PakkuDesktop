@@ -13,9 +13,8 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.dp
@@ -36,7 +35,14 @@ data class Component<Model, Msg>(
 /**
  * Factory for creating a [Component].
  * @param init The initial model value (pure, no side effects).
- * @param update Pure function: takes a message and current model, returns new model via copy.
+ * @param update Pure function: takes a message and current model, returns the next model.
+ *
+ * Rules for [update]:
+ * - Pure and fast — no IO, clocks, randomness, or logging that allocates per message.
+ * - **Never calls `publish`.** [Store.publish] uses a reentrant lock; nested publish would
+ *   run an inner update and the outer write would overwrite its result.
+ * - Returns **the same instance** when nothing changed (including parent reducers when a
+ *   child returned its input unchanged).
  * @param view Composable function describing what is visible given the current model.
  */
 fun <Model, Msg> component(
@@ -73,47 +79,43 @@ fun <Model, Msg> run(
     component: Component<Model, Msg>,
     drivers: List<Driver<Model, Msg>> = emptyList(),
 ) {
-    var model by remember { mutableStateOf(component.init()) }
-    var updateError by remember { mutableStateOf<Throwable?>(null) }
-
-    fun publish(msg: Msg) {
-        try {
-            model = component.update(msg, model)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: VirtualMachineError) {
-            throw e
-        } catch (e: Throwable) {
-            logUncaught("update", e)
-            updateError = e
-        }
+    val currentComponent by rememberUpdatedState(component)
+    val store = remember {
+        Store<Model, Msg>(
+            initial = component.init(),
+            update = { msg, model -> currentComponent.update(msg, model) },
+        )
     }
 
-    val view: @Composable () -> Unit = {
-        GuardedContent(
-            externalError = updateError,
-            onDismissExternal = { updateError = null },
-        ) {
-            component.view(::publish, model)
+    val chain: @Composable () -> Unit = remember(drivers) {
+        val view: @Composable () -> Unit = {
+            GuardedContent(
+                externalError = store.updateError.value,
+                onDismissExternal = store::clearUpdateError,
+            ) {
+                currentComponent.view(store.publish, store.state.value)
+            }
+        }
+        drivers.foldRight(view) { driver, inner ->
+            { driver(store.publish, store.state.value, inner) }
         }
     }
-    drivers.foldRight(view) { driver, inner ->
-        { driver(::publish, model) { inner() } }
-    }()
+    chain()
 }
 
 private fun Throwable.shouldPropagate(): Boolean =
     this is CancellationException || this is VirtualMachineError
 
-private fun logUncaught(where: String, error: Throwable) {
-    System.err.println("PakkuDesktop: uncaught error in $where: ${error.message}")
-    error.printStackTrace()
-}
-
 /**
  * Isolates [content] in a nested composition so a throw cannot leave the parent
  * slot table half-applied. [pending] is a non-snapshot field so a failure is
  * remembered immediately and the same tree is not retried every frame.
+ *
+ * **Known limit:** Compose cannot try/catch around composable calls. This catches what
+ * escapes [SubcomposeLayout.subcompose], but a throw during recomposition of an already
+ * composed child may still escape. Treat as protection against **`update` errors** only —
+ * keep [Component.view] free of fallible logic (parse, index, cast in [Component.update]
+ * or at load time, not in the view tree).
  */
 @Composable
 private fun GuardedContent(
