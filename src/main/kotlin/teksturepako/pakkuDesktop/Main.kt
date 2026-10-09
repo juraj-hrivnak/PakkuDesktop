@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
+import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
@@ -51,11 +52,13 @@ fun main() {
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
+    val initialWindowData = runBlocking { WindowData.readOrNew() }
+
     nucleusApplication(backend = NucleusBackend.Tao) {
         val drivers = remember {
             listOf(
                 themeDriver,
-                mainWindowDriver(applicationScope = this),
+                mainWindowDriver(applicationScope = this, initialWindowData = initialWindowData),
                 uiScaleDriver,
                 themedBoxDriver,
                 clipboardDriver,
@@ -68,6 +71,7 @@ fun main() {
                         exitApplication()
                         kotlin.system.exitProcess(0)
                     },
+                    initialWindowData = initialWindowData,
                 ),
                 directoryPickerDriver(),
                 licenseDriver,

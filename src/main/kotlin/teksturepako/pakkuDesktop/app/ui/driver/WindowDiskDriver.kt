@@ -18,20 +18,20 @@ import teksturepako.pakkuDesktop.elm.Driver
 
 fun windowDiskDriver(
     onQuit: () -> Unit,
+    initialWindowData: WindowData,
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
     val windowState = LocalWindowState.current
 
     LaunchedEffect(Unit) {
-        val data = withContext(Dispatchers.IO) { WindowData.readOrNew() }
-        publish(AppMsg.WindowLoaded(data))
+        publish(AppMsg.WindowLoaded(initialWindowData))
     }
 
     LaunchedEffect(model.wantsQuit) {
         if (!model.wantsQuit) return@LaunchedEffect
         val data = snapshotWindowData(windowState)
         withContext(Dispatchers.IO) { data.write() }
-        onQuit()
         publish(AppMsg.QuitReady)
+        onQuit()
     }
 
     content()

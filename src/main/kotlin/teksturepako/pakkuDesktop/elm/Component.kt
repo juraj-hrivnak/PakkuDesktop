@@ -65,6 +65,12 @@ inline fun <P, C> P.withChild(old: C, new: C, set: P.(C) -> P): P =
  * - wrap [content] — they are the parent of the entire view tree
  * - provide [CompositionLocalProvider] values consumed by any component in the tree
  * - own all side effects: LaunchedEffect, disk, HTTP, clock
+ *
+ * Rules:
+ * - 1. Key [LaunchedEffect] on a projection of the model (intent flags, ids), never the whole model.
+ * - 2. After any suspension, read the latest model via [rememberUpdatedState], not the [model] captured at effect start.
+ * - 3. [LaunchedEffect] `(Unit)` only for effects that do not depend on model fields.
+ * - 4. Call [content] exactly once, unconditionally — no early return from the driver body before it.
  */
 typealias Driver<Model, Msg> = @Composable (
     publish: (Msg) -> Unit,

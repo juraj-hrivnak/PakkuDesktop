@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +18,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
@@ -224,29 +225,37 @@ private suspend fun runCheckout(publish: (AppMsg) -> Unit, workDir: File, branch
 // -- Driver --
 
 val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
+    val latestModel by rememberUpdatedState(model)
     val holder = remember { GitRepoHolder() }
+    val modpackPath = model.profile.data.currentProfile?.path
 
-    LaunchedEffect(model.screen, model.modpack.loaded, workingPath) {
+    LaunchedEffect(model.screen, model.modpack.loaded, modpackPath) {
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) {
             holder.close()
             return@LaunchedEffect
         }
+        val path = modpackPath ?: run {
+            holder.close()
+            return@LaunchedEffect
+        }
         try {
-            holder.open(workingPath)
+            holder.open(path)
             val dir = holder.workDir ?: return@LaunchedEffect
+            val preserve = latestModel.modpack.git
             withContext(Dispatchers.IO) {
-                refreshGitState(publish, dir, model.modpack.git)
+                refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Failed to open repository")
         }
     }
 
-    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded, workingPath) {
+    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded, modpackPath) {
         val file = model.modpack.gitDiffPendingFile ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val path = modpackPath ?: return@LaunchedEffect
         try {
-            holder.open(workingPath)
+            holder.open(path)
             val dir = holder.workDir ?: run {
                 publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
                 return@LaunchedEffect
@@ -263,10 +272,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitPull) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runPull(publish, dir)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
@@ -279,10 +290,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitPush) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runPush(publish, dir)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
@@ -295,16 +308,18 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitCommit) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
+        val commitGit = model.modpack.git
         val commitOk = try {
             withContext(Dispatchers.IO) {
-                val ok = runCommit(publish, dir, preserve)
-                refreshGitState(publish, dir, preserve)
-                ok
+                runCommit(publish, dir, commitGit)
             }
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Commit failed")
             false
+        }
+        val preserve = latestModel.modpack.git
+        withContext(Dispatchers.IO) {
+            refreshGitState(publish, dir, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished(commitOk)))
     }
@@ -313,10 +328,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val branch = model.modpack.gitCheckoutBranch ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runCheckout(publish, dir, branch)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {

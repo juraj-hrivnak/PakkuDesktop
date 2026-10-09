@@ -5,6 +5,8 @@
 package teksturepako.pakkuDesktop.app.ui.driver
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import com.github.michaelbull.result.get
 import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,8 @@ private val logger = logger("ProfileDiskDriver")
 // -- profileDiskDriver --
 
 val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
+    val latestModel by rememberUpdatedState(model)
+
     // Load once on startup
     LaunchedEffect(Unit) {
         val data = withContext(Dispatchers.IO) { ProfileData.readOrNew() }
@@ -46,63 +50,65 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
 
         val path = Path(pending)
 
-        withContext(Dispatchers.IO) {
-            val modpackName = ConfigFile.readToResultFrom(
+        val modpackName = withContext(Dispatchers.IO) {
+            ConfigFile.readToResultFrom(
                 Path("$path/${ConfigFile.FILE_NAME}")
             ).get()?.getName() ?: path.fileName.pathString
+        }
 
-            val newProfile = Profile(
-                name       = modpackName,
-                path       = path.absolutePathString(),
-                lastOpened = Clock.System.now()
-            )
+        val newProfile = Profile(
+            name       = modpackName,
+            path       = path.absolutePathString(),
+            lastOpened = Clock.System.now()
+        )
 
-            val existing = model.profile.data
-            val updatedRecentProfiles = buildList {
-                val existingIdx = existing.recentProfiles.indexOfFirst { it.path == newProfile.path }
-                if (existingIdx >= 0) {
-                    addAll(existing.recentProfiles.toMutableList().also { it[existingIdx] = newProfile })
-                } else {
-                    addAll(existing.recentProfiles + newProfile)
-                }
+        val existing = latestModel.profile.data
+        val updatedRecentProfiles = buildList {
+            val existingIdx = existing.recentProfiles.indexOfFirst { it.path == newProfile.path }
+            if (existingIdx >= 0) {
+                addAll(existing.recentProfiles.toMutableList().also { it[existingIdx] = newProfile })
+            } else {
+                addAll(existing.recentProfiles + newProfile)
             }
+        }
 
-            val withOldCurrentInRecents = if (existing.currentProfile != null &&
-                updatedRecentProfiles.none { it.path == existing.currentProfile.path }
-            ) {
-                updatedRecentProfiles + existing.currentProfile
-            } else updatedRecentProfiles
+        val withOldCurrentInRecents = if (existing.currentProfile != null &&
+            updatedRecentProfiles.none { it.path == existing.currentProfile.path }
+        ) {
+            updatedRecentProfiles + existing.currentProfile
+        } else updatedRecentProfiles
 
-            val newData = existing.copy(
-                currentProfile = newProfile,
-                recentProfiles = withOldCurrentInRecents,
-            )
+        val newData = existing.copy(
+            currentProfile = newProfile,
+            recentProfiles = withOldCurrentInRecents,
+        )
 
+        withContext(Dispatchers.IO) {
             workingPath = path.absolutePathString()
             logger.info { "workingPath set to [$workingPath]" }
             newData.write()
-
-            withContext(Dispatchers.Main) {
-                publish(AppMsg.ProfileCurrentResolved(newData))
-            }
         }
+
+        publish(AppMsg.ProfileCurrentResolved(newData))
     }
 
     // back to Welcome when current profile is cleared
-    LaunchedEffect(model.profile.data.currentProfile, model.profile.loaded) {
+    LaunchedEffect(model.profile.data.currentProfile, model.profile.loaded, model.screen) {
         if (!model.profile.loaded) return@LaunchedEffect
-        if (model.profile.data.currentProfile == null && model.screen == AppScreen.Welcome) {
+        if (latestModel.profile.data.currentProfile == null && latestModel.screen == AppScreen.Welcome) {
+            val data = latestModel.profile.data
             withContext(Dispatchers.IO) {
                 workingPath = "."
-                model.profile.data.write()
+                data.write()
             }
         }
     }
 
     LaunchedEffect(model.profile.data.theme, model.profile.data.uiScale, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
+        val data = latestModel.profile.data
         withContext(Dispatchers.IO) {
-            model.profile.data.write()
+            data.write()
         }
     }
 
