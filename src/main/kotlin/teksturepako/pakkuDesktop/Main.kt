@@ -9,7 +9,7 @@ import com.github.michaelbull.result.onFailure
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.application.nucleusApplication
 import io.github.vinceglb.filekit.FileKit
-import io.klogging.config.ANSI_CONSOLE
+import io.klogging.config.ANSI_INFO
 import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
 import io.klogging.sending.STDOUT
@@ -31,7 +31,7 @@ fun main() {
     println(System.getenv("LD_LIBRARY_PATH"))
 
     loggingConfiguration {
-        ANSI_CONSOLE()
+        ANSI_INFO()
         sink(
             "console",
             RenderPattern("%-11t{LOCAL_TIME} %-5v{COLOUR} [%-10c] - %30l - %m %i%s"),

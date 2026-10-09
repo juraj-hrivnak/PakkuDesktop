@@ -10,6 +10,7 @@ intellij-icons = "262.9437.214"
 serialization = "1.11.0"
 filekit = "0.15.0"
 klogging = "0.11.8"
+coroutines = "1.11.0"
 
 [libraries]
 jewel-foundation = { module = "org.jetbrains.jewel:jewel-foundation", version.ref = "jewel" }
@@ -37,6 +38,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 klogging = { module = "io.klogging:klogging-jvm", version.ref = "klogging" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

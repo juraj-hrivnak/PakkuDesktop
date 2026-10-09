@@ -113,6 +113,14 @@ dependencies {
 
     // Logging
     implementation(libs.klogging)
+
+    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(compose.desktop.uiTestJUnit4)
+}
+
+tasks.test {
+    useJUnit()
 }
 
 nucleus.application {
