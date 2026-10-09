@@ -10,7 +10,7 @@ import kotlin.test.assertSame
 class StorePublishStabilityTest {
     @Test
     fun publishIsStableInstance() {
-        val store = Store(
+        val store = Store<Int, Unit>(
             initial = 0,
             update = { _, count -> count },
         )

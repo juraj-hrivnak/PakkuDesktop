@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.elm
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.referentialEqualityPolicy
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -20,7 +21,8 @@ class Store<Model, Msg>(
     private val update: (Msg, Model) -> Model,
 ) {
     private val lock = Any()
-    private val _state: MutableState<Model> = mutableStateOf(initial)
+    /** Referential: relies on [Component.update] returning the same instance for no-ops. */
+    private val _state: MutableState<Model> = mutableStateOf(initial, referentialEqualityPolicy())
     val state: State<Model> get() = _state
 
     private val _updateError = mutableStateOf<Throwable?>(null)

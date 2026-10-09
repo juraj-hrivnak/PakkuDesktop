@@ -52,6 +52,13 @@ fun <Model, Msg> component(
 ): Component<Model, Msg> = Component(init = { init }, update = update, view = view)
 
 /**
+ * Parent-side half of the same-instance rule: returns `this` when the child reducer
+ * returned its input ([new] `===` [old]), otherwise applies [set].
+ */
+inline fun <P, C> P.withChild(old: C, new: C, set: P.(C) -> P): P =
+    if (new === old) this else set(new)
+
+/**
  * A driver — wraps the view tree and owns all side effects.
  *
  * Drivers:

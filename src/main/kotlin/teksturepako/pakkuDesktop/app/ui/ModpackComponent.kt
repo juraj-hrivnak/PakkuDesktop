@@ -34,6 +34,7 @@ import teksturepako.pakkuDesktop.app.ui.model.RemoveDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 import teksturepako.pakkuDesktop.elm.component
+import teksturepako.pakkuDesktop.elm.withChild
 import teksturepako.pakkuDesktop.pro.git.wrapper.gitFolderIds
 import teksturepako.pakkuDesktop.pro.git.wrapper.mergeChangelistExpandedFolders
 import teksturepako.pakkuDesktop.pro.ui.component.gitDropdownComponent
@@ -82,16 +83,29 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     ModpackMsg.Reset -> ModpackModel()
 
-    is ModpackMsg.TabSelected        -> model.copy(selectedTab = msg.tab)
-    is ModpackMsg.ProjectSelected    -> model.copy(selectedProject = msg.project, editingProject = false)
-    is ModpackMsg.ProjectEditing     -> model.copy(editingProject = msg.editing)
-    is ModpackMsg.ModpackEditing     -> model.copy(editingModpack = msg.editing)
-    is ModpackMsg.ProjectsSelected   -> model.copy(selectedProjectKeys = model.selectedProjectKeys + msg.keys)
-    is ModpackMsg.ProjectsDeselected -> model.copy(selectedProjectKeys = model.selectedProjectKeys - msg.keys)
-    is ModpackMsg.ProjectsCleared    -> model.copy(selectedProjectKeys = emptySet())
-    is ModpackMsg.ProjectsFabRemembered -> model.copy(lastProjectsFab = msg.action)
-    is ModpackMsg.FilesFabRemembered -> model.copy(lastFilesFab = msg.action)
-    is ModpackMsg.GitFabRemembered -> model.copy(lastGitFab = msg.action)
+    is ModpackMsg.TabSelected        ->
+        if (model.selectedTab == msg.tab) model else model.copy(selectedTab = msg.tab)
+    is ModpackMsg.ProjectSelected    ->
+        if (model.selectedProject == msg.project && !model.editingProject) model
+        else model.copy(selectedProject = msg.project, editingProject = false)
+    is ModpackMsg.ProjectEditing     ->
+        if (model.editingProject == msg.editing) model else model.copy(editingProject = msg.editing)
+    is ModpackMsg.ModpackEditing     ->
+        if (model.editingModpack == msg.editing) model else model.copy(editingModpack = msg.editing)
+    is ModpackMsg.ProjectsSelected   ->
+        if (model.selectedProjectKeys.containsAll(msg.keys)) model
+        else model.copy(selectedProjectKeys = model.selectedProjectKeys + msg.keys)
+    is ModpackMsg.ProjectsDeselected ->
+        if (msg.keys.none { it in model.selectedProjectKeys }) model
+        else model.copy(selectedProjectKeys = model.selectedProjectKeys - msg.keys)
+    is ModpackMsg.ProjectsCleared    ->
+        if (model.selectedProjectKeys.isEmpty()) model else model.copy(selectedProjectKeys = emptySet())
+    is ModpackMsg.ProjectsFabRemembered ->
+        if (model.lastProjectsFab == msg.action) model else model.copy(lastProjectsFab = msg.action)
+    is ModpackMsg.FilesFabRemembered ->
+        if (model.lastFilesFab == msg.action) model else model.copy(lastFilesFab = msg.action)
+    is ModpackMsg.GitFabRemembered ->
+        if (model.lastGitFab == msg.action) model else model.copy(lastGitFab = msg.action)
     ModpackMsg.ActivateLastProjectsFab -> {
         fun canRun(action: ProjectsFabAction): Boolean = when (action) {
             ProjectsFabAction.Add -> model.actionName == null
@@ -155,12 +169,18 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     is ModpackMsg.SortOrderChanged   -> model.copy(sortOrder = msg.order)
     is ModpackMsg.FilterTextChanged  -> model.copy(projectsFilterText = msg.text)
-    is ModpackMsg.FilterUpdatesOnlyChanged -> model.copy(filterUpdatesOnly = msg.enabled)
-    is ModpackMsg.FilterTypesChanged -> model.copy(filterTypes = msg.types)
-    is ModpackMsg.FilterSidesChanged -> model.copy(filterSides = msg.sides)
-    is ModpackMsg.FilterMissingSideChanged -> model.copy(filterMissingSide = msg.enabled)
-    is ModpackMsg.FilterProvidersChanged -> model.copy(filterProviders = msg.providers)
-    is ModpackMsg.FilterRedistributableChanged -> model.copy(filterRedistributable = msg.value)
+    is ModpackMsg.FilterUpdatesOnlyChanged ->
+        if (model.filterUpdatesOnly == msg.enabled) model else model.copy(filterUpdatesOnly = msg.enabled)
+    is ModpackMsg.FilterTypesChanged ->
+        if (model.filterTypes == msg.types) model else model.copy(filterTypes = msg.types)
+    is ModpackMsg.FilterSidesChanged ->
+        if (model.filterSides == msg.sides) model else model.copy(filterSides = msg.sides)
+    is ModpackMsg.FilterMissingSideChanged ->
+        if (model.filterMissingSide == msg.enabled) model else model.copy(filterMissingSide = msg.enabled)
+    is ModpackMsg.FilterProvidersChanged ->
+        if (model.filterProviders == msg.providers) model else model.copy(filterProviders = msg.providers)
+    is ModpackMsg.FilterRedistributableChanged ->
+        if (model.filterRedistributable == msg.value) model else model.copy(filterRedistributable = msg.value)
     is ModpackMsg.FilterSyncKindsChanged -> model
     is ModpackMsg.ProjectsSplitRatioChanged -> model.copy(
         projectsSplitRatio = msg.ratio.coerceIn(0.05f, 0.95f),
@@ -169,18 +189,25 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         filesSplitRatio = msg.ratio.coerceIn(0.05f, 0.95f),
     )
     is ModpackMsg.FilesFilterTextChanged -> model.copy(filesFilterText = msg.text)
-    is ModpackMsg.FilesFilterFoldersChanged -> model.copy(filesFilterFolders = msg.folders)
-    is ModpackMsg.FilesFilterChangeKindsChanged -> model.copy(filesFilterChangeKinds = msg.kinds)
-    is ModpackMsg.FilesFilterFocusChanged -> model.copy(filesFilterFocused = msg.focused)
+    is ModpackMsg.FilesFilterFoldersChanged ->
+        if (model.filesFilterFolders == msg.folders) model else model.copy(filesFilterFolders = msg.folders)
+    is ModpackMsg.FilesFilterChangeKindsChanged ->
+        if (model.filesFilterChangeKinds == msg.kinds) model else model.copy(filesFilterChangeKinds = msg.kinds)
+    is ModpackMsg.FilesFilterFocusChanged ->
+        if (model.filesFilterFocused == msg.focused) model else model.copy(filesFilterFocused = msg.focused)
 
-    ModpackMsg.FocusProjectsFilterRequested -> model.copy(wantsFocusProjectsFilter = true)
-    ModpackMsg.FocusProjectsFilterConsumed -> model.copy(wantsFocusProjectsFilter = false)
-    is ModpackMsg.ProjectsFilterFocusChanged -> model.copy(projectsFilterFocused = msg.focused)
+    ModpackMsg.FocusProjectsFilterRequested ->
+        if (model.wantsFocusProjectsFilter) model else model.copy(wantsFocusProjectsFilter = true)
+    ModpackMsg.FocusProjectsFilterConsumed ->
+        if (!model.wantsFocusProjectsFilter) model else model.copy(wantsFocusProjectsFilter = false)
+    is ModpackMsg.ProjectsFilterFocusChanged ->
+        if (model.projectsFilterFocused == msg.focused) model else model.copy(projectsFilterFocused = msg.focused)
 
     ModpackMsg.ShowAddDialog -> model.copy(
         addDialog = AddDialogModel(visible = true),
     )
-    ModpackMsg.HideAddDialog -> model.copy(addDialog = AddDialogModel())
+    ModpackMsg.HideAddDialog ->
+        if (model.addDialog == AddDialogModel()) model else model.copy(addDialog = AddDialogModel())
     is ModpackMsg.AddQueryChanged -> model.copy(
         addDialog = model.addDialog.copy(query = msg.query),
     )
@@ -197,9 +224,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             ),
         )
     }
-    is ModpackMsg.AddResolveProgress -> model.copy(
-        addDialog = model.addDialog.copy(resolveStatus = msg.status),
-    )
+    is ModpackMsg.AddResolveProgress ->
+        if (model.addDialog.resolveStatus == msg.status) model
+        else model.copy(addDialog = model.addDialog.copy(resolveStatus = msg.status))
     is ModpackMsg.AddPlanBuilt -> {
         if (!model.addDialog.visible) return model
         val accepted = msg.plan.entries
@@ -266,7 +293,8 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             )
         }
     }
-    ModpackMsg.HideRemoveDialog -> model.copy(removeDialog = RemoveDialogModel())
+    ModpackMsg.HideRemoveDialog ->
+        if (model.removeDialog == RemoveDialogModel()) model else model.copy(removeDialog = RemoveDialogModel())
     ModpackMsg.RemoveAllAcknowledged -> {
         if (!model.removeDialog.visible) return model
         if (model.removeDialog.phase != RemoveDialogPhase.ConfirmAll) return model
@@ -356,14 +384,15 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         } else {
             model.filteredAndSortedProjects(projects).map { it.uiKey() }.toSet()
         }
-        model.copy(selectedProjectKeys = keys)
+        if (keys == model.selectedProjectKeys) model else model.copy(selectedProjectKeys = keys)
     }
     ModpackMsg.OpenDetailRequested -> {
         val key = model.selectedProjectKeys.firstOrNull()
             ?: model.selectedProject?.uiKey()
             ?: return model
         val project = model.lockFile?.get()?.getAllProjects()?.find { it.uiKey() == key } ?: return model
-        model.copy(selectedProject = project, editingProject = false)
+        if (model.selectedProject == project && !model.editingProject) model
+        else model.copy(selectedProject = project, editingProject = false)
     }
 
     ModpackMsg.StatusCheckRequested -> model.copy(wantsStatusCheck = true)
@@ -385,9 +414,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         val info = previews[msg.projectKey] ?: return model
         val nextChanges = info.fileChanges.map { change ->
             if (change.providerShortName != msg.providerShortName) change
+            else if (change.selectedFileId == msg.fileId) change
             else if (change.newFiles.none { (it.id.ifEmpty { it.fileName }) == msg.fileId }) change
             else change.copy(selectedFileId = msg.fileId)
         }
+        if (nextChanges.indices.all { nextChanges[it] === info.fileChanges[it] }) return model
         model.copy(
             updatePreviews = previews + (msg.projectKey to info.copy(fileChanges = nextChanges)),
         )
@@ -422,10 +453,12 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         )
     }
     ModpackMsg.FetchRequested -> model.copy(wantsFetch = true)
-    is ModpackMsg.FetchProgressUpdated -> model.copy(
-        fetchProgressCompleted = msg.completed,
-        fetchProgressTotal = msg.total,
-    )
+    is ModpackMsg.FetchProgressUpdated ->
+        if (model.fetchProgressCompleted == msg.completed && model.fetchProgressTotal == msg.total) model
+        else model.copy(
+            fetchProgressCompleted = msg.completed,
+            fetchProgressTotal = msg.total,
+        )
     ModpackMsg.FilesPreviewCleared -> model.clearFilesPreview()
     ModpackMsg.SyncDetectRequested -> model.copy(
         wantsSyncDetect = true,
@@ -514,36 +547,57 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         modpackDropdown = model.modpackDropdown.copy(actionEnabled = false),
     )
     is ModpackMsg.ActionRenamed -> model.copy(actionName = msg.name)
-    ModpackMsg.ActionFinished -> model.copy(
-        actionName = null,
-        wantsTerminateAction = false,
-        wantsExport = false,
-        wantsFetch = false,
-        wantsUpdate = false,
-        fetchProgressCompleted = 0L,
-        fetchProgressTotal = 0L,
-        modpackDropdown = model.modpackDropdown.copy(actionEnabled = true),
-    )
+    // Published twice on terminate (job finally + terminate effect).
+    ModpackMsg.ActionFinished ->
+        if (
+            model.actionName == null && !model.wantsTerminateAction &&
+            !model.wantsExport && !model.wantsFetch && !model.wantsUpdate &&
+            model.fetchProgressCompleted == 0L && model.fetchProgressTotal == 0L &&
+            model.modpackDropdown.actionEnabled
+        ) model
+        else model.copy(
+            actionName = null,
+            wantsTerminateAction = false,
+            wantsExport = false,
+            wantsFetch = false,
+            wantsUpdate = false,
+            fetchProgressCompleted = 0L,
+            fetchProgressTotal = 0L,
+            modpackDropdown = if (model.modpackDropdown.actionEnabled) model.modpackDropdown
+                else model.modpackDropdown.copy(actionEnabled = true),
+        )
     ModpackMsg.TerminateAction -> model.copy(wantsTerminateAction = true)
-    ModpackMsg.MutationCompleted -> model.copy(
-        pendingRemovalKeys = null,
-        pendingRemovalPlan = null,
-        pendingAddQuery = null,
-        pendingAdditionPlan = null,
-        wantsInit = false,
-        pendingInitSpec = null,
-    )
+    // ActionStarted already cleared the add intents on the action paths.
+    ModpackMsg.MutationCompleted ->
+        if (
+            model.pendingRemovalKeys == null && model.pendingRemovalPlan == null &&
+            model.pendingAddQuery == null && model.pendingAdditionPlan == null &&
+            !model.wantsInit && model.pendingInitSpec == null
+        ) model
+        else model.copy(
+            pendingRemovalKeys = null,
+            pendingRemovalPlan = null,
+            pendingAddQuery = null,
+            pendingAdditionPlan = null,
+            wantsInit = false,
+            pendingInitSpec = null,
+        )
     ModpackMsg.DismissLockError -> model.copy(lockErrorDismissed = true)
     ModpackMsg.DismissConfigError -> model.copy(configErrorDismissed = true)
 
     is ModpackMsg.PropertyWriteRequested -> model.copy(pendingPropertyWrite = msg.request)
-    ModpackMsg.PropertyWriteCompleted    -> model.copy(pendingPropertyWrite = null)
+    ModpackMsg.PropertyWriteCompleted    ->
+        if (model.pendingPropertyWrite == null) model else model.copy(pendingPropertyWrite = null)
 
     is ModpackMsg.MetaWriteRequested -> model.copy(pendingMetaWrite = msg.request)
-    ModpackMsg.MetaWriteCompleted    -> model.copy(pendingMetaWrite = null)
+    ModpackMsg.MetaWriteCompleted    ->
+        if (model.pendingMetaWrite == null) model else model.copy(pendingMetaWrite = null)
 
     is ModpackMsg.ToastAdded     -> model.copy(toasts = model.toasts + msg.toast)
-    is ModpackMsg.ToastDismissed -> model.copy(toasts = model.toasts.filterNot { it.id == msg.id })
+    // Auto-dismiss and manual dismiss can both fire for one toast.
+    is ModpackMsg.ToastDismissed ->
+        if (model.toasts.none { it.id == msg.id }) model
+        else model.copy(toasts = model.toasts.filterNot { it.id == msg.id })
 
     is ModpackMsg.GitStateUpdated          -> {
         val incoming = msg.state
@@ -554,10 +608,13 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             model.git.gitFiles,
             incoming.gitFiles,
         )
-        model.copy(
-            git = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded),
-            gitDropdown = model.gitDropdown.copy(gitState = incoming),
-        )
+        val next = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded)
+        val git = if (next == model.git) model.git else next
+        val gitDropdown =
+            if (incoming == model.gitDropdown.gitState) model.gitDropdown
+            else model.gitDropdown.copy(gitState = incoming)
+        if (git === model.git && gitDropdown === model.gitDropdown) model
+        else model.copy(git = git, gitDropdown = gitDropdown)
     }
     is ModpackMsg.GitFileSelectionToggled  -> {
         val g = model.git
@@ -603,28 +660,38 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     ModpackMsg.GitChangelistExpandAllFolders -> {
         val g = model.git
-        model.copy(git = g.copy(expandedFolderPaths = gitFolderIds(g.gitFiles)))
+        val ids = gitFolderIds(g.gitFiles)
+        if (ids == g.expandedFolderPaths) model
+        else model.copy(git = g.copy(expandedFolderPaths = ids))
     }
-    ModpackMsg.GitChangelistCollapseAllFolders -> model.copy(
-        git = model.git.copy(expandedFolderPaths = emptySet()),
-    )
-    ModpackMsg.GitSelectAllChangedFiles    -> model.copy(
-        git = model.git.copy(selectedFiles = model.git.gitFiles.toSet()),
-    )
-    ModpackMsg.GitClearChangedFileSelection -> model.copy(
-        git = model.git.copy(selectedFiles = emptySet()),
-    )
+    ModpackMsg.GitChangelistCollapseAllFolders ->
+        if (model.git.expandedFolderPaths.isEmpty()) model
+        else model.copy(git = model.git.copy(expandedFolderPaths = emptySet()))
+    ModpackMsg.GitSelectAllChangedFiles    -> {
+        val all = model.git.gitFiles.toSet()
+        if (all == model.git.selectedFiles) model
+        else model.copy(git = model.git.copy(selectedFiles = all))
+    }
+    ModpackMsg.GitClearChangedFileSelection ->
+        if (model.git.selectedFiles.isEmpty()) model
+        else model.copy(git = model.git.copy(selectedFiles = emptySet()))
     is ModpackMsg.GitCommitMessageChanged  ->
         if (model.git.commitMessage == msg.message) model
         else model.copy(git = model.git.copy(commitMessage = msg.message))
-    is ModpackMsg.GitDiffFileSelected      -> model.copy(gitDiffPendingFile = msg.file)
-    is ModpackMsg.GitDiffComputed          -> model.copy(gitCurrentDiff = msg.diff, gitDiffPendingFile = null)
-    is ModpackMsg.GitEventProgressUpdated  -> model.copy(gitEventProgress = msg.progress)
+    is ModpackMsg.GitDiffFileSelected      ->
+        if (model.gitDiffPendingFile == msg.file) model else model.copy(gitDiffPendingFile = msg.file)
+    is ModpackMsg.GitDiffComputed          ->
+        if (model.gitCurrentDiff === msg.diff && model.gitDiffPendingFile == null) model
+        else model.copy(gitCurrentDiff = msg.diff, gitDiffPendingFile = null)
+    is ModpackMsg.GitEventProgressUpdated  ->
+        if (model.gitEventProgress == msg.progress) model else model.copy(gitEventProgress = msg.progress)
 
     ModpackMsg.ShowGitCommitDialog -> model.copy(gitCommitDialogVisible = true)
-    ModpackMsg.HideGitCommitDialog -> model.copy(gitCommitDialogVisible = false)
+    ModpackMsg.HideGitCommitDialog ->
+        if (!model.gitCommitDialogVisible) model else model.copy(gitCommitDialogVisible = false)
     ModpackMsg.ShowGitPullDialog   -> model.copy(gitPullDialogVisible = true)
-    ModpackMsg.HideGitPullDialog   -> model.copy(gitPullDialogVisible = false)
+    ModpackMsg.HideGitPullDialog   ->
+        if (!model.gitPullDialogVisible) model else model.copy(gitPullDialogVisible = false)
 
     ModpackMsg.GitPullRequested     -> model.copy(wantsGitPull = true, gitPullDialogVisible = false)
     ModpackMsg.GitPullFinished      -> model.copy(wantsGitPull = false, gitEventProgress = null)
@@ -646,7 +713,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     is ModpackMsg.ModpackDropdown -> {
         val updatedDropdown = modpackDropdownComponent.update(msg.msg, model.modpackDropdown)
-        val base = model.copy(modpackDropdown = updatedDropdown)
+        val base = model.withChild(model.modpackDropdown, updatedDropdown) { copy(modpackDropdown = it) }
         when (msg.msg) {
             ModpackDropdownMsg.Export                -> base.copy(wantsExport = true)
             ModpackDropdownMsg.Fetch                 -> base.copy(
@@ -668,14 +735,15 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     is ModpackMsg.GitDropdown -> {
         val updatedGitDropdown = gitDropdownComponent.update(msg.msg, model.gitDropdown)
-        val base = model.copy(gitDropdown = updatedGitDropdown)
+        val base = model.withChild(model.gitDropdown, updatedGitDropdown) { copy(gitDropdown = it) }
         when (msg.msg) {
             GitDropdownMsg.PullRequested              -> base.copy(wantsGitPull = true)
             GitDropdownMsg.PushRequested              -> base.copy(
                 wantsGitPush = true,
                 gitDropdown = updatedGitDropdown.copy(pushDialogVisible = false),
             )
-            is GitDropdownMsg.TabSelected             -> base.copy(selectedTab = msg.msg.tab)
+            is GitDropdownMsg.TabSelected             ->
+                if (base.selectedTab == msg.msg.tab) base else base.copy(selectedTab = msg.msg.tab)
             is GitDropdownMsg.CheckoutRequested       -> base.copy(gitCheckoutBranch = msg.msg.branch)
             else                                      -> base
         }
