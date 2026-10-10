@@ -30,6 +30,7 @@ import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
+import teksturepako.pakkuDesktop.app.ui.model.MAX_TOASTS
 import teksturepako.pakkuDesktop.app.ui.model.filesTab
 import teksturepako.pakkuDesktop.app.ui.model.gitBusy
 import teksturepako.pakkuDesktop.app.ui.model.projectsTab
@@ -604,7 +605,12 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.MetaWriteCompleted    ->
         if (model.pendingMetaWrite == null) model else model.copy(pendingMetaWrite = null)
 
-    is ModpackMsg.ToastAdded     -> model.copy(toasts = model.toasts.add(msg.toast))
+    is ModpackMsg.ToastAdded     -> model.copy(
+        toasts = model.toasts.mutate { toasts ->
+            toasts.add(msg.toast)
+            while (toasts.size > MAX_TOASTS) toasts.removeAt(0)
+        },
+    )
     // Auto-dismiss and manual dismiss can both fire for one toast.
     is ModpackMsg.ToastDismissed -> {
         val index = model.toasts.indexOfFirst { it.id == msg.id }

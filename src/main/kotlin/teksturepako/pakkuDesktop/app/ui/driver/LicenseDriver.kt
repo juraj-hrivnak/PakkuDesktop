@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.github.michaelbull.result.fold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import teksturepako.pakkuDesktop.app.actions.detached
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
@@ -30,7 +31,7 @@ val licenseDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                     publish(AppMsg.LicenseKeyHandled(activated = true, error = null))
                 },
                 failure = { err ->
-                    publish(AppMsg.LicenseKeyHandled(activated = previousActivated, error = err))
+                    publish(AppMsg.LicenseKeyHandled(activated = previousActivated, error = err.detached()))
                 },
             )
         }

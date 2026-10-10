@@ -135,6 +135,9 @@ sealed interface CloseDialogRequest {
 
 // -- Modpack sub-model --
 
+/** Upper bound on [ModpackModel.toasts]; [ModpackMsg.ToastAdded] drops the oldest beyond it. */
+const val MAX_TOASTS = 5
+
 @Immutable
 data class ModpackModel(
     val lockFile: Result<LockFile, ActionError>? = null,
@@ -230,6 +233,7 @@ data class ModpackModel(
     /** cleared by projectMutationDriver */
     val pendingInitSpec: InitSpec? = null,
 
+    /** oldest first; at most [MAX_TOASTS], enforced in update */
     val toasts: PersistentList<ToastData> = persistentListOf(),
 
     /** cleared by projectEditDriver when done */

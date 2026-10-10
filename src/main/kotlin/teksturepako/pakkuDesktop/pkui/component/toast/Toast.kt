@@ -36,22 +36,14 @@ import kotlinx.coroutines.delay
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.elm.animatedColor
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
-
-fun MutableState<List<ToastData>>.showToast(
-    duration: Duration = 3.minutes,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    value = value + ToastData(content = content, duration = duration)
-}
 
 @Composable
 fun Toast(
     toastData: ToastData,
     onDismiss: (String) -> Unit,
     cornerRadius: Dp = 8.dp,
-    shadowSize: Dp = 4.dp
+    shadowSize: Dp = 4.dp,
+    content: @Composable BoxScope.(ToastBody) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -157,6 +149,6 @@ fun Toast(
                 }
             }
     ) {
-        toastData.content(this)
+        content(toastData.body)
     }
 }

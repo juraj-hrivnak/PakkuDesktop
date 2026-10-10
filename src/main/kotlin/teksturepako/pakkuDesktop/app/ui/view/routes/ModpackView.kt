@@ -18,6 +18,7 @@ import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import teksturepako.pakkuDesktop.app.actions.AppToastContent
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
@@ -140,7 +141,7 @@ fun PakkuApplicationScope.ModpackView(
             alignment = Alignment.TopEnd,
             spacing = 8.dp,
             onDismiss = { id -> publish(ModpackMsg.ToastDismissed(id)) },
-        )
+        ) { body -> AppToastContent(body) }
 
         AddProjectsDialog(publish = publish, model = model)
         RemoveProjectsDialog(publish = publish, model = model)

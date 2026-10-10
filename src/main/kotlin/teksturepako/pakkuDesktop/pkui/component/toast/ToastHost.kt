@@ -28,6 +28,7 @@ fun ToastHost(
     spacing: Dp = 4.dp,
     /** Called when a toast is dismissed by the user or after its duration; remove it from [toasts]. */
     onDismiss: (id: String) -> Unit,
+    content: @Composable BoxScope.(ToastBody) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -87,7 +88,8 @@ fun ToastHost(
                                             delay(150)
                                             onDismiss(id)
                                         }
-                                    }
+                                    },
+                                    content = content,
                                 )
                             }
                     }
