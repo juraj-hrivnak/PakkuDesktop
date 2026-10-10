@@ -16,6 +16,8 @@ repositories {
 dependencies {
     compileOnly(project(":pakku-desktop-api"))
     compileOnly(libs.compose.foundation)
+    compileOnly(libs.compose.runtime)
+    compileOnly(libs.kotlinx.coroutines.core)
 }
 
 val assemblePluginDir by tasks.registering(Sync::class) {

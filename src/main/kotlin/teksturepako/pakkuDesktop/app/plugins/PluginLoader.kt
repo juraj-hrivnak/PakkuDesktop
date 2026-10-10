@@ -49,6 +49,11 @@ object PluginLoader {
         readText: (Path) -> String = { it.readText() },
         openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
     ): PluginRegistry {
+        if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
+            logger.info("plugins: GraalVM native image; dynamic plugins disabled")
+            return PluginRegistry.Empty
+        }
+        val startedAt = System.nanoTime()
         if (!root.isDirectory()) {
             logger.info("plugins: root $root does not exist, none loaded")
             return PluginRegistry.Empty
@@ -72,7 +77,10 @@ object PluginLoader {
                 is PluginLoadState.Failed -> failed += state
             }
         }
-        logger.info("plugins: ${loaded.size} loaded, ${failed.size} failed (root=$root)")
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+        logger.info(
+            "plugins: ${loaded.size} loaded, ${failed.size} failed in ${elapsedMs}ms (root=$root)",
+        )
         return PluginRegistry(loaded, failed)
     }
 
