@@ -4,34 +4,51 @@
 
 package teksturepako.pakkuDesktop.app.plugins
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
+@Serializable
+private data class EdnFlatProbe(
+    val id: String? = null,
+    @SerialName("host-api") val hostApi: Long? = null,
+    val n: Long? = null,
+    @SerialName("main-class") val mainClass: String? = null,
+    val a: Long? = null,
+    val b: String? = null,
+    val s: String? = null,
+)
+
 class EdnTest {
+    private fun decode(text: String): EdnFlatProbe =
+        Edn.decodeFromString(EdnFlatProbe.serializer(), text)
+
     private fun assertRejected(text: String, message: String) =
-        assertEquals(message, assertFailsWith<EdnException> { readEdnMap(text) }.message)
+        assertEquals(message, assertFailsWith<EdnException> { decode(text) }.message)
 
     @Test
-    fun flatMapInSourceOrder() {
-        val map = readEdnMap("""{:id "x" :host-api 1 :n -2 :main-class "a.B"}""")
-        assertEquals(listOf("id", "host-api", "n", "main-class"), map.keys.toList())
-        assertEquals(mapOf("id" to "x", "host-api" to 1L, "n" to -2L, "main-class" to "a.B"), map)
+    fun flatMapFields() {
+        val file = decode("""{:id "x" :host-api 1 :n -2 :main-class "a.B"}""")
+        assertEquals("x", file.id)
+        assertEquals(1L, file.hostApi)
+        assertEquals(-2L, file.n)
+        assertEquals("a.B", file.mainClass)
     }
 
     @Test
-    fun stringEscapes() =
-        assertEquals("a\"b\\c\nd\te", readEdnMap("""{:s "a\"b\\c\nd\te"}""").getValue("s"))
+    fun stringEscapes() = assertEquals("a\"b\\c\nd\te", decode("""{:s "a\"b\\c\nd\te"}""").s)
 
     @Test
-    fun commentsAndCommasAreWhitespace() =
-        assertEquals(
-            mapOf("a" to 1L, "b" to "x;y"),
-            readEdnMap("; header\n{:a 1,, :b \"x;y\" ; trailing\n}\n; footer"),
-        )
+    fun commentsAndCommasAreWhitespace() {
+        val file = decode("; header\n{:a 1,, :b \"x;y\" ; trailing\n}\n; footer")
+        assertEquals(1L, file.a)
+        assertEquals("x;y", file.b)
+    }
 
     @Test
-    fun emptyMapAllowed() = assertEquals(emptyMap<String, Any>(), readEdnMap(" {} "))
+    fun emptyMapAllowed() = assertEquals(EdnFlatProbe(), decode(" {} "))
 
     @Test
     fun nestedVectorRejected() = assertRejected("{:a [1 2]}", "line 1, column 5: vectors are not supported")
