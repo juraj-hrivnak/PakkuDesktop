@@ -93,7 +93,7 @@ data class AppModel(
     val pluginFailures: PersistentList<PluginLoadState.Failed> = persistentListOf(),
 )
 
-enum class SettingsTab { General, Heap }
+enum class SettingsTab { General, Heap, Plugins }
 
 data class SettingsCredentials(
     val curseForgeApiKey: String,

@@ -56,10 +56,12 @@ fun main() {
     }
 
     val initialWindowData = runBlocking { WindowData.readOrNew() }
-    val plugins = PluginLoader.loadAll(pluginsRoot())
+    val pluginsDir = pluginsRoot()
+    val plugins = PluginLoader.loadAll(pluginsDir)
     val rootComponent = appComponent(
         initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() },
         plugins = plugins,
+        pluginsRoot = pluginsDir,
     )
 
     nucleusApplication(backend = NucleusBackend.Tao) {

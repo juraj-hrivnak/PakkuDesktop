@@ -35,6 +35,7 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.data.ProfileData
+import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -44,6 +45,8 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsCredentials
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
+import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
+import java.nio.file.Path
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
@@ -56,6 +59,8 @@ import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 fun SettingsDialog(
     model: AppModel,
     publish: (AppMsg) -> Unit,
+    plugins: PluginRegistry,
+    pluginsRoot: Path,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -104,6 +109,18 @@ fun SettingsDialog(
                             scaleIndex = scaleIndex,
                         )
                         SettingsTab.Heap -> SettingsHeapTab(model = model, publish = publish)
+                        SettingsTab.Plugins -> Column(
+                            Modifier.verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            PluginsHost(
+                                plugins = plugins.loadedList,
+                                states = model.pluginStates,
+                                failures = model.pluginFailures,
+                                publish = publish,
+                                pluginsRoot = pluginsRoot,
+                            )
+                        }
                     }
                 }
             }
@@ -118,6 +135,7 @@ private fun SettingsTabRow(selected: SettingsTab, publish: (AppMsg) -> Unit) {
             val label = when (tab) {
                 SettingsTab.General -> "General"
                 SettingsTab.Heap -> "Heap"
+                SettingsTab.Plugins -> "Plugins"
             }
             if (selected == tab) {
                 DefaultButton(onClick = { }) { Text(label) }

@@ -9,6 +9,7 @@ import kotlinx.collections.immutable.toPersistentMap
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
+import teksturepako.pakkuDesktop.app.plugins.pluginsRoot as defaultPluginsRoot
 import teksturepako.pakkuDesktop.app.data.toProjectsUiData
 import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
@@ -27,6 +28,7 @@ import com.github.michaelbull.result.getError
 import teksturepako.pakkuDesktop.elm.animatedRoute
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
+import java.nio.file.Path
 
 private fun AppModel.seededModpack(
     dropdown: ModpackDropdownModel = ModpackDropdownModel(profileData = profile.data),
@@ -431,7 +433,11 @@ private fun handlePluginMsg(msg: AppMsg.Plugin, model: AppModel, plugins: Plugin
 
 // -- appComponent --
 
-fun appComponent(initialProjectsUi: ProjectsUiData, plugins: PluginRegistry = PluginRegistry.Empty) = component(
+fun appComponent(
+    initialProjectsUi: ProjectsUiData,
+    plugins: PluginRegistry = PluginRegistry.Empty,
+    pluginsRoot: Path = defaultPluginsRoot(),
+) = component(
     init = AppModel(
         projectsUi = initialProjectsUi,
         modpack = ModpackModel().withProjectsUi(initialProjectsUi),
@@ -460,6 +466,8 @@ fun appComponent(initialProjectsUi: ProjectsUiData, plugins: PluginRegistry = Pl
             SettingsDialog(
                 model = model,
                 publish = publish,
+                plugins = plugins,
+                pluginsRoot = pluginsRoot,
             )
         }
 
