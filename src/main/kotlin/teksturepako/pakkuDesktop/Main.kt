@@ -21,6 +21,7 @@ import teksturepako.pakku.debug
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.plugins.PluginLoader
+import teksturepako.pakkuDesktop.app.plugins.pluginDrivers
 import teksturepako.pakkuDesktop.app.plugins.pluginsRoot
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
@@ -92,7 +93,7 @@ fun main() {
                 cloneDriver,
                 heapHistogramDriver,
                 heapFootprintDriver,
-            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled })
+            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled }) + pluginDrivers(plugins)
         }
         run(rootComponent, drivers = drivers)
     }
