@@ -80,6 +80,8 @@ fun main() {
                 projectMutationDriver,
                 credentialsDriver,
                 cloneDriver,
+                heapHistogramDriver,
+                heapFootprintDriver,
             )
         }
         run(appComponent, drivers = drivers)

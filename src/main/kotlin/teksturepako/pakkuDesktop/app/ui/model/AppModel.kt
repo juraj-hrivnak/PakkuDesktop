@@ -19,6 +19,8 @@ import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.actions.AdditionPlan
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
+import teksturepako.pakkuDesktop.app.data.HeapFootprint
+import teksturepako.pakkuDesktop.app.data.HeapHistogram
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
@@ -44,6 +46,7 @@ data class AppModel(
     val welcome: WelcomeModel = welcomeComponent.init(),
     val modpack: ModpackModel = modpackComponent.init(),
     val showSettings: Boolean = false,
+    val settingsTab: SettingsTab = SettingsTab.General,
     val showNewModpack: Boolean = false,
     val showCloneDialog: Boolean = false,
     val closeDialog: CloseDialogRequest? = null,
@@ -67,6 +70,12 @@ data class AppModel(
     val pendingCredentialsUpdate: CredentialsUpdateRequest? = null,
     /** settings save status text */
     val credentialsStatus: String? = null,
+    /** settings Heap tab: take a class histogram; cleared by heapHistogramDriver */
+    val wantsHeapHistogram: Boolean = false,
+    /** last histogram; replaced on each take */
+    val heapHistogram: HeapHistogram? = null,
+    /** process RSS + heap used; polled in the background for the life of the app */
+    val heapFootprint: HeapFootprint? = null,
     /** clone in flight */
     val pendingClone: CloneRequest? = null,
     /** clone parent directory (Browse…); set by directoryPickerDriver */
@@ -76,6 +85,8 @@ data class AppModel(
     /** clone error/status; null when idle */
     val cloneStatus: String? = null,
 )
+
+enum class SettingsTab { General, Heap }
 
 data class SettingsCredentials(
     val curseForgeApiKey: String,

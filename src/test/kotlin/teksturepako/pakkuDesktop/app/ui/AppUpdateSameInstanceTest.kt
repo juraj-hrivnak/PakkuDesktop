@@ -4,10 +4,13 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import teksturepako.pakkuDesktop.app.data.HeapFootprint
 import teksturepako.pakkuDesktop.app.data.ProfileData
+import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownModel
+import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProfileModel
@@ -15,6 +18,7 @@ import teksturepako.pakkuDesktop.app.ui.model.WelcomeDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeModel
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
 class AppUpdateSameInstanceTest {
@@ -31,6 +35,36 @@ class AppUpdateSameInstanceTest {
 
     @Test
     fun hideNewModpackWhenHidden() = assertNoOp(AppModel(), AppMsg.HideNewModpack)
+
+    @Test
+    fun settingsTabSelectedWhenAlreadySelected() =
+        assertNoOp(AppModel(), AppMsg.SettingsTabSelected(SettingsTab.General))
+
+    @Test
+    fun heapHistogramRequestedWhenAlreadyPending() =
+        assertNoOp(AppModel(wantsHeapHistogram = true), AppMsg.HeapHistogramRequested)
+
+    @Test
+    fun heapFootprintSampledUnchangedKeepsModel() {
+        val footprint = HeapFootprint(rssBytes = 100, heapUsedBytes = 20, epochMs = 1)
+        assertNoOp(
+            AppModel(heapFootprint = footprint),
+            AppMsg.HeapFootprintSampled(HeapFootprint(rssBytes = 100, heapUsedBytes = 20, epochMs = 99)),
+        )
+    }
+
+    @Test
+    fun heapFootprintSampledRecordsActionChange() {
+        val prev = HeapFootprint(rssBytes = 100, heapUsedBytes = 20, epochMs = 1).withHistoryFrom(null)
+        val next = appUpdate(
+            AppMsg.HeapFootprintSampled(
+                HeapFootprint(rssBytes = 100, heapUsedBytes = 20, epochMs = 2),
+                "Exporting",
+            ),
+            AppModel(heapFootprint = prev),
+        )
+        assertEquals("Exporting", next.heapFootprint?.history?.last()?.action)
+    }
 
     @Test
     fun confirmCloseDialogWithoutDialog() = assertNoOp(AppModel(), AppMsg.ConfirmCloseDialog)

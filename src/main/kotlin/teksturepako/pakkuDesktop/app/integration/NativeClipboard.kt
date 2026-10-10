@@ -149,11 +149,10 @@ private fun writeViaProcess(command: List<String>, text: String): Boolean = runC
         stream.write(text.toByteArray(StandardCharsets.UTF_8))
         stream.flush()
     }
-    if (!process.waitFor(2, TimeUnit.SECONDS))
+    if (process.waitFor(500, TimeUnit.MILLISECONDS))
     {
-        // wl-copy may keep a child alive to own the selection; parent should exit after stdin closes.
-        process.destroyForcibly()
-        return@runCatching false
+        return@runCatching process.exitValue() == 0
     }
-    process.exitValue() == 0
+    // wl-copy / xclip keep a helper alive to own the selection. Do not kill it.
+    true
 }.getOrDefault(false)

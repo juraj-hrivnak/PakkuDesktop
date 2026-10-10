@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.toProjectsUiData
+import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
@@ -160,17 +161,21 @@ private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when 
 
 private fun AppModel.openSettings(): AppModel = copy(
     showSettings = true,
+    settingsTab = SettingsTab.General,
     wantsLoadCredentials = true,
     settingsCredentials = null,
     credentialsStatus = null,
+    wantsHeapHistogram = false,
 )
 
 private fun AppModel.closeSettings(): AppModel = copy(
     showSettings = false,
+    settingsTab = SettingsTab.General,
     wantsLoadCredentials = false,
     settingsCredentials = null,
     credentialsStatus = null,
     pendingCredentialsUpdate = null,
+    wantsHeapHistogram = false,
 )
 
 private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
@@ -304,6 +309,29 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
 
     // -- Dialog dismissals --
     AppMsg.HideSettings              -> model.closeSettings()
+    is AppMsg.SettingsTabSelected    ->
+        if (model.settingsTab == msg.tab) model else model.copy(settingsTab = msg.tab)
+    AppMsg.HeapHistogramRequested    ->
+        if (model.wantsHeapHistogram) model else model.copy(wantsHeapHistogram = true)
+    is AppMsg.HeapHistogramLoaded    -> model.copy(
+        wantsHeapHistogram = false,
+        heapHistogram = msg.histogram,
+    )
+    is AppMsg.HeapFootprintSampled   -> {
+        val prev = model.heapFootprint
+        val next = msg.footprint
+        val lastAction = prev?.history?.lastOrNull()?.action
+        if (
+            prev != null &&
+            prev.rssBytes == next.rssBytes &&
+            prev.heapUsedBytes == next.heapUsedBytes &&
+            lastAction == msg.action
+        ) {
+            model
+        } else {
+            model.copy(heapFootprint = next.withHistoryFrom(prev, msg.action))
+        }
+    }
     AppMsg.HideNewModpack            ->
         if (!model.showNewModpack) model else model.copy(showNewModpack = false)
     AppMsg.ShowCloneDialog           -> model.copy(

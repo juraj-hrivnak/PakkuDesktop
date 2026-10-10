@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.datetime.Instant
 import teksturepako.pakkuDesktop.app.actions.AppToast
 import teksturepako.pakkuDesktop.app.data.Profile
@@ -34,5 +35,17 @@ class BoundedCollectionsTest {
         assertEquals("/p${max + 4}", data.currentProfile?.path)
         assertEquals((5 until max + 5).map { "/p$it" }.toSet(), data.recentProfiles.map { it.path }.toSet())
         assertEquals(max, data.recentProfiles.size)
+    }
+
+    @Test
+    fun recentProfilesCapOnOversizedPersistedList() {
+        val max = ProfileData.MAX_RECENT_PROFILES
+        val start = Instant.fromEpochSeconds(0)
+        val oversized = (0 until max + 10).map { i ->
+            Profile(name = "p$i", path = "/p$i", lastOpened = start + i.seconds)
+        }.toPersistentList()
+        val data = ProfileData(recentProfiles = oversized).cappedRecentProfiles()
+        assertEquals(max, data.recentProfiles.size)
+        assertEquals((10 until max + 10).map { "/p$it" }.toSet(), data.recentProfiles.map { it.path }.toSet())
     }
 }

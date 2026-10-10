@@ -6,15 +6,17 @@ package teksturepako.pakkuDesktop.app.ui.component.button
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import teksturepako.pakkuDesktop.app.integration.writeClipboardText
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
@@ -27,8 +29,7 @@ fun CopyToClipboardButton(
     buttonSize: Dp = 24.dp,
     iconSize: Dp = 14.dp,
 ) {
-    @Suppress("DEPRECATION")
-    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
 
     PkUiTooltip(
         tooltip = {
@@ -41,7 +42,10 @@ fun CopyToClipboardButton(
     ) {
         IconButton(
             onClick = {
-                clipboardManager.setText(AnnotatedString(text))
+                val payload = text
+                scope.launch(Dispatchers.IO) {
+                    writeClipboardText(payload)
+                }
             },
             modifier = modifier.size(buttonSize),
         ) {
