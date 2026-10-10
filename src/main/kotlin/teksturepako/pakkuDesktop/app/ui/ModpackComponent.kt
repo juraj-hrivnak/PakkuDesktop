@@ -30,7 +30,9 @@ import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
+import teksturepako.pakkuDesktop.app.ui.model.filesTab
 import teksturepako.pakkuDesktop.app.ui.model.gitBusy
+import teksturepako.pakkuDesktop.app.ui.model.projectsTab
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -143,18 +145,19 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.ActivateLastFilesFab -> {
         val busy = model.actionName != null
         val hasLock = model.lockFile?.get() != null
+        val files = model.filesTab()
         when (val fab = model.lastFilesFab) {
             FilesFabAction.Refresh if !busy && hasLock ->
                 modpackUpdate(ModpackMsg.FetchDetectRequested, model)
             FilesFabAction.Sync if !busy && hasLock ->
                 modpackUpdate(ModpackMsg.SyncDetectRequested, model)
-            FilesFabAction.Fetch if model.canApplyFetch() ->
+            FilesFabAction.Fetch if files.canApplyFetch() ->
                 modpackUpdate(ModpackMsg.FetchRequested, model)
-            FilesFabAction.Add if model.canApplySync(SyncKind.Added) ->
+            FilesFabAction.Add if files.canApplySync(SyncKind.Added) ->
                 modpackUpdate(ModpackMsg.SyncApplyRequested(SyncKind.Added), model)
-            FilesFabAction.Update if model.canApplySync(SyncKind.Updated) ->
+            FilesFabAction.Update if files.canApplySync(SyncKind.Updated) ->
                 modpackUpdate(ModpackMsg.SyncApplyRequested(SyncKind.Updated), model)
-            FilesFabAction.Remove if model.canApplySync(SyncKind.Removed) ->
+            FilesFabAction.Remove if files.canApplySync(SyncKind.Removed) ->
                 modpackUpdate(ModpackMsg.SyncApplyRequested(SyncKind.Removed), model)
             else -> model
         }
@@ -386,9 +389,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.SelectAllFilteredRequested -> {
         val projects = model.lockFile?.get()?.getAllProjects() ?: return model
         val keys = if (model.selectedTab == SelectedTab.FILES) {
-            model.filteredFilesDiffPairs().filter { it.selectable }.map { it.selectionKey }.toSet()
+            model.filesTab().filteredFilesDiffPairs().filter { it.selectable }.map { it.selectionKey }.toSet()
         } else {
-            model.filteredAndSortedProjects(projects).map { it.uiKey() }.toSet()
+            model.projectsTab().filteredAndSortedProjects(projects).map { it.uiKey() }.toSet()
         }
         if (keys == model.selectedProjectKeys) model else model.copy(selectedProjectKeys = keys.toPersistentSet())
     }

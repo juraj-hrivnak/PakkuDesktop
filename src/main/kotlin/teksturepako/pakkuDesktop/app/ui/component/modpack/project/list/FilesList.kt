@@ -25,7 +25,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 enum class FilesDiffSide { Current, Proposed }
@@ -34,7 +34,7 @@ enum class FilesDiffSide { Current, Proposed }
 fun FilesDiffPane(
     side: FilesDiffSide,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: FilesTabModel,
     pairs: List<FilesDiffPair>,
     scrollState: LazyListState,
     collapsedFolders: MutableState<Set<String>>,
@@ -70,7 +70,7 @@ fun FilesDiffPane(
 }
 
 @Composable
-private fun FilesDiffPaneHeader(side: FilesDiffSide, model: ModpackModel) {
+private fun FilesDiffPaneHeader(side: FilesDiffSide, model: FilesTabModel) {
     val title = when (side) {
         FilesDiffSide.Current -> "Current"
         FilesDiffSide.Proposed -> "New"

@@ -25,7 +25,7 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.PropertyWrite
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
@@ -40,7 +40,7 @@ fun NullableProjectStringSelection(
     projectRef: KFunction1<Project, Result<String, ActionError>?>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, String?>,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
 ) {
     if (model.editingProject) {
         val initialText = model.selectedProject?.let { projectRef(it) }?.get() ?: ""

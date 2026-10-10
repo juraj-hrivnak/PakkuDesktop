@@ -14,7 +14,7 @@ import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.PropertyWrite
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
@@ -30,7 +30,7 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
     projectRef: KMutableProperty1<Project, T?>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, T?>,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
 ) {
     if (model.editingProject) {
         var buttonState by remember { mutableStateOf(model.selectedProject?.let { projectRef(it) }) }
@@ -89,7 +89,7 @@ fun <T : Enum<T>> ProjectEnumSelection(
     projectRef: KMutableProperty1<Project, T>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, T?>,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
 ) {
     if (model.editingProject) {
         var buttonState by remember { mutableStateOf(model.selectedProject?.let { projectRef(it) }) }

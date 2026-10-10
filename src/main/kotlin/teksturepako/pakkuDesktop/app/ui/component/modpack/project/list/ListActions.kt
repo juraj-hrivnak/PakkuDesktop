@@ -20,13 +20,14 @@ import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 
 /** Thin status strip: totals / update counts on the left, selection on the right. */
 @Composable
-fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun ListActions(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
     val totalCount = model.lockFile?.get()?.getAllProjects()?.size ?: 0
     val selectedCount = model.selectedProjectKeys.size
     val pendingUpdateCount = model.updatePreviews?.count { !it.value.applied }
@@ -102,7 +103,7 @@ fun ListActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
 }
 
 @Composable
-fun FilesFooterStatus(model: ModpackModel, fileCount: Int) {
+fun FilesFooterStatus(model: FilesTabModel, fileCount: Int) {
     val selectedCount = model.selectedProjectKeys.size
     val busy = model.actionName != null
     val scanning = busy && (model.actionName == "Scanning files" || model.actionName == "Detecting files")

@@ -21,12 +21,12 @@ import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 
 @Composable
-fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     val lastFab = model.lastFilesFab
     val fetching = model.actionName == "Fetching" ||
         model.actionName == "Syncing manual overrides" ||

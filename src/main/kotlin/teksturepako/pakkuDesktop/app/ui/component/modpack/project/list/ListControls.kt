@@ -28,8 +28,9 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.actions.uiKey
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
@@ -41,7 +42,7 @@ private val SelectionActionButtonSize = 28.dp
 @Composable
 fun FilesSelectionControls(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: FilesTabModel,
     lastClickedIndex: MutableState<Int?>,
     selectableKeys: Collection<String>,
 ) {
@@ -105,7 +106,7 @@ fun FilesSelectionControls(
 @Composable
 fun ListControls(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
     lastClickedIndex: MutableState<Int?>? = null,
     sourceProjects: List<Project>? = null,
     ignoreUpdatesOnly: Boolean = false,

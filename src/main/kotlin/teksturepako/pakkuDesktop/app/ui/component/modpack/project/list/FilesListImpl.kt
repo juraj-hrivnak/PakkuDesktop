@@ -56,7 +56,7 @@ import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.button.CopyToClipboardButton
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
@@ -104,7 +104,7 @@ fun SyncLinkedLazyLists(first: LazyListState, second: LazyListState) {
 fun FilesDiffList(
     side: FilesDiffSide,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: FilesTabModel,
     pairs: List<FilesDiffPair>,
     scrollState: LazyListState,
     collapsedFolders: MutableState<Set<String>>,

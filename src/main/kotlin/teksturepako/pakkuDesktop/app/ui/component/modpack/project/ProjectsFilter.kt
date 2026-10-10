@@ -45,7 +45,7 @@ import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 private val FilterProviderSerialNames = setOf("curseforge", "modrinth", "github")
@@ -57,7 +57,7 @@ private val FilterProviderSerialNames = setOf("curseforge", "modrinth", "github"
 @Composable
 fun ProjectFilter(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
     focusRequester: FocusRequester,
 ) {
     val textFieldState = rememberTextFieldState(model.projectsFilterText)

@@ -25,12 +25,12 @@ import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.syncOf
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 
 @Composable
-fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
     val project = model.selectedProject ?: return
     val scrollState = rememberScrollState()
     val projectKey = project.uiKey()

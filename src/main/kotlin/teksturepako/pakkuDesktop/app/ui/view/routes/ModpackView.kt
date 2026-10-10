@@ -6,7 +6,6 @@ package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,10 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
+import teksturepako.pakkuDesktop.app.ui.model.filesTab
+import teksturepako.pakkuDesktop.app.ui.model.gitTab
+import teksturepako.pakkuDesktop.app.ui.model.modpackTab
+import teksturepako.pakkuDesktop.app.ui.model.projectsTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.FilesTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
@@ -42,7 +45,6 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
-import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
 import teksturepako.pakkuDesktop.pro.ui.component.GitPushDialog
@@ -103,12 +105,9 @@ fun PakkuApplicationScope.ModpackView(
 
     if (hasNonFileNotFoundError) return
 
-    val toastState = remember { mutableStateOf<List<ToastData>>(model.toasts) }
-    toastState.value = model.toasts
-
     Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
         Row(Modifier.matchParentSize()) {
-            ModpackRail(publish, model)
+            ModpackRail(publish, model.selectedTab)
 
             VerticalSplitLayout(
                 state = actionSplitState,
@@ -117,10 +116,10 @@ fun PakkuApplicationScope.ModpackView(
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.fillMaxSize()) {
                             when (model.selectedTab) {
-                                SelectedTab.PROJECTS -> ProjectsTab(publish, model)
-                                SelectedTab.FILES    -> FilesTab(publish, model)
-                                SelectedTab.MODPACK  -> ModpackTab(publish, model)
-                                SelectedTab.COMMIT   -> GitTab(publish, model)
+                                SelectedTab.PROJECTS -> ProjectsTab(publish, model.projectsTab())
+                                SelectedTab.FILES    -> FilesTab(publish, model.filesTab())
+                                SelectedTab.MODPACK  -> ModpackTab(publish, model.modpackTab())
+                                SelectedTab.COMMIT   -> GitTab(publish, model.gitTab())
                             }
                         }
                     }
@@ -136,7 +135,7 @@ fun PakkuApplicationScope.ModpackView(
         }
 
         ToastHost(
-            toasts = toastState,
+            toasts = model.toasts,
             modifier = Modifier.align(Alignment.TopEnd),
             alignment = Alignment.TopEnd,
             spacing = 8.dp,

@@ -24,7 +24,7 @@ import teksturepako.pakkuDesktop.app.actions.listItemKey
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 
@@ -33,7 +33,7 @@ private const val ProjectCardDoubleClickMs = 280L
 @Composable
 fun ListImpl(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
     lastClickedIndex: MutableState<Int?>,
 )
 {

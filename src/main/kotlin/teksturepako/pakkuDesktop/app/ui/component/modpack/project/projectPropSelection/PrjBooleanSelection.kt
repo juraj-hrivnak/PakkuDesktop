@@ -14,7 +14,7 @@ import org.jetbrains.jewel.ui.component.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.PropertyWrite
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
@@ -28,7 +28,7 @@ fun ProjectBooleanSelection(
     projectRef: KMutableProperty1<Project, Boolean>,
     projectConfigRef: KMutableProperty1<ConfigFile.ProjectConfig, Boolean?>,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ProjectsTabModel,
 ) {
     if (model.editingProject) {
         var buttonState by remember { mutableStateOf(model.selectedProject?.let { projectRef(it) }) }

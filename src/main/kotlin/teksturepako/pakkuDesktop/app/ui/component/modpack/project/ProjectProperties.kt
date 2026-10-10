@@ -24,11 +24,11 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSel
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.NullableProjectStringSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectBooleanSelection
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropSelection.ProjectEnumSelection
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun ProjectProperties(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),

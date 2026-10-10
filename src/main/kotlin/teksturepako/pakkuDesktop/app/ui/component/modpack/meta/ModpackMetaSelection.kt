@@ -35,7 +35,7 @@ import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 
@@ -49,7 +49,7 @@ fun ModpackCommitTextField(
     placeholder: String = "—",
     singleLine: Boolean = true,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
 ) {
     Column(
@@ -131,7 +131,7 @@ fun ModpackChoiceCombo(
     options: List<String>,
     selected: String,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
 ) {
     Column(
@@ -181,7 +181,7 @@ fun ModpackChoiceCombo(
 fun ModpackLoaderChips(
     selected: String,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
 ) {
     ModpackChoiceCombo(
@@ -198,7 +198,7 @@ fun ModpackLoaderChips(
 fun ModpackTargetChips(
     selected: String,
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
 ) {
     ModpackChoiceCombo(

@@ -33,7 +33,7 @@ import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.treeStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.git.GitFloatingActions
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
@@ -56,7 +56,7 @@ private val ChangelistSelectionStripeWidth = 3.dp
 @Composable
 fun GitTab(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: GitTabModel,
 ) {
     val gitState = model.git
     val diffContent = model.gitCurrentDiff

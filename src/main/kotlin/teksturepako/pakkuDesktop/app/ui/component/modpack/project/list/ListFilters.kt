@@ -9,11 +9,11 @@ import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakkuDesktop.app.actions.uiKey
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 
 fun Project.matchesProjectsListFilters(
-    model: ModpackModel,
+    model: ProjectsTabModel,
     ignoreUpdatesOnly: Boolean = false,
 ): Boolean {
     val textOk = model.projectsFilterText.isEmpty() ||
@@ -40,7 +40,7 @@ fun Project.matchesProjectsListFilters(
     return textOk && updatesOk && typeOk && sideOk && providerOk && redistributableOk
 }
 
-fun ModpackModel.filteredAndSortedProjects(
+fun ProjectsTabModel.filteredAndSortedProjects(
     projects: List<Project>,
     ignoreUpdatesOnly: Boolean = false,
 ): List<Project> {
