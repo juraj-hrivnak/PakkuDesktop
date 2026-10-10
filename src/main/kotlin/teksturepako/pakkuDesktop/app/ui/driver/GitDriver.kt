@@ -23,6 +23,8 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
+import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
+import teksturepako.pakkuDesktop.elm.conflatedPublisher
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitEvent
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
@@ -94,6 +96,11 @@ private suspend fun runGitWithProgress(
         .start()
 
     val stderrCapture = StringBuilder()
+    val (gitProgressCh, gitProgressJob) = conflatedPublisher<GitEvent.Progress?>(PROGRESS_PUBLISH_INTERVAL_MS) { event ->
+        withContext(Dispatchers.Main) {
+            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
+        }
+    }
 
     // Read stderr char-by-char so we catch both \n and \r progress updates.
     val stderrJob = launch(Dispatchers.IO) {
@@ -118,9 +125,7 @@ private suspend fun runGitWithProgress(
                                     current = current,
                                     total = total,
                                 )
-                                withContext(Dispatchers.Main) {
-                                    publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
-                                }
+                                gitProgressCh.trySend(event)
                             }
                         }
                     }
@@ -140,10 +145,9 @@ private suspend fun runGitWithProgress(
     stderrJob.join()
     stdoutJob.join()
 
-    // Clear any lingering progress indicator.
-    withContext(Dispatchers.Main) {
-        publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(null)))
-    }
+    gitProgressCh.trySend(null)
+    gitProgressCh.close()
+    gitProgressJob.join()
 
     exitCode to stderrCapture.toString()
 }
