@@ -35,6 +35,7 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.git.GitFloatingActions
 import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitChangelistFlatRow
@@ -58,6 +59,7 @@ fun GitTab(
     publish: (ModpackMsg) -> Unit,
     model: GitTabModel,
 ) {
+    RecomposeProbe("GitTab")
     val gitState = model.git
     val diffContent = model.gitCurrentDiff
     val files = gitState.gitFiles

@@ -35,6 +35,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
+import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
@@ -48,6 +49,7 @@ fun ModpackRail(
     publish: (ModpackMsg) -> Unit,
     selectedTab: SelectedTab,
 ) {
+    RecomposeProbe("ModpackRail")
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
 
     Row {

@@ -47,7 +47,7 @@ private val testComponent = component(
     view = { _, _ -> Box(Modifier) {} },
 )
 
-private fun assumeAwtForComposeUiTests(): TestRule = TestRule { base, _ ->
+internal fun assumeAwtForComposeUiTests(): TestRule = TestRule { base, _ ->
     object : Statement() {
         override fun evaluate() {
             assumeTrue(

@@ -18,9 +18,11 @@ import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackMetaProperties
 import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.RecomposeProbe
 
 @Composable
 fun ModpackTab(publish: (ModpackMsg) -> Unit, model: ModpackTabModel) {
+    RecomposeProbe("ModpackTab")
     Column(Modifier.fillMaxSize()) {
         if (model.configFile?.get() == null || model.lockFile?.get() == null) {
             Text(

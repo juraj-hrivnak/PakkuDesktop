@@ -26,11 +26,13 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectDisplay
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectsList
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
 @OptIn(FlowPreview::class)
 @Composable
 fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
+    RecomposeProbe("ProjectsTab")
     val filterFocusRequester = remember { FocusRequester() }
     val inspectorOpen = model.selectedProject != null
     val splitState = remember {

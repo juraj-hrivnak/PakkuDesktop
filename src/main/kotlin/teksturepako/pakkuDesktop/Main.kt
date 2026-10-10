@@ -82,7 +82,7 @@ fun main() {
                 cloneDriver,
                 heapHistogramDriver,
                 heapFootprintDriver,
-            )
+            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled })
         }
         run(appComponent, drivers = drivers)
     }

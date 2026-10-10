@@ -40,11 +40,13 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredF
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
 @OptIn(FlowPreview::class)
 @Composable
 fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
+    RecomposeProbe("FilesTab")
     val filterFocusRequester = remember { FocusRequester() }
     val splitState = remember { SplitLayoutState(model.filesSplitRatio.coerceIn(0.05f, 0.95f)) }
     val scanned = model.filesPreviewMode != FilesPreviewMode.None
