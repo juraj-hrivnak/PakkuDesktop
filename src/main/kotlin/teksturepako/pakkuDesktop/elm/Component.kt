@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.currentRecomposeScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -113,7 +114,9 @@ fun <Model, Msg> run(
             { driver(store.publish, store.state.value, inner) }
         }
     }
-    chain()
+    CompositionLocalProvider(LocalMessages provides store.messages) {
+        chain()
+    }
 }
 
 private fun Throwable.shouldPropagate(): Boolean =
