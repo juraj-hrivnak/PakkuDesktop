@@ -4,8 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.plugins
 
+import teksturepako.pakkuDesktop.elm.Component
+import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.plugin.PluginId
-import teksturepako.pakkuDesktop.plugin.TypedPlugin
 import java.net.URLClassLoader
 
 /** Outcome of loading one plugin folder. */
@@ -27,7 +28,8 @@ sealed interface PluginLoadState {
 class LoadedPlugin(
     val id: PluginId,
     val name: String,
-    val typed: TypedPlugin<*, *>,
+    val erased: Component<Any?, Any?>,
+    val erasedDrivers: List<Driver<Any?, Any?>>,
     val initialState: Any?,
     val loader: URLClassLoader,
 )

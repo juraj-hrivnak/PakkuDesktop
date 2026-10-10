@@ -10,7 +10,10 @@ import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
+import teksturepako.pakkuDesktop.app.plugins.PluginLoadState
+import teksturepako.pakkuDesktop.plugin.PluginId
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
@@ -84,6 +87,10 @@ data class AppModel(
     val wantsCloneParentPicker: Boolean = false,
     /** clone error/status; null when idle */
     val cloneStatus: String? = null,
+    /** One entry per loaded plugin; values are each plugin's own model type, cast only in erase(). */
+    val pluginStates: PersistentMap<PluginId, Any?> = persistentMapOf(),
+    /** Load failures from startup; strings only (C3). */
+    val pluginFailures: PersistentList<PluginLoadState.Failed> = persistentListOf(),
 )
 
 enum class SettingsTab { General, Heap }

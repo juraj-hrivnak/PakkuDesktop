@@ -5,6 +5,7 @@
 package teksturepako.pakkuDesktop.app.ui.model
 
 import teksturepako.pakku.api.actions.errors.ActionError
+import teksturepako.pakkuDesktop.plugin.PluginId
 import teksturepako.pakkuDesktop.app.data.HeapFootprint
 import teksturepako.pakkuDesktop.app.data.HeapHistogram
 import teksturepako.pakkuDesktop.app.data.ProfileData
@@ -96,4 +97,5 @@ sealed interface AppMsg {
 
     data class Welcome(val msg: WelcomeMsg) : AppMsg
     data class Modpack(val msg: ModpackMsg) : AppMsg
+    data class Plugin(val id: PluginId, val msg: Any?) : AppMsg
 }

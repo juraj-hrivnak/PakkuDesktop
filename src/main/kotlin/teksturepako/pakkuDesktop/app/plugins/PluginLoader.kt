@@ -95,7 +95,10 @@ object PluginLoader {
             val typed = instantiate(cls, manifest).create()
             stage = Stage.Validate
             val initial = typed.validate()
-            PluginLoadState.Loaded(LoadedPlugin(manifest.id, manifest.name, typed, initial, loader))
+            val (erased, erasedDrivers) = typed.erase()
+            PluginLoadState.Loaded(
+                LoadedPlugin(manifest.id, manifest.name, erased, erasedDrivers, initial, loader),
+            )
         } catch (e: VirtualMachineError) {
             throw e
         } catch (e: Throwable) {

@@ -20,6 +20,8 @@ import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.plugins.PluginLoader
+import teksturepako.pakkuDesktop.app.plugins.pluginsRoot
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
@@ -54,7 +56,11 @@ fun main() {
     }
 
     val initialWindowData = runBlocking { WindowData.readOrNew() }
-    val rootComponent = appComponent(initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() })
+    val plugins = PluginLoader.loadAll(pluginsRoot())
+    val rootComponent = appComponent(
+        initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() },
+        plugins = plugins,
+    )
 
     nucleusApplication(backend = NucleusBackend.Tao) {
         val drivers = remember {

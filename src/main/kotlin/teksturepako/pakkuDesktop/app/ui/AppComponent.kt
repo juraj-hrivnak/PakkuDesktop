@@ -4,8 +4,11 @@
 
 package teksturepako.pakkuDesktop.app.ui
 
+import kotlinx.collections.immutable.toPersistentList
+import kotlinx.collections.immutable.toPersistentMap
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
+import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
 import teksturepako.pakkuDesktop.app.data.toProjectsUiData
 import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
@@ -290,7 +293,7 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
 
 // -- appUpdate --
 
-fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
+fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegistry.Empty): AppModel = when (msg) {
 
     // -- Profile --
     is AppMsg.ProfileLoaded,
@@ -416,16 +419,26 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     // -- Child components --
     is AppMsg.Welcome                -> handleWelcomeMsg(msg, model)
     is AppMsg.Modpack                -> handleModpackMsg(msg, model)
+    is AppMsg.Plugin                 -> handlePluginMsg(msg, model, plugins)
+}
+
+private fun handlePluginMsg(msg: AppMsg.Plugin, model: AppModel, plugins: PluginRegistry): AppModel {
+    val plugin = plugins.loaded[msg.id] ?: return model
+    val old = model.pluginStates[msg.id]
+    val new = plugin.erased.update(msg.msg, old)
+    return if (new === old) model else model.copy(pluginStates = model.pluginStates.put(msg.id, new))
 }
 
 // -- appComponent --
 
-fun appComponent(initialProjectsUi: ProjectsUiData) = component(
+fun appComponent(initialProjectsUi: ProjectsUiData, plugins: PluginRegistry = PluginRegistry.Empty) = component(
     init = AppModel(
         projectsUi = initialProjectsUi,
         modpack = ModpackModel().withProjectsUi(initialProjectsUi),
+        pluginStates = plugins.loaded.mapValues { it.value.initialState }.toPersistentMap(),
+        pluginFailures = plugins.failed.toPersistentList(),
     ),
-    update = ::appUpdate,
+    update = { msg: AppMsg, model: AppModel -> appUpdate(msg, model, plugins) },
     view = { publish, model ->
         CloseDialog(publish, model)
 
