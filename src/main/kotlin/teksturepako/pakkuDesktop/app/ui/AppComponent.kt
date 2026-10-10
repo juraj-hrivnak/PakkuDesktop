@@ -420,14 +420,11 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
 
 // -- appComponent --
 
-val appComponent = component(
-    init = run {
-        val projectsUi = ProjectsUiData.readOrNewBlocking()
-        AppModel(
-            projectsUi = projectsUi,
-            modpack = ModpackModel().withProjectsUi(projectsUi),
-        )
-    },
+fun appComponent(initialProjectsUi: ProjectsUiData) = component(
+    init = AppModel(
+        projectsUi = initialProjectsUi,
+        modpack = ModpackModel().withProjectsUi(initialProjectsUi),
+    ),
     update = ::appUpdate,
     view = { publish, model ->
         CloseDialog(publish, model)

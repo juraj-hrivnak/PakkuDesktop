@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
+import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
@@ -53,6 +54,7 @@ fun main() {
     }
 
     val initialWindowData = runBlocking { WindowData.readOrNew() }
+    val rootComponent = appComponent(initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() })
 
     nucleusApplication(backend = NucleusBackend.Tao) {
         val drivers = remember {
@@ -84,6 +86,6 @@ fun main() {
                 heapFootprintDriver,
             ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled })
         }
-        run(appComponent, drivers = drivers)
+        run(rootComponent, drivers = drivers)
     }
 }

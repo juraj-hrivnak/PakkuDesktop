@@ -19,7 +19,7 @@ import teksturepako.pakkuDesktop.elm.Driver
 
 /**
  * Persists Projects-tab list prefs whenever [AppModel.projectsUi] changes after the initial load.
- * Initial values are loaded synchronously in [teksturepako.pakkuDesktop.app.ui.appComponent] init.
+ * Initial values are loaded once in `main()` and passed to [teksturepako.pakkuDesktop.app.ui.appComponent].
  */
 val projectsUiDiskDriver: Driver<AppModel, AppMsg> = { _, model, content ->
     var previous by remember { mutableStateOf<ProjectsUiData?>(null) }
