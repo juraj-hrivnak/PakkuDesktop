@@ -8,9 +8,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.flow.SharedFlow
 
 /**
- * Every message passed to [Store.publish], as a hot stream (no replay).
+ * Every message passed to `Store.publish`, as a hot stream (no replay).
  *
- * Provided by [run]. Collect in drivers with `LaunchedEffect(Unit)` and filter by type;
+ * Provided by the host's `run()`. Collect in drivers with `LaunchedEffect(Unit)` and filter by type;
  * do not key effects on model fields that only exist to notify (`broadcast`, `lastEvent`).
  */
 val LocalMessages = staticCompositionLocalOf<SharedFlow<*>> {

@@ -9,3 +9,5 @@ pluginManagement {
 
 // Due to an IntelliJ bug, this has to be done
 rootProject.name = rootProject.projectDir.name
+
+include(":pakku-desktop-api", ":sample-plugin")

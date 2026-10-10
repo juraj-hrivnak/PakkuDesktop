@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop.elm
 
 /**
- * Marker for cross-cutting notifications observed via [Store.messages] / [LocalMessages].
+ * Marker for cross-cutting notifications observed via `Store.messages` / [LocalMessages].
  *
  * Not sealed — plugins define their own event types in separate modules. Host [Component]
  * message types may implement [Event] when plugins should react to them.

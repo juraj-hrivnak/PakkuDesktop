@@ -55,6 +55,9 @@ repositories {
 }
 
 dependencies {
+    // Elm runtime API + plugin SPI (what plugins compile against)
+    implementation(project(":pakku-desktop-api"))
+
     // Pakku
     implementation(libs.pakku)
 
@@ -127,6 +130,12 @@ dependencies {
 
 tasks.test {
     useJUnit()
+
+    dependsOn(":sample-plugin:assemblePluginDir")
+    systemProperty(
+        "pakku.test.samplePluginDir",
+        project(":sample-plugin").layout.buildDirectory.dir("plugin-dir/sample").get().asFile.absolutePath,
+    )
 }
 
 nucleus.application {
