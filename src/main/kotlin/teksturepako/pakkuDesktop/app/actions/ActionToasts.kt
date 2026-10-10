@@ -8,56 +8,125 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastBody
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 
+/** Toast payloads shown by the app; rendered by [AppToastContent]. */
+sealed interface AppToast : ToastBody {
+    data class Message(val text: String) : AppToast
+
+    /** [error] must already be [detached]. */
+    data class Error(val error: ActionError, val profileLabel: String? = null) : AppToast
+
+    data class FetchSummary(
+        val fetched: Int,
+        val overrides: List<String>,
+        val shelved: List<String>,
+        val deleted: List<String>,
+    ) : AppToast
+
+    data class Exported(
+        val profileName: String,
+        val filePath: String,
+        val fileSize: String,
+        val duration: String,
+        val directory: String,
+    ) : AppToast
+
+    data class Added(val lines: List<AddedProjectLine>) : AppToast
+
+    data class Removed(val projects: List<Project>) : AppToast
+}
+
 /** Error toast with GUI [ActionErrorContent] (project logos, mapped messages). */
-internal fun actionErrorToast(error: ActionError) = ToastData(content = {
-    Box(Modifier.padding(16.dp).width(320.dp)) {
-        ActionErrorContent(error)
-    }
-})
+internal fun actionErrorToast(error: ActionError) = ToastData(body = AppToast.Error(error.detached()))
 
-internal fun actionErrorToast(message: String) = ToastData(content = {
-    Box(Modifier.padding(16.dp).width(300.dp)) {
-        Text(message)
-    }
-})
+internal fun actionErrorToast(message: String) = ToastData(body = AppToast.Message(message))
 
-internal fun actionErrorToast(profileLabel: String, error: ActionError) = ToastData(content = {
-    Box(Modifier.padding(16.dp).width(320.dp)) {
-        Column {
-            Text(profileLabel, fontWeight = FontWeight.Bold)
-            ActionErrorContent(error)
-        }
-    }
-})
+internal fun actionErrorToast(profileLabel: String, error: ActionError) =
+    ToastData(body = AppToast.Error(error.detached(), profileLabel))
 
-internal fun actionInfoToast(message: String) = ToastData(content = {
-    Box(Modifier.padding(16.dp).width(300.dp)) {
-        Text(message)
-    }
-})
+internal fun actionInfoToast(message: String) = ToastData(body = AppToast.Message(message))
 
 internal fun actionFetchSummaryToast(
     fetched: Int,
     overrides: List<String>,
     shelved: List<String>,
     deleted: List<String>,
-) = ToastData(content = {
+) = ToastData(body = AppToast.FetchSummary(fetched, overrides, shelved, deleted))
+
+internal fun actionExportedToast(
+    profileName: String,
+    filePath: String,
+    fileSize: String,
+    duration: String,
+    directory: String,
+) = ToastData(body = AppToast.Exported(profileName, filePath, fileSize, duration, directory))
+
+/** One added root (optional replace) for the summary toast. */
+data class AddedProjectLine(
+    val project: Project,
+    val replacing: Project? = null,
+)
+
+/** Modal-style summary: title + [ProjectRef] rows (same visual language as add/remove review). */
+internal fun actionAddedToast(lines: List<AddedProjectLine>) = ToastData(body = AppToast.Added(lines))
+
+internal fun actionRemovedToast(projects: List<Project>) = ToastData(body = AppToast.Removed(projects))
+
+// -- Rendering --
+
+/** Content slot for [teksturepako.pakkuDesktop.pkui.component.toast.ToastHost]. */
+@Composable
+fun AppToastContent(body: ToastBody) {
+    when (body) {
+        is AppToast.Message      -> Box(Modifier.padding(16.dp).width(300.dp)) { Text(body.text) }
+        is AppToast.Error        -> ErrorToast(body)
+        is AppToast.FetchSummary -> FetchSummaryToast(body)
+        is AppToast.Exported     -> ExportedToast(body)
+        is AppToast.Added        -> AddedToast(body.lines)
+        is AppToast.Removed      -> RemovedToast(body.projects)
+    }
+}
+
+@Composable
+private fun ErrorToast(toast: AppToast.Error) {
+    Box(Modifier.padding(16.dp).width(320.dp)) {
+        if (toast.profileLabel == null) {
+            ActionErrorContent(toast.error)
+        } else {
+            Column {
+                Text(toast.profileLabel, fontWeight = FontWeight.Bold)
+                ActionErrorContent(toast.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FetchSummaryToast(toast: AppToast.FetchSummary) {
+    val (fetched, overrides, shelved, deleted) = toast
     val lines = buildList {
         when (fetched) {
             0 -> if (overrides.isEmpty() && shelved.isEmpty() && deleted.isEmpty()) {
@@ -107,19 +176,29 @@ internal fun actionFetchSummaryToast(
             )
         }
     }
-})
+}
 
-/** One added root (optional replace) for the summary toast. */
-data class AddedProjectLine(
-    val project: Project,
-    val replacing: Project? = null,
-)
+@Composable
+private fun ExportedToast(toast: AppToast.Exported) {
+    Box(Modifier.padding(16.dp).width(300.dp)) {
+        Column {
+            Text("[${toast.profileName} profile]", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("exported to '${toast.filePath}'", style = JewelTheme.consoleTextStyle)
+            Text(" (${toast.fileSize}) in ${toast.duration}")
+            Spacer(Modifier.height(8.dp))
+            DefaultButton(onClick = {
+                FileKit.openFileWithDefaultApplication(PlatformFile(toast.directory))
+            }) {
+                Text("Open")
+            }
+        }
+    }
+}
 
-/**
- * Modal-style summary: title + [ProjectRef] rows (same visual language as add/remove review).
- */
-internal fun actionAddedToast(lines: List<AddedProjectLine>) = ToastData(content = {
-    if (lines.isEmpty()) return@ToastData
+@Composable
+private fun AddedToast(lines: List<AddedProjectLine>) {
+    if (lines.isEmpty()) return
     Column(
         Modifier
             .padding(16.dp)
@@ -150,10 +229,11 @@ internal fun actionAddedToast(lines: List<AddedProjectLine>) = ToastData(content
             }
         }
     }
-})
+}
 
-internal fun actionRemovedToast(projects: List<Project>) = ToastData(content = {
-    if (projects.isEmpty()) return@ToastData
+@Composable
+private fun RemovedToast(projects: List<Project>) {
+    if (projects.isEmpty()) return
     Column(
         Modifier
             .padding(16.dp)
@@ -172,4 +252,4 @@ internal fun actionRemovedToast(projects: List<Project>) = ToastData(content = {
             ProjectRef(project, fontSize = 12.sp, iconSize = 14.dp)
         }
     }
-})
+}

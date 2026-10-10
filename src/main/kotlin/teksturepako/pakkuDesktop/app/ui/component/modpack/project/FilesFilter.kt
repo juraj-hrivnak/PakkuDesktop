@@ -39,7 +39,7 @@ import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.packFolderKeys
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import kotlin.io.path.Path
 import kotlin.io.path.notExists
@@ -48,7 +48,7 @@ import kotlin.io.path.notExists
 @Composable
 fun FilesFilter(
     publish: (ModpackMsg) -> Unit,
-    model: ModpackModel,
+    model: FilesTabModel,
     focusRequester: FocusRequester,
 ) {
     val textFieldState = rememberTextFieldState(model.filesFilterText)

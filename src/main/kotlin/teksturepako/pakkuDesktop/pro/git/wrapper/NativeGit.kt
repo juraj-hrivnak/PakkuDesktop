@@ -11,9 +11,11 @@ import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
+import kotlinx.collections.immutable.toPersistentList
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
 import java.io.File
 import java.nio.file.Path
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Unified API for all native git operations. All git process execution goes through [run].
@@ -41,13 +43,13 @@ object NativeGit {
     /**
      * Builds [GitState] purely from native git commands.
      */
-    fun buildState(workDir: File, preserve: GitState): GitState = preserve.copy(
+    suspend fun buildState(workDir: File, preserve: GitState): GitState = preserve.copy(
         branches = readBranches(workDir),
         outgoingCommits = readOutgoingCommits(workDir),
-        gitFiles = parseGitStatus(workDir),
+        gitFiles = parseGitStatus(workDir).toPersistentList(),
     )
 
-    private fun parseGitStatus(workDir: File): List<GitFile> {
+    private suspend fun parseGitStatus(workDir: File): List<GitFile> {
         // -uall expands untracked directories into individual files so the tree
         // builder never receives a bare "dir/" path that would be mis-classified
         // as a file and crash on diff.
@@ -85,7 +87,7 @@ object NativeGit {
         }
     }
 
-    private fun readBranches(workDir: File): Set<GitBranch> {
+    private suspend fun readBranches(workDir: File): Set<GitBranch> {
         val currentBranch = run(workDir, "branch", "--show-current")?.trim().orEmpty()
         val output = run(workDir, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes")
             ?: return emptySet()
@@ -103,7 +105,7 @@ object NativeGit {
             }.toSet()
     }
 
-    private fun readOutgoingCommits(workDir: File): Set<GitCommit> {
+    private suspend fun readOutgoingCommits(workDir: File): Set<GitCommit> {
         // `@{u}` fails gracefully when no upstream is configured — run returns null/empty.
         val output = run(workDir, "log", "@{u}..HEAD", "--format=%h %s") ?: return emptySet()
         return output.lineSequence()
@@ -122,7 +124,7 @@ object NativeGit {
      * Computes the diff for [gitFile] against HEAD using `git diff`.
      * Untracked files are rendered as fully-added new files.
      */
-    fun computeDiff(workDir: File, gitFile: GitFile): DiffContent {
+    suspend fun computeDiff(workDir: File, gitFile: GitFile): DiffContent {
         val path = gitFile.path
         if (gitFile.status is GitChange.Untracked) return untrackedAsNewFile(workDir, path)
         val output = run(workDir, "diff", "HEAD", files = arrayOf(path))
@@ -189,24 +191,22 @@ object NativeGit {
      * Clones [url] into [destDir] (created as the repository root).
      * Runs `git clone <url> <destDir.name>` in the parent directory.
      */
-    fun clone(url: String, destDir: File): Result<File> = runCatching {
+    suspend fun clone(url: String, destDir: File): Result<File> = runCatching {
         require(url.isNotBlank()) { "Clone URL is blank" }
         val parent = destDir.parentFile ?: error("Invalid destination: $destDir")
         parent.mkdirs()
         require(!destDir.exists() || destDir.list().isNullOrEmpty()) {
             "Destination already exists and is not empty: $destDir"
         }
-        val proc = ProcessBuilder("git", "clone", url, destDir.name)
+        val (code, output) = ProcessBuilder("git", "clone", url, destDir.name)
             .directory(parent)
             .redirectErrorStream(true)
-            .start()
-        val output = proc.inputStream.bufferedReader().readText()
-        val code = proc.waitFor()
+            .runCapturing()
         check(code == 0) { output.ifBlank { "git clone failed with exit code $code" } }
         destDir
-    }
+    }.onFailure { if (it is CancellationException) throw it }
 
-    fun run(workDir: File, vararg args: String, files: Array<out String> = emptyArray()): String? = try {
+    suspend fun run(workDir: File, vararg args: String, files: Array<out String> = emptyArray()): String? = try {
         val root = workDir.canonicalFile
         val f = files.map { rel ->
             val resolved = File(root, rel).canonicalFile
@@ -216,13 +216,13 @@ object NativeGit {
             rel
         }
         val allArgs = if (f.isEmpty()) args.toList() else args.toList() + "--" + f
-        val proc = ProcessBuilder("git", *allArgs.toTypedArray())
+        ProcessBuilder("git", *allArgs.toTypedArray())
             .directory(root)
-            .redirectErrorStream(false)
-            .start()
-        val output = proc.inputStream.bufferedReader().readText()
-        proc.waitFor()
-        output
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .runCapturing()
+            .second
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Exception) {
         null
     }

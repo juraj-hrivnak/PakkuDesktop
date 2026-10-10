@@ -22,13 +22,12 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FloatingActionIcon
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.app.ui.model.gitBusy
 
 @Composable
-fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
-    val busy = model.gitBusy()
+fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabModel) {
+    val busy = model.gitBusy
     val canPull = !busy
     val canPush = !busy && model.git.outgoingCommits.isNotEmpty()
     val canCommit = !busy && model.git.selectedFiles.isNotEmpty()

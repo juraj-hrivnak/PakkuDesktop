@@ -22,11 +22,11 @@ import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun BoxScope.FilesFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun BoxScope.FilesFloatingActions(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     val busy = model.actionName != null
     val canRun = !busy && model.lockFile?.get() != null
     val scanning = model.actionName == "Scanning files"

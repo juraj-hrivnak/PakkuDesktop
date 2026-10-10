@@ -34,11 +34,11 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
 @Composable
-fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel) {
     val config = model.configFile?.get() ?: return
     val lock = model.lockFile?.get() ?: return
 

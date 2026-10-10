@@ -22,14 +22,13 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ToastHost(
-    toasts: MutableState<List<ToastData>>,
+    toasts: List<ToastData>,
     modifier: Modifier = Modifier,
     alignment: Alignment = Alignment.TopCenter,
     spacing: Dp = 4.dp,
-    /** Called when a toast is dismissed by the user or after its duration. */
-    onDismiss: (id: String) -> Unit = { id ->
-        toasts.value = toasts.value.filterNot { it.id == id }
-    },
+    /** Called when a toast is dismissed by the user or after its duration; remove it from [toasts]. */
+    onDismiss: (id: String) -> Unit,
+    content: @Composable BoxScope.(ToastBody) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -47,7 +46,7 @@ fun ToastHost(
                 .padding(8.dp)
                 .verticalScroll(scrollState)
         ) {
-            toasts.value.forEachIndexed { index, toast ->
+            toasts.forEachIndexed { index, toast ->
                 key(toast.id) {
                     var appeared by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
@@ -89,7 +88,8 @@ fun ToastHost(
                                             delay(150)
                                             onDismiss(id)
                                         }
-                                    }
+                                    },
+                                    content = content,
                                 )
                             }
                     }

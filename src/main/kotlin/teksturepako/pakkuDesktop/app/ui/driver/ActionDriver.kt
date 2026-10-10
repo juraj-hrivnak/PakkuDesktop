@@ -16,6 +16,7 @@ import com.github.michaelbull.result.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -41,6 +42,8 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
+import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
+import teksturepako.pakkuDesktop.elm.conflatedPublisher
 
 // -- CompositionLocal --
 
@@ -127,29 +130,37 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val overrides = latestModel.modpack.selectedFetchOverridePaths()
         val cleanup = latestModel.modpack.selectedFetchCleanupPaths()
         launchAction("Fetching") {
-            fetchApplySuspend(
-                lockFile = lockFile,
-                configFile = configFile,
-                downloadProjects = downloads,
-                overrideRelativePaths = overrides,
-                cleanAbsolutePaths = cleanup,
-                onProgress = { completed, total ->
-                    withContext(Dispatchers.Main) {
-                        latestPublish(AppMsg.Modpack(ModpackMsg.FetchProgressUpdated(completed, total)))
-                    }
-                },
-                onPhase = { name ->
-                    withContext(Dispatchers.Main) {
-                        latestPublish(AppMsg.Modpack(ModpackMsg.ActionRenamed(name)))
-                    }
-                },
-            ) { toast ->
-                withContext(Dispatchers.Main) {
-                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+            coroutineScope {
+                val (fetchProgressCh, fetchProgressJob) = conflatedPublisher<Pair<Long, Long>>(PROGRESS_PUBLISH_INTERVAL_MS) { (completed, total) ->
+                    latestPublish(AppMsg.Modpack(ModpackMsg.FetchProgressUpdated(completed, total)))
                 }
-            }
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.FilesPreviewCleared))
+                try {
+                    fetchApplySuspend(
+                        lockFile = lockFile,
+                        configFile = configFile,
+                        downloadProjects = downloads,
+                        overrideRelativePaths = overrides,
+                        cleanAbsolutePaths = cleanup,
+                        onProgress = { completed, total ->
+                            fetchProgressCh.trySend(completed to total)
+                        },
+                        onPhase = { name ->
+                            withContext(Dispatchers.Main) {
+                                latestPublish(AppMsg.Modpack(ModpackMsg.ActionRenamed(name)))
+                            }
+                        },
+                    ) { toast ->
+                        withContext(Dispatchers.Main) {
+                            latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                        }
+                    }
+                    withContext(Dispatchers.Main) {
+                        latestPublish(AppMsg.Modpack(ModpackMsg.FilesPreviewCleared))
+                    }
+                } finally {
+                    fetchProgressCh.close()
+                    fetchProgressJob.join()
+                }
             }
         }
     }
@@ -271,30 +282,40 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
         try {
             val plan = withContext(Dispatchers.IO) {
-                val onProgress: suspend (String) -> Unit = { status ->
-                    withContext(Dispatchers.Main) {
-                        latestPublish(AppMsg.Modpack(ModpackMsg.AddResolveProgress(status)))
+                coroutineScope {
+                    val (resolveProgressCh, resolveProgressJob) = conflatedPublisher<String>(PROGRESS_PUBLISH_INTERVAL_MS) { status ->
+                        withContext(Dispatchers.Main) {
+                            latestPublish(AppMsg.Modpack(ModpackMsg.AddResolveProgress(status)))
+                        }
                     }
-                }
-                val onToast: suspend (teksturepako.pakkuDesktop.pkui.component.toast.ToastData) -> Unit = { toast ->
-                    withContext(Dispatchers.Main) {
-                        latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                    val onProgress: suspend (String) -> Unit = { status ->
+                        resolveProgressCh.trySend(status)
                     }
-                }
-                if (projects != null) {
-                    buildAdditionPlan(
-                        lockFile = lockFile,
-                        projects = projects,
-                        onProgress = onProgress,
-                        onToast = onToast,
-                    )
-                } else {
-                    buildAdditionPlan(
-                        lockFile = lockFile,
-                        query = query.orEmpty(),
-                        onProgress = onProgress,
-                        onToast = onToast,
-                    )
+                    val onToast: suspend (teksturepako.pakkuDesktop.pkui.component.toast.ToastData) -> Unit = { toast ->
+                        withContext(Dispatchers.Main) {
+                            latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
+                        }
+                    }
+                    try {
+                        if (projects != null) {
+                            buildAdditionPlan(
+                                lockFile = lockFile,
+                                projects = projects,
+                                onProgress = onProgress,
+                                onToast = onToast,
+                            )
+                        } else {
+                            buildAdditionPlan(
+                                lockFile = lockFile,
+                                query = query.orEmpty(),
+                                onProgress = onProgress,
+                                onToast = onToast,
+                            )
+                        }
+                    } finally {
+                        resolveProgressCh.close()
+                        resolveProgressJob.join()
+                    }
                 }
             }
             withContext(Dispatchers.Main) {

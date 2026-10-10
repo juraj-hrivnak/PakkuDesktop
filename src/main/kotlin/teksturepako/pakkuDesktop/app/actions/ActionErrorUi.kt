@@ -13,6 +13,7 @@ import teksturepako.pakku.api.actions.errors.CouldNotRead
 import teksturepako.pakku.api.actions.errors.CouldNotSave
 import teksturepako.pakku.api.actions.errors.DirectoryNotEmpty
 import teksturepako.pakku.api.actions.errors.DownloadFailed
+import teksturepako.pakku.api.actions.errors.ErrorSeverity
 import teksturepako.pakku.api.actions.errors.ErrorWhileReading
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakku.api.actions.errors.HashMismatch
@@ -28,6 +29,24 @@ import teksturepako.pakku.api.actions.errors.ProjDiffTypes
 import teksturepako.pakku.api.actions.errors.ProjNotFound
 import teksturepako.pakku.api.actions.errors.ProjRequiredBy
 import teksturepako.pakku.api.actions.errors.VersionsDoNotMatch
+import teksturepako.pakku.api.http.ConnectionError
+import teksturepako.pakku.api.http.RequestError
+
+/** Host-owned stand-in for a Pakku error that would otherwise pin a [Throwable] or an HTTP response. */
+private class DetachedActionError(
+    override val rawMessage: String,
+    override val severity: ErrorSeverity,
+) : ActionError()
+
+/**
+ * Copy safe to keep in the model: [ConnectionError] (holds the exception) and [RequestError]
+ * (holds the `HttpResponse`) are replaced by their message and severity.
+ */
+fun ActionError.detached(): ActionError = when (this) {
+    is ConnectionError, is RequestError -> DetachedActionError(rawMessage, severity)
+    is MultipleErrors -> MultipleErrors(*errors.map { it.detached() }.toTypedArray())
+    else -> this
+}
 
 /**
  * Plain-text fallback for toasts / logs. GUI should use [teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent].

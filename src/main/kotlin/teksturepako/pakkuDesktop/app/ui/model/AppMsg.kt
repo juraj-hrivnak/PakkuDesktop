@@ -5,6 +5,8 @@
 package teksturepako.pakkuDesktop.app.ui.model
 
 import teksturepako.pakku.api.actions.errors.ActionError
+import teksturepako.pakkuDesktop.app.data.HeapFootprint
+import teksturepako.pakkuDesktop.app.data.HeapHistogram
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
@@ -35,6 +37,10 @@ sealed interface AppMsg {
     // -- Dialog dismissals --
 
     data object HideSettings : AppMsg
+    data class SettingsTabSelected(val tab: SettingsTab) : AppMsg
+    data object HeapHistogramRequested : AppMsg
+    data class HeapHistogramLoaded(val histogram: HeapHistogram) : AppMsg
+    data class HeapFootprintSampled(val footprint: HeapFootprint, val action: String? = null) : AppMsg
     data object HideNewModpack : AppMsg
 
     /** credentialsDriver finished loading settings form values */

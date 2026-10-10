@@ -46,15 +46,15 @@ fun snapshotWindowData(windowState: WindowState) = WindowData(
 )
 
 /**
- * Decorated main window on the Nucleus Tao backend: loads saved [WindowData] once,
- * provides [LocalPakkuApplicationScope] / [LocalWindowState], and forwards native close
- * to the ELM [publish].
+ * Decorated main window on the Nucleus Tao backend: uses [initialWindowData] parsed once
+ * at startup, provides [LocalPakkuApplicationScope] / [LocalWindowState], and forwards
+ * native close to the ELM [publish].
  */
 fun mainWindowDriver(
     applicationScope: NucleusApplicationScope,
+    initialWindowData: WindowData,
     windowCloseMessage: AppMsg = AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)),
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
-    val initialWindowData = remember { WindowData.readOrNewBlocking() }
     val windowState = rememberWindowState(
         placement = initialWindowData.placement,
         isMinimized = false,

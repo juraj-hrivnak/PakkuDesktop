@@ -4,6 +4,10 @@
 
 package teksturepako.pakkuDesktop.app.data
 
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.mutate
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -18,7 +22,10 @@ import kotlin.io.path.Path
 @Serializable
 data class ProfileData(
     @SerialName("current_profile") val currentProfile: Profile? = null,
-    @SerialName("recent_profiles") val recentProfiles: List<Profile> = listOf(),
+    /** at most [MAX_RECENT_PROFILES], newest by [Profile.lastOpened]; enforced in [cappedRecentProfiles] */
+    @SerialName("recent_profiles")
+    @Serializable(with = ProfileListSerializer::class)
+    val recentProfiles: PersistentList<Profile> = persistentListOf(),
     val theme: String = "Dark",
     @SerialName("ui_scale") val uiScale: Float = UI_SCALE_DEFAULT,
 
@@ -38,6 +45,26 @@ data class ProfileData(
     val intUiTheme
         get() = IntUiThemes.valueOf(this.theme)
 
+    /** Makes [profile] current and records it (and the previous current profile) in [recentProfiles]. */
+    fun withCurrentProfile(profile: Profile): ProfileData
+    {
+        val recents = recentProfiles.mutate { list ->
+            val existingIdx = list.indexOfFirst { it.path == profile.path }
+            if (existingIdx >= 0) list[existingIdx] = profile else list.add(profile)
+
+            if (currentProfile != null && list.none { it.path == currentProfile.path }) list.add(currentProfile)
+        }
+        return copy(currentProfile = profile, recentProfiles = recents).cappedRecentProfiles()
+    }
+
+    /** Drops oldest-opened profiles beyond [MAX_RECENT_PROFILES]. Same instance if already within the cap. */
+    fun cappedRecentProfiles(): ProfileData
+    {
+        if (recentProfiles.size <= MAX_RECENT_PROFILES) return this
+        val newest = recentProfiles.sortedByDescending { it.lastOpened }.take(MAX_RECENT_PROFILES)
+        return copy(recentProfiles = newest.toPersistentList())
+    }
+
     data class CloseDialogData(
         val onClose: suspend () -> Unit,
         val forceClose: Boolean = false
@@ -49,6 +76,7 @@ data class ProfileData(
         const val UI_SCALE_MIN = 0.75f
         const val UI_SCALE_MAX = 2f
         const val UI_SCALE_DEFAULT = 1f
+        const val MAX_RECENT_PROFILES = 20
         val UI_SCALE_PRESETS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
         fun coerceUiScale(value: Float): Float = value.coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
@@ -57,7 +85,9 @@ data class ProfileData(
         {
             val text = readPathTextOrNull(Path(FILE_NAME)) ?: return ProfileData()
 
-            return runCatching { jsonEncodeDefaults.decodeFromString<ProfileData>(text) }.getOrNull() ?: ProfileData()
+            return runCatching { jsonEncodeDefaults.decodeFromString<ProfileData>(text) }.getOrNull()
+                ?.cappedRecentProfiles()
+                ?: ProfileData()
         }
     }
 

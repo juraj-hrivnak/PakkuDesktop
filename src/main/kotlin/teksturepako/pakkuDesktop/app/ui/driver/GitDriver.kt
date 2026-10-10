@@ -4,28 +4,27 @@
 
 package teksturepako.pakkuDesktop.app.ui.driver
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.jewel.ui.component.Text
-import teksturepako.pakku.api.data.workingPath
+import teksturepako.pakkuDesktop.app.actions.actionInfoToast
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
-import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
+import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
+import teksturepako.pakkuDesktop.elm.conflatedPublisher
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitEvent
 import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
 import teksturepako.pakkuDesktop.pro.git.wrapper.NativeGit
+import teksturepako.pakkuDesktop.pro.git.wrapper.awaitOrDestroy
+import teksturepako.pakkuDesktop.pro.git.wrapper.runCapturing
 import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
 import java.io.File
 
@@ -55,15 +54,7 @@ private class GitRepoHolder {
 
 private suspend fun gitToast(publish: (AppMsg) -> Unit, message: String) {
     withContext(Dispatchers.Main) {
-        publish(
-            AppMsg.Modpack(
-                ModpackMsg.ToastAdded(
-                    ToastData {
-                        Box(modifier = Modifier.padding(16.dp).width(300.dp)) { Text(message) }
-                    },
-                ),
-            ),
-        )
+        publish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast(message))))
     }
 }
 
@@ -91,40 +82,45 @@ private suspend fun runGitWithProgress(
     val proc = ProcessBuilder("git", *args)
         .directory(workDir)
         .start()
+    proc.outputStream.close()
 
     val stderrCapture = StringBuilder()
+    val (gitProgressCh, gitProgressJob) = conflatedPublisher<GitEvent.Progress?>(PROGRESS_PUBLISH_INTERVAL_MS) { event ->
+        withContext(Dispatchers.Main) {
+            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
+        }
+    }
 
     // Read stderr char-by-char so we catch both \n and \r progress updates.
     val stderrJob = launch(Dispatchers.IO) {
         val sb = StringBuilder()
         try {
-            val reader = proc.errorStream.bufferedReader()
-            var ch: Int
-            while (reader.read().also { ch = it } != -1) {
-                val c = ch.toChar()
-                if (c == '\r' || c == '\n') {
-                    val line = sb.toString().trim()
-                    sb.clear()
-                    if (line.isNotBlank()) {
-                        stderrCapture.append(line).append('\n')
-                        val m = GIT_PROGRESS_RE.find(line)
-                        if (m != null) {
-                            val current = m.groupValues[2].toIntOrNull()
-                            val total   = m.groupValues[3].toIntOrNull()
-                            if (current != null && total != null && total > 0) {
-                                val event = GitEvent.Progress(
-                                    operation = m.groupValues[1].trim(),
-                                    current = current,
-                                    total = total,
-                                )
-                                withContext(Dispatchers.Main) {
-                                    publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
+            proc.errorStream.bufferedReader().use { reader ->
+                var ch: Int
+                while (reader.read().also { ch = it } != -1) {
+                    val c = ch.toChar()
+                    if (c == '\r' || c == '\n') {
+                        val line = sb.toString().trim()
+                        sb.clear()
+                        if (line.isNotBlank()) {
+                            stderrCapture.append(line).append('\n')
+                            val m = GIT_PROGRESS_RE.find(line)
+                            if (m != null) {
+                                val current = m.groupValues[2].toIntOrNull()
+                                val total   = m.groupValues[3].toIntOrNull()
+                                if (current != null && total != null && total > 0) {
+                                    val event = GitEvent.Progress(
+                                        operation = m.groupValues[1].trim(),
+                                        current = current,
+                                        total = total,
+                                    )
+                                    gitProgressCh.trySend(event)
                                 }
                             }
                         }
+                    } else {
+                        sb.append(c)
                     }
-                } else {
-                    sb.append(c)
                 }
             }
         } catch (_: Exception) {}
@@ -132,17 +128,16 @@ private suspend fun runGitWithProgress(
 
     // Drain stdout to prevent the process from blocking on a full buffer.
     val stdoutJob = launch(Dispatchers.IO) {
-        proc.inputStream.bufferedReader().readText()
+        proc.inputStream.bufferedReader().use { it.readText() }
     }
 
-    val exitCode = proc.waitFor()
+    val exitCode = proc.awaitOrDestroy()
     stderrJob.join()
     stdoutJob.join()
 
-    // Clear any lingering progress indicator.
-    withContext(Dispatchers.Main) {
-        publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(null)))
-    }
+    gitProgressCh.trySend(null)
+    gitProgressCh.close()
+    gitProgressJob.join()
 
     exitCode to stderrCapture.toString()
 }
@@ -177,19 +172,16 @@ private suspend fun runCommit(publish: (AppMsg) -> Unit, workDir: File, gitState
             ProcessBuilder("git", "add", "--", file.path)
                 .directory(workDir)
                 .redirectErrorStream(true)
-                .start()
-                .waitFor()
+                .runCapturing()
         }
-        val proc = ProcessBuilder("git", "commit", "-m", gitState.commitMessage)
+        val (exitCode, output) = ProcessBuilder("git", "commit", "-m", gitState.commitMessage)
             .directory(workDir)
             .redirectErrorStream(true)
-            .start()
-        val output = proc.inputStream.bufferedReader().readText()
-        val exitCode = proc.waitFor()
+            .runCapturing()
         if (exitCode != 0) {
             // Roll back staged changes on failure.
             ProcessBuilder("git", "reset", "--mixed", "HEAD")
-                .directory(workDir).redirectErrorStream(true).start().waitFor()
+                .directory(workDir).redirectErrorStream(true).runCapturing()
             gitToast(publish, output.trim().ifEmpty { "Commit failed" })
         }
         exitCode == 0
@@ -205,15 +197,15 @@ private suspend fun runCheckout(publish: (AppMsg) -> Unit, workDir: File, branch
             val localName = branch.name.substringAfter('/', missingDelimiterValue = branch.name)
             // Try a plain checkout first in case the local branch already exists.
             val first = ProcessBuilder("git", "checkout", localName)
-                .directory(workDir).redirectErrorStream(true).start().waitFor()
+                .directory(workDir).redirectErrorStream(true).runCapturing().first
             if (first != 0) {
                 // Local branch doesn't exist yet — create it with remote tracking.
                 ProcessBuilder("git", "checkout", "-b", localName, "--track", branch.name)
-                    .directory(workDir).redirectErrorStream(true).start().waitFor()
+                    .directory(workDir).redirectErrorStream(true).runCapturing().first
             } else first
         } else {
             ProcessBuilder("git", "checkout", branch.name)
-                .directory(workDir).redirectErrorStream(true).start().waitFor()
+                .directory(workDir).redirectErrorStream(true).runCapturing().first
         }
         if (exitCode != 0) gitToast(publish, "Checkout failed")
     } catch (e: Exception) {
@@ -224,29 +216,37 @@ private suspend fun runCheckout(publish: (AppMsg) -> Unit, workDir: File, branch
 // -- Driver --
 
 val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
+    val latestModel by rememberUpdatedState(model)
     val holder = remember { GitRepoHolder() }
+    val modpackPath = model.profile.data.currentProfile?.path
 
-    LaunchedEffect(model.screen, model.modpack.loaded, workingPath) {
+    LaunchedEffect(model.screen, model.modpack.loaded, modpackPath) {
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) {
             holder.close()
             return@LaunchedEffect
         }
+        val path = modpackPath ?: run {
+            holder.close()
+            return@LaunchedEffect
+        }
         try {
-            holder.open(workingPath)
+            holder.open(path)
             val dir = holder.workDir ?: return@LaunchedEffect
+            val preserve = latestModel.modpack.git
             withContext(Dispatchers.IO) {
-                refreshGitState(publish, dir, model.modpack.git)
+                refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Failed to open repository")
         }
     }
 
-    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded, workingPath) {
+    LaunchedEffect(model.modpack.gitDiffPendingFile, model.screen, model.modpack.loaded, modpackPath) {
         val file = model.modpack.gitDiffPendingFile ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
+        val path = modpackPath ?: return@LaunchedEffect
         try {
-            holder.open(workingPath)
+            holder.open(path)
             val dir = holder.workDir ?: run {
                 publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
                 return@LaunchedEffect
@@ -263,10 +263,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitPull) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runPull(publish, dir)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
@@ -279,10 +281,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitPush) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runPush(publish, dir)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {
@@ -295,16 +299,18 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.modpack.wantsGitCommit) return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
+        val commitGit = model.modpack.git
         val commitOk = try {
             withContext(Dispatchers.IO) {
-                val ok = runCommit(publish, dir, preserve)
-                refreshGitState(publish, dir, preserve)
-                ok
+                runCommit(publish, dir, commitGit)
             }
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Commit failed")
             false
+        }
+        val preserve = latestModel.modpack.git
+        withContext(Dispatchers.IO) {
+            refreshGitState(publish, dir, preserve)
         }
         publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished(commitOk)))
     }
@@ -313,10 +319,12 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val branch = model.modpack.gitCheckoutBranch ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val dir = holder.workDir ?: return@LaunchedEffect
-        val preserve = model.modpack.git
         try {
             withContext(Dispatchers.IO) {
                 runCheckout(publish, dir, branch)
+            }
+            val preserve = latestModel.modpack.git
+            withContext(Dispatchers.IO) {
                 refreshGitState(publish, dir, preserve)
             }
         } catch (e: Exception) {

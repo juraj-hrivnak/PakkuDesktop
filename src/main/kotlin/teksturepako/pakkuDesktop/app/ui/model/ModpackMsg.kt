@@ -5,6 +5,10 @@
 package teksturepako.pakkuDesktop.app.ui.model
 
 import com.github.michaelbull.result.Result
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
@@ -167,14 +171,14 @@ data class AddDialogModel(
     val resolveStatus: String? = null,
     val plan: AdditionPlan? = null,
     /** Root project [teksturepako.pakkuDesktop.app.actions.uiKey]s (provider identity); deps follow. */
-    val acceptedRootIds: Set<String> = emptySet(),
+    val acceptedRootIds: PersistentSet<String> = persistentSetOf(),
     /** Non-null → ActionDriver builds addition plan from a typed query. */
     val pendingResolveQuery: String? = null,
     /**
      * Non-null → ActionDriver builds addition plan from already-resolved projects
      * (Files sync Add / Update). Skips the query field.
      */
-    val pendingResolveProjects: List<Project>? = null,
+    val pendingResolveProjects: PersistentList<Project>? = null,
     /** When false, Review cannot go back to [AddDialogPhase.Input] (sync-opened). */
     val allowInput: Boolean = true,
     /** Primary action verb in the shared add/update review dialog (`Add` or `Update`). */
@@ -193,9 +197,9 @@ data class RemoveDialogModel(
     val phase: RemoveDialogPhase = RemoveDialogPhase.Loading,
     val plan: RemovalPlan? = null,
     /** Selected root [uiKey]s. */
-    val acceptedProjectIds: Set<String> = emptySet(),
+    val acceptedProjectIds: PersistentSet<String> = persistentSetOf(),
     /** Individually chosen linked deps (CLI ynPrompt per dep). */
-    val acceptedDepIds: Set<String> = emptySet(),
+    val acceptedDepIds: PersistentSet<String> = persistentSetOf(),
     /** True → ProjectMutationDriver builds removal plan. */
     val wantsBuildPlan: Boolean = false,
 )

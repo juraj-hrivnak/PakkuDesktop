@@ -54,13 +54,13 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.elm.animatedColor
 
 @Composable
-fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
     val selectedCount = model.selectedProjectKeys.size
     val busy = model.actionName != null
     val checking = model.actionName == "Checking updates"

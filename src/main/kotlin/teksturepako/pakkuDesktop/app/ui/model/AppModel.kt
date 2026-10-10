@@ -6,6 +6,11 @@ package teksturepako.pakkuDesktop.app.ui.model
 
 import androidx.compose.runtime.Immutable
 import com.github.michaelbull.result.Result
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
@@ -14,6 +19,8 @@ import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.actions.AdditionPlan
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
+import teksturepako.pakkuDesktop.app.data.HeapFootprint
+import teksturepako.pakkuDesktop.app.data.HeapHistogram
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
@@ -39,6 +46,7 @@ data class AppModel(
     val welcome: WelcomeModel = welcomeComponent.init(),
     val modpack: ModpackModel = modpackComponent.init(),
     val showSettings: Boolean = false,
+    val settingsTab: SettingsTab = SettingsTab.General,
     val showNewModpack: Boolean = false,
     val showCloneDialog: Boolean = false,
     val closeDialog: CloseDialogRequest? = null,
@@ -62,6 +70,12 @@ data class AppModel(
     val pendingCredentialsUpdate: CredentialsUpdateRequest? = null,
     /** settings save status text */
     val credentialsStatus: String? = null,
+    /** settings Heap tab: take a class histogram; cleared by heapHistogramDriver */
+    val wantsHeapHistogram: Boolean = false,
+    /** last histogram; replaced on each take */
+    val heapHistogram: HeapHistogram? = null,
+    /** process RSS + heap used; polled in the background for the life of the app */
+    val heapFootprint: HeapFootprint? = null,
     /** clone in flight */
     val pendingClone: CloneRequest? = null,
     /** clone parent directory (Browse…); set by directoryPickerDriver */
@@ -71,6 +85,8 @@ data class AppModel(
     /** clone error/status; null when idle */
     val cloneStatus: String? = null,
 )
+
+enum class SettingsTab { General, Heap }
 
 data class SettingsCredentials(
     val curseForgeApiKey: String,
@@ -130,6 +146,9 @@ sealed interface CloseDialogRequest {
 
 // -- Modpack sub-model --
 
+/** Upper bound on [ModpackModel.toasts]; [ModpackMsg.ToastAdded] drops the oldest beyond it. */
+const val MAX_TOASTS = 5
+
 @Immutable
 data class ModpackModel(
     val lockFile: Result<LockFile, ActionError>? = null,
@@ -144,7 +163,7 @@ data class ModpackModel(
     val editingModpack: Boolean = false,
 
     /** [teksturepako.pakkuDesktop.app.actions.uiKey] for each selected project */
-    val selectedProjectKeys: Set<String> = emptySet(),
+    val selectedProjectKeys: PersistentSet<String> = persistentSetOf(),
 
     /**
      * Last used Projects FAB (Add / Update / Remove), like Jewel’s default button —
@@ -157,13 +176,13 @@ data class ModpackModel(
     val sortOrder: SortOrder = SortOrder.Name(ascending = true),
     val projectsFilterText: String = "",
     /** Empty = no type filter; otherwise project type must be in the set. */
-    val filterTypes: Set<ProjectType> = emptySet(),
+    val filterTypes: PersistentSet<ProjectType> = persistentSetOf(),
     /** Empty = no side filter; otherwise project side must be in the set (null sides ignored unless [filterMissingSide]). */
-    val filterSides: Set<ProjectSide> = emptySet(),
+    val filterSides: PersistentSet<ProjectSide> = persistentSetOf(),
     /** Include projects with [teksturepako.pakku.api.projects.Project.side] == null. */
     val filterMissingSide: Boolean = false,
     /** Empty = no provider filter; values are provider [serialName]s. */
-    val filterProviders: Set<String> = emptySet(),
+    val filterProviders: PersistentSet<String> = persistentSetOf(),
     /**
      * null = no redistributable filter;
      * true = only redistributable; false = only not redistributable.
@@ -180,7 +199,7 @@ data class ModpackModel(
      * Last status check: [teksturepako.pakkuDesktop.app.actions.uiKey] → update info.
      * null = not checked; empty = all up to date.
      */
-    val updatePreviews: Map<String, ProjectUpdateInfo>? = null,
+    val updatePreviews: PersistentMap<String, ProjectUpdateInfo>? = null,
 
     val actionName: String? = null,
     val wantsTerminateAction: Boolean = false,
@@ -192,18 +211,18 @@ data class ModpackModel(
     val wantsSyncDetect: Boolean = false,
     val pendingSyncApply: Boolean = false,
     val filesPreviewMode: FilesPreviewMode = FilesPreviewMode.None,
-    val fetchDownloads: List<FetchDownloadPreview> = emptyList(),
-    val fetchOverrides: List<FetchOverridePreview> = emptyList(),
+    val fetchDownloads: PersistentList<FetchDownloadPreview> = persistentListOf(),
+    val fetchOverrides: PersistentList<FetchOverridePreview> = persistentListOf(),
     /** All `.pakku` manual override files (shown on the Files tab even when already copied). */
-    val manualOverrides: List<FetchOverridePreview> = emptyList(),
-    val fetchCleanup: List<FetchCleanupPreview> = emptyList(),
-    val filesHashMismatchKeys: Set<String> = emptySet(),
-    val syncAdded: List<Project> = emptyList(),
-    val syncRemoved: List<Project> = emptyList(),
-    val syncUpdated: List<Project> = emptyList(),
+    val manualOverrides: PersistentList<FetchOverridePreview> = persistentListOf(),
+    val fetchCleanup: PersistentList<FetchCleanupPreview> = persistentListOf(),
+    val filesHashMismatchKeys: PersistentSet<String> = persistentSetOf(),
+    val syncAdded: PersistentList<Project> = persistentListOf(),
+    val syncRemoved: PersistentList<Project> = persistentListOf(),
+    val syncUpdated: PersistentList<Project> = persistentListOf(),
     val filesFilterText: String = "",
-    val filesFilterFolders: Set<String> = emptySet(),
-    val filesFilterChangeKinds: Set<FilesChangeKind> = emptySet(),
+    val filesFilterFolders: PersistentSet<String> = persistentSetOf(),
+    val filesFilterChangeKinds: PersistentSet<FilesChangeKind> = persistentSetOf(),
     val filesFilterFocused: Boolean = false,
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
@@ -214,7 +233,7 @@ data class ModpackModel(
     val pendingAddQuery: String? = null,
     val pendingAdditionPlan: AdditionPlan? = null,
     /** selected [teksturepako.pakkuDesktop.app.actions.uiKey]s (+ recommended orphaned deps on apply) */
-    val pendingRemovalKeys: Set<String>? = null,
+    val pendingRemovalKeys: PersistentSet<String>? = null,
     val pendingRemovalPlan: RemovalPlan? = null,
     val wantsInit: Boolean = false,
 
@@ -225,7 +244,8 @@ data class ModpackModel(
     /** cleared by projectMutationDriver */
     val pendingInitSpec: InitSpec? = null,
 
-    val toasts: List<ToastData> = emptyList(),
+    /** oldest first; at most [MAX_TOASTS], enforced in update */
+    val toasts: PersistentList<ToastData> = persistentListOf(),
 
     /** cleared by projectEditDriver when done */
     val pendingPropertyWrite: PropertyWrite? = null,

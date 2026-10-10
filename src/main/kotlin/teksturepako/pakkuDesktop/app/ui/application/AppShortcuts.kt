@@ -24,6 +24,7 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
+import teksturepako.pakkuDesktop.elm.RecomposeCounter
 
 /**
  * Cross-platform in-window accelerators for Pakku Desktop (Tao — no AWT MenuBar).
@@ -180,6 +181,16 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
         {
             publish(AppMsg.RequestCloseDialog(CloseDialogRequest.Quit()))
             true
+        }
+        // Ctrl/Cmd+Shift+R — print and reset recomposition counts (-Dpakku.debug.recompose)
+        Key.R ->
+        {
+            if (event.isShiftPressed && RecomposeCounter.enabled)
+            {
+                RecomposeCounter.printAndReset()
+                true
+            }
+            else false
         }
         else -> false
     }

@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.toProjectsUiData
+import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
@@ -22,6 +23,7 @@ import teksturepako.pakku.api.actions.errors.FileNotFound
 import com.github.michaelbull.result.getError
 import teksturepako.pakkuDesktop.elm.animatedRoute
 import teksturepako.pakkuDesktop.elm.component
+import teksturepako.pakkuDesktop.elm.withChild
 
 private fun AppModel.seededModpack(
     dropdown: ModpackDropdownModel = ModpackDropdownModel(profileData = profile.data),
@@ -32,10 +34,11 @@ private fun AppModel.syncProjectsUiFromModpack(): AppModel {
     return if (data == projectsUi) this else copy(projectsUi = data)
 }
 
-private fun AppModel.commitModpack(newModpack: ModpackModel, persistListPrefs: Boolean): AppModel {
-    val withModpack = copy(modpack = newModpack)
-    return if (persistListPrefs) withModpack.syncProjectsUiFromModpack() else withModpack
-}
+private fun AppModel.commitModpack(newModpack: ModpackModel, persistListPrefs: Boolean): AppModel =
+    withChild(modpack, newModpack) {
+        val withModpack = copy(modpack = it)
+        if (persistListPrefs) withModpack.syncProjectsUiFromModpack() else withModpack
+    }
 
 private fun ModpackMsg.persistsProjectsListPrefs(): Boolean = when (this) {
     is ModpackMsg.SortOrderChanged,
@@ -52,15 +55,16 @@ private fun ModpackMsg.persistsProjectsListPrefs(): Boolean = when (this) {
 
 // -- appUpdate handlers --
 
-private fun AppModel.syncDropdownProfileData(data: ProfileData): AppModel = copy(
-    welcome = welcome.copy(
-        profileData = data,
-        dropdown = welcome.dropdown.copy(profileData = data),
-    ),
-    modpack = modpack.copy(
-        modpackDropdown = modpack.modpackDropdown.copy(profileData = data),
-    ),
-)
+private fun AppModel.syncDropdownProfileData(data: ProfileData): AppModel {
+    val dropdown = welcome.dropdown.withChild(welcome.dropdown.profileData, data) { copy(profileData = it) }
+    val newWelcome = welcome
+        .withChild(welcome.profileData, data) { copy(profileData = it) }
+        .withChild(welcome.dropdown, dropdown) { copy(dropdown = it) }
+    val modpackDropdown = modpack.modpackDropdown
+        .withChild(modpack.modpackDropdown.profileData, data) { copy(profileData = it) }
+    return withChild(welcome, newWelcome) { copy(welcome = it) }
+        .withChild(modpack.modpackDropdown, modpackDropdown) { copy(modpack = modpack.copy(modpackDropdown = it)) }
+}
 
 private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
     is AppMsg.ProfileLoaded -> {
@@ -139,7 +143,7 @@ private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when 
     AppMsg.DismissCloseDialog    -> model.copy(closeDialog = null, pendingCloseAfterTerminate = null)
 
     AppMsg.ConfirmCloseDialog -> {
-        val req = model.closeDialog ?: return model.copy(closeDialog = null)
+        val req = model.closeDialog ?: return model
         if (model.modpack.actionName != null) {
             // Terminate first; apply close after ActionFinished.
             model.copy(
@@ -157,28 +161,32 @@ private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when 
 
 private fun AppModel.openSettings(): AppModel = copy(
     showSettings = true,
+    settingsTab = SettingsTab.General,
     wantsLoadCredentials = true,
     settingsCredentials = null,
     credentialsStatus = null,
+    wantsHeapHistogram = false,
 )
 
 private fun AppModel.closeSettings(): AppModel = copy(
     showSettings = false,
+    settingsTab = SettingsTab.General,
     wantsLoadCredentials = false,
     settingsCredentials = null,
     credentialsStatus = null,
     pendingCredentialsUpdate = null,
+    wantsHeapHistogram = false,
 )
 
 private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
     val newWelcome = welcomeComponent.update(msg.msg, model.welcome)
+    val base = model.withChild(model.welcome, newWelcome) { copy(welcome = it) }
     return when (msg.msg) {
-        WelcomeMsg.ShowSettings   -> model.copy(welcome = newWelcome).openSettings()
-        WelcomeMsg.ShowNewModpack -> model.copy(welcome = newWelcome, showNewModpack = true)
+        WelcomeMsg.ShowSettings   -> base.openSettings()
+        WelcomeMsg.ShowNewModpack -> base.copy(showNewModpack = true)
         is WelcomeMsg.DirectoryPicked ->
-            handleDirectoryPicked(msg.msg.path, model).copy(welcome = newWelcome)
+            handleDirectoryPicked(msg.msg.path, base)
         is WelcomeMsg.WelcomeDropdown -> {
-            val base = model.copy(welcome = newWelcome)
             when (val inner = msg.msg.msg) {
                 WelcomeDropdownMsg.NewModpack ->
                     base.copy(showNewModpack = true)
@@ -301,7 +309,31 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
 
     // -- Dialog dismissals --
     AppMsg.HideSettings              -> model.closeSettings()
-    AppMsg.HideNewModpack            -> model.copy(showNewModpack = false)
+    is AppMsg.SettingsTabSelected    ->
+        if (model.settingsTab == msg.tab) model else model.copy(settingsTab = msg.tab)
+    AppMsg.HeapHistogramRequested    ->
+        if (model.wantsHeapHistogram) model else model.copy(wantsHeapHistogram = true)
+    is AppMsg.HeapHistogramLoaded    -> model.copy(
+        wantsHeapHistogram = false,
+        heapHistogram = msg.histogram,
+    )
+    is AppMsg.HeapFootprintSampled   -> {
+        val prev = model.heapFootprint
+        val next = msg.footprint
+        val lastAction = prev?.history?.lastOrNull()?.action
+        if (
+            prev != null &&
+            prev.rssBytes == next.rssBytes &&
+            prev.heapUsedBytes == next.heapUsedBytes &&
+            lastAction == msg.action
+        ) {
+            model
+        } else {
+            model.copy(heapFootprint = next.withHistoryFrom(prev, msg.action))
+        }
+    }
+    AppMsg.HideNewModpack            ->
+        if (!model.showNewModpack) model else model.copy(showNewModpack = false)
     AppMsg.ShowCloneDialog           -> model.copy(
         showCloneDialog = true,
         cloneStatus = null,
@@ -388,14 +420,11 @@ fun appUpdate(msg: AppMsg, model: AppModel): AppModel = when (msg) {
 
 // -- appComponent --
 
-val appComponent = component(
-    init = run {
-        val projectsUi = ProjectsUiData.readOrNewBlocking()
-        AppModel(
-            projectsUi = projectsUi,
-            modpack = ModpackModel().withProjectsUi(projectsUi),
-        )
-    },
+fun appComponent(initialProjectsUi: ProjectsUiData) = component(
+    init = AppModel(
+        projectsUi = initialProjectsUi,
+        modpack = ModpackModel().withProjectsUi(initialProjectsUi),
+    ),
     update = ::appUpdate,
     view = { publish, model ->
         CloseDialog(publish, model)

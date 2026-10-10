@@ -15,6 +15,11 @@ kotlin {
     jvmToolchain(25)
 }
 
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_compiler")
+}
+
 group = "teksturepako"
 version = "1.0"
 
@@ -106,6 +111,7 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.collections.immutable)
 
     // File Kit (native dialogs — required on Tao; no AWT JFileChooser)
     implementation(libs.filekit.core)
@@ -113,6 +119,14 @@ dependencies {
 
     // Logging
     implementation(libs.klogging)
+
+    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(compose.desktop.uiTestJUnit4)
+}
+
+tasks.test {
+    useJUnit()
 }
 
 nucleus.application {

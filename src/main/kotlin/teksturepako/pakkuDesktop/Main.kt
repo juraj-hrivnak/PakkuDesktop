@@ -6,10 +6,11 @@ package teksturepako.pakkuDesktop
 
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
+import androidx.compose.runtime.remember
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.application.nucleusApplication
 import io.github.vinceglb.filekit.FileKit
-import io.klogging.config.ANSI_CONSOLE
+import io.klogging.config.ANSI_INFO
 import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
 import io.klogging.sending.STDOUT
@@ -17,6 +18,8 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
+import teksturepako.pakkuDesktop.app.data.ProjectsUiData
+import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
@@ -31,7 +34,7 @@ fun main() {
     println(System.getenv("LD_LIBRARY_PATH"))
 
     loggingConfiguration {
-        ANSI_CONSOLE()
+        ANSI_INFO()
         sink(
             "console",
             RenderPattern("%-11t{LOCAL_TIME} %-5v{COLOUR} [%-10c] - %30l - %m %i%s"),
@@ -50,12 +53,14 @@ fun main() {
         withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
     }
 
+    val initialWindowData = runBlocking { WindowData.readOrNew() }
+    val rootComponent = appComponent(initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() })
+
     nucleusApplication(backend = NucleusBackend.Tao) {
-        run(
-            appComponent,
-            drivers = listOf(
+        val drivers = remember {
+            listOf(
                 themeDriver,
-                mainWindowDriver(applicationScope = this),
+                mainWindowDriver(applicationScope = this, initialWindowData = initialWindowData),
                 uiScaleDriver,
                 themedBoxDriver,
                 clipboardDriver,
@@ -68,6 +73,7 @@ fun main() {
                         exitApplication()
                         kotlin.system.exitProcess(0)
                     },
+                    initialWindowData = initialWindowData,
                 ),
                 directoryPickerDriver(),
                 licenseDriver,
@@ -76,7 +82,10 @@ fun main() {
                 projectMutationDriver,
                 credentialsDriver,
                 cloneDriver,
-            ),
-        )
+                heapHistogramDriver,
+                heapFootprintDriver,
+            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled })
+        }
+        run(rootComponent, drivers = drivers)
     }
 }

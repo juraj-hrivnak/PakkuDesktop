@@ -4,20 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.actions
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.getOrElse
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.FileKitOpenFileSettings
-import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
 import io.klogging.logger
 import kotlinx.coroutines.joinAll
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.AlreadyExists
 import teksturepako.pakku.api.actions.export.ExportProfile
@@ -62,23 +51,15 @@ suspend fun exportSuspend(
             val filePath = Path(workingPath).relativize(path).pathString
             logger.info { "[${profile.name} profile] exported to '$filePath' ($fileSize) in ${duration.shortForm()}" }
 
-            onToast(ToastData(content = {
-                Box(Modifier.padding(16.dp).width(300.dp)) {
-                    Column {
-                        Text("[${profile.name} profile]", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Text("exported to '$filePath'", style = JewelTheme.consoleTextStyle)
-                        Text(" ($fileSize) in ${duration.shortForm()}")
-                        Spacer(Modifier.height(8.dp))
-                        DefaultButton(onClick = {
-                            val file = PlatformFile(path.parent.absolutePathString())
-                            FileKit.openFileWithDefaultApplication(file)
-                        }) {
-                            Text("Open")
-                        }
-                    }
-                }
-            }))
+            onToast(
+                actionExportedToast(
+                    profileName = profile.name,
+                    filePath = filePath,
+                    fileSize = fileSize,
+                    duration = duration.shortForm(),
+                    directory = path.parent.absolutePathString(),
+                )
+            )
         },
         lockFile, configFile, platforms,
     ).joinAll()

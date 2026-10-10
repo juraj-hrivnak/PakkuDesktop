@@ -30,7 +30,8 @@ val gitDropdownComponent = component(
     update = { msg, model ->
         when (msg) {
             GitDropdownMsg.ShowPushDialog -> model.copy(pushDialogVisible = true)
-            GitDropdownMsg.HidePushDialog -> model.copy(pushDialogVisible = false)
+            GitDropdownMsg.HidePushDialog ->
+                if (!model.pushDialogVisible) model else model.copy(pushDialogVisible = false)
             // parent
             GitDropdownMsg.PullRequested,
             GitDropdownMsg.PushRequested,

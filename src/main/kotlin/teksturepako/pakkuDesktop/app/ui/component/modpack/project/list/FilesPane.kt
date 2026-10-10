@@ -4,6 +4,9 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
+
 import com.github.michaelbull.result.get
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
@@ -17,7 +20,9 @@ import teksturepako.pakkuDesktop.app.ui.model.FetchDownloadPreview
 import teksturepako.pakkuDesktop.app.ui.model.FetchOverridePreview
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
+import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
+import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 import kotlin.io.path.Path
 import kotlin.io.path.exists
@@ -58,18 +63,18 @@ fun FetchDetectResult.selectionKeys(): Set<String> =
 
 fun ModpackModel.clearFilesPreview(): ModpackModel = copy(
     filesPreviewMode = FilesPreviewMode.None,
-    fetchDownloads = emptyList(),
-    fetchOverrides = emptyList(),
-    fetchCleanup = emptyList(),
-    filesHashMismatchKeys = emptySet(),
-    syncAdded = emptyList(),
-    syncRemoved = emptyList(),
-    syncUpdated = emptyList(),
-    filesFilterChangeKinds = emptySet(),
-    selectedProjectKeys = emptySet(),
+    fetchDownloads = persistentListOf(),
+    fetchOverrides = persistentListOf(),
+    fetchCleanup = persistentListOf(),
+    filesHashMismatchKeys = persistentSetOf(),
+    syncAdded = persistentListOf(),
+    syncRemoved = persistentListOf(),
+    syncUpdated = persistentListOf(),
+    filesFilterChangeKinds = persistentSetOf(),
+    selectedProjectKeys = persistentSetOf(),
 )
 
-fun ModpackModel.canApplyFetch(): Boolean {
+fun FilesTabModel.canApplyFetch(): Boolean {
     if (actionName != null) return false
     if (lockFile?.get() == null) return false
     if (filesPreviewMode != FilesPreviewMode.Fetch) return false
@@ -79,7 +84,7 @@ fun ModpackModel.canApplyFetch(): Boolean {
         fetchCleanup.any { it.selectionKey() in selected }
 }
 
-fun ModpackModel.canApplySync(kind: SyncKind): Boolean {
+fun FilesTabModel.canApplySync(kind: SyncKind): Boolean {
     if (actionName != null) return false
     if (lockFile?.get() == null) return false
     if (filesPreviewMode != FilesPreviewMode.Sync) return false
@@ -111,7 +116,7 @@ fun Project.filesFolderKey(configFile: ConfigFile?): String {
     return if (path.endsWith("/")) path else "$path/"
 }
 
-fun ModpackModel.packFolderKeys(): List<String> {
+fun FilesTabModel.packFolderKeys(): List<String> {
     val config = configFile?.get()
     val fromTypes = ProjectType.entries
         .filterNot { it == ProjectType.WORLD }
@@ -123,18 +128,18 @@ fun ModpackModel.packFolderKeys(): List<String> {
     return (fromTypes + fromOverrides).distinct()
 }
 
-fun ModpackModel.syncOf(project: Project): SyncKind? =
+fun ProjectsTabModel.syncOf(project: Project): SyncKind? =
     if (filesPreviewMode == FilesPreviewMode.Sync) {
         project.syncKind(syncAdded, syncRemoved, syncUpdated)
     } else {
         null
     }
 
-fun ModpackModel.syncPendingCount(): Int =
+fun ProjectsTabModel.syncPendingCount(): Int =
     if (filesPreviewMode != FilesPreviewMode.Sync) 0
     else syncAdded.size + syncRemoved.size + syncUpdated.size
 
-fun ModpackModel.currentFilesRows(): List<FilesPaneRow> {
+fun FilesTabModel.currentFilesRows(): List<FilesPaneRow> {
     val config = configFile?.get()
     val lockProjects = lockFile?.get()?.getAllProjects().snapshotList()
     val downloadKeys = fetchDownloads.map { it.project.uiKey() }.toSet()
@@ -213,7 +218,7 @@ fun ModpackModel.currentFilesRows(): List<FilesPaneRow> {
     return rows
 }
 
-fun ModpackModel.proposedFilesRows(): List<FilesPaneRow> {
+fun FilesTabModel.proposedFilesRows(): List<FilesPaneRow> {
     val config = configFile?.get()
     return when (filesPreviewMode) {
         FilesPreviewMode.None -> emptyList()
@@ -265,7 +270,7 @@ data class FilesDiffPair(
     val right: FilesPaneRow?,
 )
 
-fun ModpackModel.filesDiffPairs(): List<FilesDiffPair> {
+fun FilesTabModel.filesDiffPairs(): List<FilesDiffPair> {
     val currentGroups = currentFilesRows().groupBy { it.diffGroupKey() }
     val proposedGroups = proposedFilesRows().groupBy { it.diffGroupKey() }
     val pairs = mutableListOf<FilesDiffPair>()
@@ -345,13 +350,13 @@ fun ModpackModel.filesDiffPairs(): List<FilesDiffPair> {
     )
 }
 
-fun ModpackModel.filteredFilesDiffPairs(): List<FilesDiffPair> =
+fun FilesTabModel.filteredFilesDiffPairs(): List<FilesDiffPair> =
     filesDiffPairs().filter { it.matchesFilesFilters(this) }
 
 private fun FilesPaneRow.diffGroupKey(): String =
     project?.uiKey() ?: "path:${relativePath.replace('\\', '/').lowercase()}"
 
-private fun FilesDiffPair.matchesFilesFilters(model: ModpackModel): Boolean {
+private fun FilesDiffPair.matchesFilesFilters(model: FilesTabModel): Boolean {
     val rows = listOfNotNull(left, right)
     val q = model.filesFilterText.lowercase()
     val textOk = q.isEmpty() || rows.any { row ->
