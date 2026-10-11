@@ -87,9 +87,18 @@ class PluginLoaderTest {
         openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
         digests: Map<PluginId, String>? = null,
         official: Set<PluginId> = emptySet(),
+        maxJarBytes: Long = MAX_PLUGIN_JAR_BYTES,
+        maxEntries: Int = MAX_PLUGIN_JAR_ENTRIES,
     ): PluginRegistry =
-        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot(), official)
-            .also { registries += it }
+        PluginLoader.loadAll(
+            root,
+            readText,
+            openClassLoader,
+            digests ?: allowAllInRoot(),
+            official,
+            maxJarBytes,
+            maxEntries,
+        ).also { registries += it }
 
     private fun ids(registry: PluginRegistry) = registry.loaded.keys.map { it.value }
 
@@ -372,6 +381,88 @@ class PluginLoaderTest {
     fun trustRejectsUnlistedId() {
         pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
         assertSingleFailure(Failed("p", Stage.Trust, "plugin not allowlisted"), digests = emptyMap())
+    }
+
+    @Test
+    fun trustRejectsOversizedJarBeforeHash() {
+        val dir = pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"), withJar = false)
+        val jar = dir.resolve("plugin.jar")
+        jar.writeBytes(ByteArray(200) { 0 })
+        val maxJarBytes = 100L
+        var classLoaderOpens = 0
+        val registry = load(
+            openClassLoader = {
+                classLoaderOpens++
+                pluginClassLoader(it)
+            },
+            digests = mapOf(PluginId("counting") to "0".repeat(64)),
+            maxJarBytes = maxJarBytes,
+        )
+        assertEquals(0, classLoaderOpens)
+        assertEquals(emptyList(), ids(registry))
+        assertEquals(listOf(Failed("p", Stage.Trust, "plugin jar is too large")), registry.failed)
+    }
+
+    @Test
+    fun trustAllowsJarUnderByteCap() {
+        val dir = pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
+        val jar = dir.resolve("plugin.jar")
+        val registry = load(
+            digests = mapOf(PluginId("counting") to sha256Hex(jar)),
+            maxJarBytes = jar.readBytes().size.toLong() + 1,
+        )
+        assertEquals(listOf("counting"), ids(registry))
+        assertEquals(emptyList(), registry.failed)
+    }
+
+    /** Sample jar plus [extra] empty zip entries (for entry-cap tests). */
+    private fun pluginDirWithExtraEmptyEntries(name: String, id: String, mainClass: String, extra: Int) {
+        val dir = pluginDir(name, manifest(id, mainClass), withJar = false)
+        JarFile(sampleJar.toFile()).use { src ->
+            JarOutputStream(dir.resolve("plugin.jar").outputStream()).use { dst ->
+                for (e in src.entries()) {
+                    dst.putNextEntry(JarEntry(e.name))
+                    src.getInputStream(e).use { it.copyTo(dst) }
+                    dst.closeEntry()
+                }
+                repeat(extra) { i ->
+                    dst.putNextEntry(JarEntry("extra/$i"))
+                    dst.closeEntry()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun classLoadRejectsTooManyJarEntries() {
+        pluginDirWithExtraEmptyEntries("p", "counting", "$FIXTURES.CountingPlugin", extra = 3)
+        val dir = root.resolve("p")
+        val jar = dir.resolve("plugin.jar")
+        val entryCount = JarFile(jar.toFile()).use { it.entries().asSequence().count() }
+        var classLoaderOpens = 0
+        val registry = load(
+            openClassLoader = {
+                classLoaderOpens++
+                pluginClassLoader(it)
+            },
+            digests = mapOf(PluginId("counting") to sha256Hex(jar)),
+            maxEntries = entryCount - 1,
+        )
+        assertEquals(0, classLoaderOpens)
+        assertEquals(emptyList(), ids(registry))
+        assertEquals(listOf(Failed("p", Stage.ClassLoad, "plugin jar has too many entries")), registry.failed)
+    }
+
+    @Test
+    fun siblingLoadsWhenAnotherJarExceedsEntryCap() {
+        pluginDir("good", manifest("sample", SAMPLE))
+        pluginDirWithExtraEmptyEntries("bad", "counting", "$FIXTURES.CountingPlugin", extra = 3)
+        val badJar = root.resolve("bad/plugin.jar")
+        val badEntryCount = JarFile(badJar.toFile()).use { it.entries().asSequence().count() }
+        val digests = allowAllInRoot()
+        val registry = load(digests = digests, maxEntries = badEntryCount - 1)
+        assertEquals(listOf("sample"), ids(registry))
+        assertEquals(listOf(Failed("bad", Stage.ClassLoad, "plugin jar has too many entries")), registry.failed)
     }
 
     @Test

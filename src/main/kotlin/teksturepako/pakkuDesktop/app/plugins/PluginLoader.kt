@@ -13,8 +13,10 @@ import teksturepako.pakkuDesktop.plugin.PluginTrust
 import teksturepako.pakkuDesktop.plugin.TypedPlugin
 import teksturepako.pakku.io.createHash
 import java.io.IOException
+import java.io.InputStream
 import java.lang.reflect.InvocationTargetException
 import java.net.URLClassLoader
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarFile
 import kotlin.io.path.isDirectory
@@ -23,6 +25,9 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.inputStream
 import kotlin.io.path.readText
+
+internal const val MAX_PLUGIN_JAR_BYTES = 32L * 1024 * 1024
+internal const val MAX_PLUGIN_JAR_ENTRIES = 10_000
 
 private const val HOST_PACKAGE = "teksturepako.pakkuDesktop."
 
@@ -86,6 +91,8 @@ object PluginLoader {
         openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
         digests: Map<PluginId, String> = OfficialPluginDigests.byId,
         official: Set<PluginId> = OfficialPluginDigests.official,
+        maxJarBytes: Long = MAX_PLUGIN_JAR_BYTES,
+        maxEntries: Int = MAX_PLUGIN_JAR_ENTRIES,
     ): PluginRegistry {
         if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
             logger.info("plugins: GraalVM native image; dynamic plugins disabled")
@@ -107,7 +114,7 @@ object PluginLoader {
         val loadedFrom = HashMap<PluginId, String>()
         val failed = ArrayList<PluginLoadState.Failed>()
         for (dir in dirs) {
-            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom, digests, official)) {
+            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom, digests, official, maxJarBytes, maxEntries)) {
                 is PluginLoadState.Loaded -> {
                     loaded[state.plugin.id] = state.plugin
                     loadedFrom[state.plugin.id] = dir.name
@@ -129,6 +136,8 @@ object PluginLoader {
         loadedFrom: Map<PluginId, String>,
         digests: Map<PluginId, String>,
         official: Set<PluginId>,
+        maxJarBytes: Long,
+        maxEntries: Int,
     ): PluginLoadState {
         var stage = Stage.Manifest
         var loader: URLClassLoader? = null
@@ -136,9 +145,11 @@ object PluginLoader {
             val manifest = readManifest(dir, readText, loadedFrom)
             val jar = dir.resolve(manifest.jar)
             stage = Stage.Trust
-            verifyTrust(manifest.id, jar, digests)
+            val size = Files.size(jar)
+            check(size in 1..maxJarBytes) { "plugin jar is too large" }
+            verifyTrust(manifest.id, jar, digests, maxJarBytes)
             stage = Stage.ClassLoad
-            checkJarEntries(dir, jar)
+            checkJarEntries(dir, jar, maxEntries)
             loader = openClassLoader(jar)
             val cls = try {
                 Class.forName(manifest.mainClass, true, loader)
@@ -182,10 +193,13 @@ object PluginLoader {
     }
 
     /** Rejects jars that bundle host packages or Compose; the host provides those. */
-    private fun checkJarEntries(dir: Path, jar: Path) {
+    private fun checkJarEntries(dir: Path, jar: Path, maxEntries: Int) {
         var bundlesKotlin = false
+        var entries = 0
         JarFile(jar.toFile()).use { file ->
             for (entry in file.entries()) {
+                entries++
+                check(entries <= maxEntries) { "plugin jar has too many entries" }
                 val name = entry.name
                 val forbidden = FORBIDDEN_JAR_PREFIXES.firstOrNull { name.startsWith(it) }
                 check(forbidden == null) { "${jar.name} bundles host class '$name'" }
@@ -222,10 +236,35 @@ object PluginLoader {
     }
 }
 
-private fun verifyTrust(id: PluginId, jar: Path, digests: Map<PluginId, String>) {
+private fun verifyTrust(id: PluginId, jar: Path, digests: Map<PluginId, String>, maxJarBytes: Long) {
     val expectedHex = digests[id] ?: throw IllegalArgumentException("plugin not allowlisted")
-    val actualHex = jar.inputStream().use { createHash("sha256", it) }
+    val actualHex = jar.inputStream().use { createHash("sha256", CappedInputStream(it, maxJarBytes)) }
     if (actualHex != expectedHex) {
         throw IllegalArgumentException("jar digest mismatch")
+    }
+}
+
+/** Stops updating the digest after [maxBytes]; fails if more bytes are read. */
+private class CappedInputStream(
+    private val delegate: InputStream,
+    private val maxBytes: Long,
+) : InputStream() {
+    private var read = 0L
+
+    override fun read(): Int {
+        val b = delegate.read()
+        if (b >= 0) count(1)
+        return b
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        val n = delegate.read(b, off, len)
+        if (n > 0) count(n.toLong())
+        return n
+    }
+
+    private fun count(n: Long) {
+        read += n
+        check(read <= maxBytes) { "plugin jar is too large" }
     }
 }
