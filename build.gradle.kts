@@ -26,6 +26,7 @@ dependencies {
 
     // In-repo plugins hashed into OfficialPluginDigests (see build-logic PluginHostConventionPlugin)
     devPlugin(project(":sample-plugin"))
+    officialPlugin(project(":pakku-pro-plugin"))
 
     // Pakku
     implementation(libs.pakku)

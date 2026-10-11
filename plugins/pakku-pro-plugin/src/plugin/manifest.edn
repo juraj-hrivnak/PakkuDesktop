@@ -1,0 +1,4 @@
+{:id "pakku-pro"
+ :name "Pakku Pro"
+ :main-class "teksturepako.pakkuDesktop.official.plugin.pro.PakkuProPlugin"
+ :host-api 1}

@@ -46,4 +46,7 @@ dependencyResolutionManagement {
 // Due to an IntelliJ bug, this has to be done
 rootProject.name = rootProject.projectDir.name
 
-include(":pakku-desktop-api", ":sample-plugin")
+include(":pakku-desktop-api", ":sample-plugin", ":pakku-pro-plugin")
+
+project(":sample-plugin").projectDir = file("plugins/sample-plugin")
+project(":pakku-pro-plugin").projectDir = file("plugins/pakku-pro-plugin")

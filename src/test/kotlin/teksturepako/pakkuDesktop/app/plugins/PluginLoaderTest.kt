@@ -36,12 +36,15 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 private const val SAMPLE = "teksturepako.pakkuDesktop.sample.SamplePlugin"
+private const val PAKKU_PRO = "teksturepako.pakkuDesktop.official.plugin.pro.PakkuProPlugin"
 private const val FIXTURES = "teksturepako.pakkuDesktop.sample.fixtures"
 
 internal fun sha256Hex(path: Path): String = path.inputStream().use { createHash("sha256", it) }
 
 class PluginLoaderTest {
-    private val sampleJar: Path = Path(System.getProperty("pakku.test.pluginsDir")).resolve("sample/plugin.jar")
+    private val stagedPlugins: Path = Path(System.getProperty("pakku.test.pluginsDir"))
+    private val sampleJar: Path = stagedPlugins.resolve("sample/plugin.jar")
+    private val pakkuProJar: Path = stagedPlugins.resolve("pakku-pro/plugin.jar")
     private val root: Path = createTempDirectory("plugins")
     private val registries = mutableListOf<PluginRegistry>()
 
@@ -312,6 +315,40 @@ class PluginLoaderTest {
         val registry = PluginLoader.loadAll(root).also { registries += it }
         assertEquals(listOf("sample"), ids(registry))
         assertEquals(emptyList(), registry.failed)
+    }
+
+    private fun pakkuProManifest() =
+        """{:id "pakku-pro" :name "Pakku Pro" :main-class "$PAKKU_PRO" :host-api 1}"""
+
+    @Test
+    fun defaultDigestsAllowPakkuPro() {
+        val dir = pluginDir("pro", pakkuProManifest(), withJar = false)
+        pakkuProJar.copyTo(dir.resolve("plugin.jar"))
+        val registry = PluginLoader.loadAll(root).also { registries += it }
+        assertEquals(listOf("pakku-pro"), ids(registry))
+        assertEquals(emptyList(), registry.failed)
+    }
+
+    @Test
+    fun trustRejectsTamperedPakkuProJar() {
+        val dir = pluginDir("pro", pakkuProManifest(), withJar = false)
+        pakkuProJar.copyTo(dir.resolve("plugin.jar"))
+        val jar = dir.resolve("plugin.jar")
+        val goodHex = sha256Hex(jar)
+        val bytes = jar.readBytes()
+        bytes[bytes.lastIndex] = (bytes.last().toInt() xor 0x01).toByte()
+        jar.writeBytes(bytes)
+        var classLoaderOpens = 0
+        val registry = load(
+            openClassLoader = {
+                classLoaderOpens++
+                testPluginClassLoader(it)
+            },
+            digests = mapOf(PluginId("pakku-pro") to goodHex),
+        )
+        assertEquals(0, classLoaderOpens)
+        assertEquals(emptyList(), ids(registry))
+        assertEquals(listOf(Failed("pro", Stage.Trust, "jar digest mismatch")), registry.failed)
     }
 
     @Test
