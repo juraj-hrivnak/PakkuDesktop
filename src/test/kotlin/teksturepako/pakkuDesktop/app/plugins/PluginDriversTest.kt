@@ -262,4 +262,36 @@ class PluginDriversTest {
 
         composeRule.onAllNodesWithTag(HOST_VIEW_TAG).assertCountEquals(1)
     }
+
+    @Test
+    fun hostViewStaysWhenPluginDriverSkipsContent() {
+        var driverRan = false
+        mount(
+            registry(
+                a = { _, _, _ ->
+                    LaunchedEffect(Unit) { driverRan = true }
+                },
+                b = { _, _, _ -> },
+            )
+        )
+
+        composeRule.onAllNodesWithTag(HOST_VIEW_TAG).assertCountEquals(1)
+        composeRule.waitForIdle()
+        assertTrue(driverRan)
+    }
+
+    @Test
+    fun hostViewRendersOnceWhenPluginDriverCallsContentTwice() {
+        mount(
+            registry(
+                a = { _, _, content ->
+                    content()
+                    content()
+                },
+                b = { _, _, _ -> },
+            )
+        )
+
+        composeRule.onAllNodesWithTag(HOST_VIEW_TAG).assertCountEquals(1)
+    }
 }

@@ -22,20 +22,24 @@ import kotlin.reflect.KClass
  *   error guard; do parsing, indexing and casts in `update` or in [PakkuPlugin.create].
  *
  * @property drivers Mounted once per run, innermost in the host's driver chain, so they see
- *   the host's `CompositionLocal`s. Each driver receives only this plugin's model and a
- *   `publish` that routes back to this plugin's [Component.update]. They follow the [Driver]
- *   rules:
+ *   the host's `CompositionLocal`s. The host composes the app **before** each plugin driver
+ *   runs; the driver's trailing `content` parameter is an empty plugin slot (optional place
+ *   for plugin-local children), **not** the host window. Skipping it does not blank the app;
+ *   calling it twice only duplicates that empty slot.
+ *
+ *   Each driver receives only this plugin's model and a `publish` that routes back to this
+ *   plugin's [Component.update]. They follow the [Driver] rules except rule 4 (host drivers
+ *   own the outer `content` chain):
  *   1. Key `LaunchedEffect` on a projection of the model (ids, intent flags), never the
  *      whole model.
  *   2. After any suspension, read the latest model via `rememberUpdatedState`.
  *   3. Use `LaunchedEffect(Unit)` only for effects that don't depend on the model, such as
  *      collecting `LocalMessages`.
- *   4. Call `content` **exactly once, unconditionally**. `content` is the whole host app:
- *      skipping it blanks the window, calling it twice duplicates the app.
  *
- *   Drivers run **outside the host's error guard**. A throw during composition or from an
- *   effect can take down the app, so catch inside effects (rethrow `CancellationException`),
- *   keep the composable body free of fallible logic, and release resources in
+ *   Drivers run **outside the host's error guard**. A throw during composition puts the
+ *   Compose recomposer into a non-recoverable error state for the whole window, and a throw
+ *   from an effect can take down the app. Keep the composable body free of fallible logic,
+ *   catch inside effects (rethrow `CancellationException`), and release resources in
  *   `try/finally` or `DisposableEffect`. Effects run on the main dispatcher; move heavy work
  *   to `withContext(Dispatchers.IO)` or `Dispatchers.Default`.
  * @property sampleMessages Optional messages the host runs through `update`, starting from

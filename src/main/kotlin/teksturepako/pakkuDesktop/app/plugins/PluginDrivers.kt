@@ -31,6 +31,7 @@ import teksturepako.pakkuDesktop.elm.LocalMessages
 import teksturepako.pakkuDesktop.plugin.PluginTrust
 
 private val logger = noCoLogger("PluginAccess")
+private val driverLogger = noCoLogger("PluginDrivers")
 
 /** One [AppAccess] per trust level, built once per run. */
 internal class PluginAccess(private val official: AppAccess, private val standard: AppAccess) {
@@ -113,9 +114,15 @@ private fun LoadedPlugin.lift(driver: Driver<Any?, Any?>): Driver<AppModel, AppM
     val id = id
     val trust = trust
     return { publish, model, content ->
-        val lifted = remember(publish) { { msg: Any? -> publish(AppMsg.Plugin(id, msg)) } }
-        WithPluginAccess(trust) {
-            driver(lifted, model.pluginStates.getValue(id), content)
+        content()
+        val slice = model.pluginStates[id]
+        if (slice != null) {
+            val lifted = remember(publish) { { msg: Any? -> publish(AppMsg.Plugin(id, msg)) } }
+            WithPluginAccess(trust) {
+                driver(lifted, slice) { }
+            }
+        } else {
+            driverLogger.error("plugin '$id' missing from pluginStates; driver skipped")
         }
     }
 }

@@ -27,7 +27,7 @@ fun sampleUpdate(msg: SampleMsg, model: SampleModel): SampleModel = when (msg) {
 }
 
 /** Opt-in heap profiling: `-Dpakku.debug.tick=true` drives the real plugin hot path. */
-private val debugTickDriver: Driver<SampleModel, SampleMsg> = { publish, _, content ->
+private val debugTickDriver: Driver<SampleModel, SampleMsg> = { publish, _, _ ->
     LaunchedEffect(Unit) {
         if (System.getProperty("pakku.debug.tick") != "true") return@LaunchedEffect
         while (isActive) {
@@ -35,7 +35,6 @@ private val debugTickDriver: Driver<SampleModel, SampleMsg> = { publish, _, cont
             publish(SampleMsg.Inc)
         }
     }
-    content()
 }
 
 class SamplePlugin : PakkuPlugin {
