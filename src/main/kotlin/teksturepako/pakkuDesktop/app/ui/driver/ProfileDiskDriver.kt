@@ -9,9 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import com.github.michaelbull.result.get
 import io.klogging.logger
+import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlinx.datetime.toDeprecatedInstant
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.data.Profile
@@ -59,7 +60,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val newProfile = Profile(
             name       = modpackName,
             path       = path.absolutePathString(),
-            lastOpened = Clock.System.now()
+            lastOpened = Clock.System.now().toDeprecatedInstant()
         )
 
         val newData = latestModel.profile.data.withCurrentProfile(newProfile)

@@ -1,18 +1,15 @@
 import dev.nucleusframework.desktop.application.dsl.CompressionLevel
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
-import java.io.FileInputStream
-import java.util.*
 
+// Kotlin plugins are loaded here once; subprojects apply them by id through build-logic conventions.
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.nucleus)
-}
-
-kotlin {
-    jvmToolchain(25)
+    id("pakku.kotlin-jvm")
+    id("pakku.plugin-host")
 }
 
 composeCompiler {
@@ -23,38 +20,16 @@ composeCompiler {
 group = "teksturepako"
 version = "1.0"
 
-/**
- * Create `github.properties` in root project folder file with:
- * ```properties
- * gpr.usr=GITHUB_USER_ID
- * gpr.key=PERSONAL_ACCESS_TOKEN
- * ```
- **/
-val githubProperties: Properties = Properties().apply {
-    val properties = runCatching { FileInputStream(rootProject.file("github.properties")) }
-    properties.onSuccess { load(it) }
-}
-
-repositories {
-    maven("https://www.jetbrains.com/intellij-repository/releases")
-
-    mavenCentral()
-
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-
-    // Pakku
-    maven {
-        url = uri("https://maven.pkg.github.com/juraj-hrivnak/Pakku")
-        credentials {
-            username = githubProperties["gpr.usr"] as String? ?: System.getenv("GITHUB_ACTOR")
-            password = githubProperties["gpr.key"] as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
-
-    google()
-}
-
 dependencies {
+    // Elm runtime API + plugin SPI (what plugins compile against)
+    implementation(project(":pakku-desktop-api"))
+    // Host messages + model; plugins compile against it too
+    implementation(project(":pakku-desktop-app-api"))
+
+    // In-repo plugins hashed into OfficialPluginDigests (see build-logic PluginHostConventionPlugin)
+    devPlugin(project(":sample-plugin"))
+    officialPlugin(project(":pakku-pro-plugin"))
+
     // Pakku
     implementation(libs.pakku)
 
@@ -96,7 +71,7 @@ dependencies {
     }
 
     // Compose Resources
-    implementation(compose.components.resources)
+    implementation(libs.compose.components.resources)
 
     // Compose Preview
     implementation(libs.compose.ui.tooling.preview)
@@ -122,7 +97,7 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(compose.desktop.uiTestJUnit4)
+    testImplementation(libs.compose.ui.test.junit4)
 }
 
 tasks.test {

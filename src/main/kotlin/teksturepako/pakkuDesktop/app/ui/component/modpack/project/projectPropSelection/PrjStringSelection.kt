@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.get
-import com.github.michaelbull.result.onFailure
-import com.github.michaelbull.result.onSuccess
+import com.github.michaelbull.result.onErr
+import com.github.michaelbull.result.onOk
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
@@ -90,8 +90,8 @@ fun NullableProjectStringSelection(
         FlowRow(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
             ContentBox(Modifier.padding(2.dp)) { Text(label) }
             projectRef(model.selectedProject!!)
-                ?.onSuccess { ContentBox(Modifier.padding(2.dp)) { Text(it) } }
-                ?.onFailure { ContentBox(Modifier.padding(2.dp), color = Color.Red) { Text("Error: " + it.rawMessage) } }
+                ?.onOk { ContentBox(Modifier.padding(2.dp)) { Text(it) } }
+                ?.onErr { ContentBox(Modifier.padding(2.dp), color = Color.Red) { Text("Error: " + it.rawMessage) } }
         }
     }
 }

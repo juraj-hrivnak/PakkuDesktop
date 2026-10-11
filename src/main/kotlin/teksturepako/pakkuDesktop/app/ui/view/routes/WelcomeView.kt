@@ -41,7 +41,6 @@ import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
-import teksturepako.pakkuDesktop.pro.ui.component.Pro
 import java.nio.file.Files
 
 @Composable
@@ -154,21 +153,19 @@ fun PakkuApplicationScope.WelcomeView(
                                         Text("Open...")
                                     }
                                 }
-                                Pro(appModel) {
-                                    OutlinedButton(onClick = { appPublish(AppMsg.ShowCloneDialog) }) {
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Icon(
-                                                key = AllIconsKeys.General.Vcs,
-                                                contentDescription = "Clone Repository Icon",
-                                                tint = JewelTheme.contentColor,
-                                                hints = arrayOf(),
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                            Text("Clone Repository...")
-                                        }
+                                OutlinedButton(onClick = { appPublish(AppMsg.ShowCloneDialog) }) {
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            key = AllIconsKeys.General.Vcs,
+                                            contentDescription = "Clone Repository Icon",
+                                            tint = JewelTheme.contentColor,
+                                            hints = arrayOf(),
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Text("Clone Repository...")
                                     }
                                 }
                             }

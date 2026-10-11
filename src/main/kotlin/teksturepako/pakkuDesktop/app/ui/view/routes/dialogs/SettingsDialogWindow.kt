@@ -35,6 +35,7 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakkuDesktop.app.data.ProfileData
+import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -42,8 +43,11 @@ import teksturepako.pakkuDesktop.app.ui.component.settings.SettingsHeapTab
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.InternalMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsCredentials
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
+import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
+import java.nio.file.Path
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
@@ -56,13 +60,15 @@ import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 fun SettingsDialog(
     model: AppModel,
     publish: (AppMsg) -> Unit,
+    plugins: PluginRegistry,
+    pluginsRoot: Path,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         runCatching { focusRequester.requestFocus() }
     }
 
-    val saving = model.pendingCredentialsUpdate != null
+    val saving = model.internal.pendingCredentialsUpdate != null
     val uiScale = ProfileData.coerceUiScale(model.profile.data.uiScale)
     val scaleIndex = uiScalePresetIndex(uiScale)
     // Dialog is a separate window at OS density. Keep its content there too so changing
@@ -83,7 +89,11 @@ fun SettingsDialog(
                     .dialogConfirmCancelKeys(onDismiss = { publish(AppMsg.HideSettings) })
                     .widthIn(
                         min = 360.dp,
-                        max = if (model.settingsTab == SettingsTab.Heap) 720.dp else 520.dp,
+                        max = when (model.settingsTab) {
+                            SettingsTab.Heap -> 720.dp
+                            SettingsTab.Plugins -> 560.dp
+                            else -> 520.dp
+                        },
                     ),
             ) {
                 Column(
@@ -104,6 +114,16 @@ fun SettingsDialog(
                             scaleIndex = scaleIndex,
                         )
                         SettingsTab.Heap -> SettingsHeapTab(model = model, publish = publish)
+                        SettingsTab.Plugins -> Column(
+                            Modifier.verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            PluginsHost(
+                                plugins = plugins.loadedList,
+                                failures = model.pluginFailures,
+                                pluginsRoot = pluginsRoot,
+                            )
+                        }
                     }
                 }
             }
@@ -118,6 +138,7 @@ private fun SettingsTabRow(selected: SettingsTab, publish: (AppMsg) -> Unit) {
             val label = when (tab) {
                 SettingsTab.General -> "General"
                 SettingsTab.Heap -> "Heap"
+                SettingsTab.Plugins -> "Plugins"
             }
             if (selected == tab) {
                 DefaultButton(onClick = { }) { Text(label) }
@@ -173,7 +194,7 @@ private fun SettingsGeneralTab(
             color = JewelTheme.contentColor.copy(alpha = 0.55f),
         )
 
-        val creds = model.settingsCredentials
+        val creds = model.internal.settingsCredentials
         if (creds == null) {
             Text("Loading…", color = JewelTheme.contentColor.copy(alpha = 0.65f))
         } else {
@@ -184,9 +205,11 @@ private fun SettingsGeneralTab(
                     status = model.credentialsStatus,
                     onSave = { cf, gh ->
                         publish(
-                            AppMsg.CredentialsUpdateRequested(
-                                curseForgeApiKey = cf,
-                                gitHubAccessToken = gh,
+                            AppMsg.Internal(
+                                InternalMsg.CredentialsUpdateRequested(
+                                    curseForgeApiKey = cf,
+                                    gitHubAccessToken = gh,
+                                ),
                             ),
                         )
                     },

@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.application.window
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.key.KeyEventType
@@ -18,7 +19,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
-import org.jetbrains.jewel.ui.component.painterResource
+import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.ui.LocalPakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
@@ -36,6 +37,8 @@ import teksturepako.pakkuDesktop.elm.Driver
 val LocalWindowState = compositionLocalOf<WindowState> {
     error("LocalWindowState not provided — mainWindowDriver must wrap the tree")
 }
+
+private object PakkuWindowIcon
 
 fun snapshotWindowData(windowState: WindowState) = WindowData(
     placement = windowState.placement,
@@ -55,11 +58,13 @@ fun mainWindowDriver(
     initialWindowData: WindowData,
     windowCloseMessage: AppMsg = AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)),
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
+    val initialX = initialWindowData.x
+    val initialY = initialWindowData.y
     val windowState = rememberWindowState(
         placement = initialWindowData.placement,
         isMinimized = false,
-        position = if (initialWindowData.x != null && initialWindowData.y != null) {
-            WindowPosition.Absolute(x = initialWindowData.x.dp, y = initialWindowData.y.dp)
+        position = if (initialX != null && initialY != null) {
+            WindowPosition.Absolute(x = initialX.dp, y = initialY.dp)
         } else {
             WindowPosition(Alignment.Center)
         },
@@ -70,13 +75,17 @@ fun mainWindowDriver(
     val title = model.profile.data.currentProfile?.name ?: appNameWithVersion(model.isProActivated)
     val shiftKeyState = remember { ShiftKeyState() }
     val pakkuScope = remember(applicationScope) { RememberedPakkuScope(applicationScope) }
+    val windowIcon by rememberResourcePainterProvider(
+        "icons/pakku.svg",
+        PakkuWindowIcon::class.java,
+    ).getPainter()
 
     with(applicationScope) {
         JewelDecoratedWindow(
             state = windowState,
             onCloseRequest = { publish(windowCloseMessage) },
             title = title,
-            icon = painterResource("icons/pakku.svg"),
+            icon = windowIcon,
             minimumSize = DpSize(600.dp, 400.dp),
             onPreviewKeyEvent = { event ->
                 if (event.type == KeyEventType.KeyDown || event.type == KeyEventType.KeyUp) {

@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop
 
 import com.github.michaelbull.result.get
-import com.github.michaelbull.result.onFailure
+import com.github.michaelbull.result.onErr
 import androidx.compose.runtime.remember
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.application.nucleusApplication
@@ -20,6 +20,9 @@ import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
+import teksturepako.pakkuDesktop.app.plugins.PluginLoader
+import teksturepako.pakkuDesktop.app.plugins.pluginDrivers
+import teksturepako.pakkuDesktop.app.plugins.pluginsRoot
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
@@ -45,7 +48,7 @@ fun main() {
     FileKit.init(appId = "PakkuDesktop")
 
     val credentials = runBlocking { CredentialsFile.readToResult() }
-        .onFailure { error -> debug { println(error.rawMessage) } }
+        .onErr { error -> debug { println(error.rawMessage) } }
         .get()
 
     pakku {
@@ -54,7 +57,13 @@ fun main() {
     }
 
     val initialWindowData = runBlocking { WindowData.readOrNew() }
-    val rootComponent = appComponent(initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() })
+    val pluginsDir = pluginsRoot()
+    val plugins = PluginLoader.loadAll(pluginsDir)
+    val rootComponent = appComponent(
+        initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() },
+        plugins = plugins,
+        pluginsRoot = pluginsDir,
+    )
 
     nucleusApplication(backend = NucleusBackend.Tao) {
         val drivers = remember {
@@ -76,7 +85,6 @@ fun main() {
                     initialWindowData = initialWindowData,
                 ),
                 directoryPickerDriver(),
-                licenseDriver,
                 actionDriver,
                 projectEditDriver,
                 projectMutationDriver,
@@ -84,7 +92,7 @@ fun main() {
                 cloneDriver,
                 heapHistogramDriver,
                 heapFootprintDriver,
-            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled })
+            ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled }) + pluginDrivers(plugins)
         }
         run(rootComponent, drivers = drivers)
     }

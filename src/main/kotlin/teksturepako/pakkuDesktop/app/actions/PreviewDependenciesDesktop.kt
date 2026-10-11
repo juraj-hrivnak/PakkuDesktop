@@ -86,17 +86,6 @@ suspend fun Project.previewDependenciesDesktop(
     return nodes
 }
 
-/** Soft identity for UI keys / fingerprints — provider ids, slugs, names (never pakkuId). */
-fun Project.identityKey(): String {
-    val ids = id.values.map { it.lowercase() }.toSortedSet()
-    if (ids.isNotEmpty()) return "pid:${ids.joinToString(",")}"
-    val slugs = slug.values.map { it.lowercase() }.toSortedSet()
-    if (slugs.isNotEmpty()) return "slug:${slugs.joinToString(",")}"
-    val names = name.values.map { it.lowercase().filterNot(Char::isWhitespace) }.toSortedSet()
-    if (names.isNotEmpty()) return "name:${names.joinToString(",")}"
-    return "type:${type.name}"
-}
-
 fun ActionError.fingerprint(): String = when (this) {
     is AlreadyAdded -> "AlreadyAdded:${project.identityKey()}"
     is NotFoundOn -> "NotFoundOn:${project.identityKey()}:${provider.serialName}"

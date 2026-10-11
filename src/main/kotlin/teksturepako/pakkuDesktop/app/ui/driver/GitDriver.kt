@@ -20,12 +20,12 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
 import teksturepako.pakkuDesktop.elm.conflatedPublisher
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitEvent
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
-import teksturepako.pakkuDesktop.pro.git.wrapper.NativeGit
-import teksturepako.pakkuDesktop.pro.git.wrapper.awaitOrDestroy
-import teksturepako.pakkuDesktop.pro.git.wrapper.runCapturing
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitEvent
+import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.git.NativeGit
+import teksturepako.pakkuDesktop.app.git.awaitOrDestroy
+import teksturepako.pakkuDesktop.app.git.runCapturing
+import teksturepako.pakkuDesktop.app.git.GitBranch
 import java.io.File
 
 // -- Repository handle --

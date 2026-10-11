@@ -5,8 +5,8 @@
 package teksturepako.pakkuDesktop.app.actions
 
 import com.github.michaelbull.result.get
-import com.github.michaelbull.result.onFailure
-import com.github.michaelbull.result.onSuccess
+import com.github.michaelbull.result.onErr
+import com.github.michaelbull.result.onOk
 import io.klogging.logger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -71,7 +71,7 @@ suspend fun fetchDetectSuspend(
 ): FetchDetectResult = coroutineScope {
     val results = retrieveProjectFiles(lockFile, Provider.providers)
     val projectFiles = results.mapNotNull { result ->
-        result.onFailure { error ->
+        result.onErr { error ->
             fetchLogger.error(error.toUiMessage())
             onToast(actionErrorToast(error))
         }.get()
@@ -180,10 +180,10 @@ suspend fun fetchApplySuspend(
             val path = Path(absolute)
             path.tryToResult {
                 deleteIfExists()
-            }.onSuccess {
+            }.onOk {
                 fetchLogger.info { "$path deleted" }
                 deleted += path.name
-            }.onFailure { error ->
+            }.onErr { error ->
                 if (error !is DirectoryNotEmpty) {
                     fetchLogger.error(error.toUiMessage())
                     onToast(actionErrorToast(error))

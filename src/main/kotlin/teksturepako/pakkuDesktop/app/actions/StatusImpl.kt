@@ -6,7 +6,7 @@ package teksturepako.pakkuDesktop.app.actions
 
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
-import com.github.michaelbull.result.onFailure
+import com.github.michaelbull.result.onErr
 import io.klogging.logger
 import teksturepako.pakku.api.actions.update.updateMultipleProjectsWithFiles
 import teksturepako.pakku.api.data.ConfigFile
@@ -128,7 +128,7 @@ private suspend fun fetchCandidateFiles(
             loaders,
             mapOf(projectId to project.type),
             UPDATE_CANDIDATE_FILES,
-        ).onFailure { error ->
+        ).onErr { error ->
             statusLogger.error(error.toUiMessage())
         }.get()?.firstOrNull { it.slug[platform.serialName] == project.slug[platform.serialName] }
             ?: continue
@@ -145,7 +145,7 @@ private suspend fun fetchCandidateFiles(
             ghSlug,
             numberOfFiles = UPDATE_CANDIDATE_FILES,
             projectType = project.type,
-        ).onFailure { error ->
+        ).onErr { error ->
             statusLogger.error(error.toUiMessage())
         }.get()
         if (remote != null) {

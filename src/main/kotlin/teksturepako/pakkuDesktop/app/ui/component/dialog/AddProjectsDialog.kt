@@ -172,7 +172,7 @@ fun AddProjectsDialog(
                     AddDialogPhase.Review -> {
                         topMessages.forEach { ActionErrorContent(it) }
 
-                        if (!emptyReview && plan != null) {
+                        if (!emptyReview) {
                             VerticallyScrollableContainer(
                                 Modifier.fillMaxWidth().heightIn(max = 380.dp),
                             ) {

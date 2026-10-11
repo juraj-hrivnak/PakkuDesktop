@@ -9,7 +9,10 @@ import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.InternalMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownModel
+import teksturepako.pakkuDesktop.app.ui.model.SettingsCredentials
+import teksturepako.pakkuDesktop.app.ui.model.withoutInternal
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -68,6 +71,24 @@ class AppUpdateSameInstanceTest {
 
     @Test
     fun confirmCloseDialogWithoutDialog() = assertNoOp(AppModel(), AppMsg.ConfirmCloseDialog)
+
+    @Test
+    fun reportProActivatedSetsFlag() {
+        val next = appUpdate(AppMsg.Internal(InternalMsg.ProActivationReported(true)), AppModel())
+        assertEquals(true, next.isProActivated)
+    }
+
+    @Test
+    fun reportProActivatedSameValueKeepsModel() =
+        assertNoOp(AppModel(isProActivated = true), AppMsg.Internal(InternalMsg.ProActivationReported(true)))
+
+    @Test
+    fun credentialsLoadedGoesToInternalModel() {
+        val next = appUpdate(AppMsg.Internal(InternalMsg.CredentialsLoaded("cf", "gh")), AppModel(wantsLoadCredentials = true))
+        assertEquals(false, next.wantsLoadCredentials)
+        assertEquals(SettingsCredentials("cf", "gh"), next.internal.settingsCredentials)
+        assertEquals(AppModel(), next.withoutInternal())
+    }
 
     @Test
     fun welcomeChildUnchangedKeepsWelcome() {

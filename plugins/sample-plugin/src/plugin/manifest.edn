@@ -1,0 +1,4 @@
+{:id "sample"
+ :name "Sample plugin"
+ :main-class "teksturepako.pakkuDesktop.sample.SamplePlugin"
+ :host-api 1}

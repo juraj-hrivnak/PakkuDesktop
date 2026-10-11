@@ -23,7 +23,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -34,6 +33,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
+import org.jetbrains.jewel.foundation.modifier.thenIf
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.*
 import org.jetbrains.jewel.ui.Outline
@@ -41,7 +41,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.MenuScope
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.styling.DropdownStyle
-import org.jetbrains.jewel.ui.disabled
+import org.jetbrains.jewel.ui.disabledAppearance
 import org.jetbrains.jewel.ui.theme.dropdownStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 
@@ -214,12 +214,10 @@ fun PkUiDropdown(
                 contentAlignment = Alignment.Center,
             ) {
                 val alpha = if (enabled) 1f else 0.5f
-                val colorFilter = if (enabled) null else ColorFilter.disabled()
                 Icon(
-                    modifier = Modifier.alpha(alpha),
+                    modifier = Modifier.alpha(alpha).thenIf(!enabled) { disabledAppearance() },
                     key = style.icons.chevronDown,
                     contentDescription = "Dropdown Chevron",
-                    colorFilter = colorFilter,
                 )
             }
         }

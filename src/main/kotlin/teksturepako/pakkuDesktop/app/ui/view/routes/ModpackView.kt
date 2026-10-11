@@ -47,8 +47,8 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
-import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
-import teksturepako.pakkuDesktop.pro.ui.component.GitPushDialog
+import teksturepako.pakkuDesktop.app.ui.component.git.GitDropdown
+import teksturepako.pakkuDesktop.app.ui.component.git.GitPushDialog
 
 @Composable
 fun PakkuApplicationScope.ModpackView(
@@ -61,9 +61,11 @@ fun PakkuApplicationScope.ModpackView(
     val titleBarHeight = 40.dp
 
     // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
+    val lockFile = model.lockFile
+    val configFile = model.configFile
     val hasNonFileNotFoundError =
-        (model.lockFile?.isErr == true && model.lockFile.getError() !is FileNotFound) ||
-            (model.configFile?.isErr == true && model.configFile.getError() !is FileNotFound)
+        (lockFile?.isErr == true && lockFile.getError() !is FileNotFound) ||
+            (configFile?.isErr == true && configFile.getError() !is FileNotFound)
 
     val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
 
@@ -80,13 +82,14 @@ fun PakkuApplicationScope.ModpackView(
                 GitDropdown(publish, model)
             }
             McLoaderLabel(model)
-            if (model.actionName != null) {
+            val actionName = model.actionName
+            if (actionName != null) {
                 Box(Modifier.padding(4.dp)) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(model.actionName)
+                        Text(actionName)
                         val total = model.fetchProgressTotal
                         if (model.actionName == "Fetching" && total > 0L) {
                             val progress = (model.fetchProgressCompleted.toFloat() / total.toFloat())

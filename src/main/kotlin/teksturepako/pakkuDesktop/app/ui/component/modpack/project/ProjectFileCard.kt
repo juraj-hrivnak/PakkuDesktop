@@ -23,9 +23,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
+import kotlinx.datetime.toStdlibInstant
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Icon
@@ -227,6 +228,7 @@ fun ProjectFileUpdateCard(
                         Column(modifier = Modifier.weight(1f)) {
                             SelectableText(file.fileName, fontSize = 12.sp)
                             file.datePublished
+                                .toStdlibInstant()
                                 .takeUnless { it == Instant.DISTANT_PAST }
                                 ?.formatPublished()
                                 ?.let {
@@ -320,6 +322,7 @@ private fun FileCardBody(
     providerTypes: List<String> = projectFile?.let { listOf(it.type) }.orEmpty(),
 ) {
     val published = projectFile?.datePublished
+        ?.toStdlibInstant()
         ?.takeUnless { it == Instant.DISTANT_PAST }
         ?.formatPublished()
     val pathText = relativePath ?: projectFile?.fileName.orEmpty()

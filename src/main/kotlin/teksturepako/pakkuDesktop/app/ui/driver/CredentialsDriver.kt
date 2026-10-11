@@ -11,28 +11,32 @@ import kotlinx.coroutines.withContext
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.InternalModel
+import teksturepako.pakkuDesktop.app.ui.model.InternalMsg
 import teksturepako.pakkuDesktop.elm.Driver
 
 /**
  * Credentials IO for the settings dialog.
  *
- * - [AppModel.wantsLoadCredentials] → read ~/.pakku/credentials → [AppMsg.CredentialsLoaded]
- * - [AppModel.pendingCredentialsUpdate] → write → [AppMsg.CredentialsUpdateHandled]
+ * - [AppModel.wantsLoadCredentials] → read ~/.pakku/credentials → [InternalMsg.CredentialsLoaded]
+ * - [InternalModel.pendingCredentialsUpdate] → write → [AppMsg.CredentialsUpdateHandled]
  */
 val credentialsDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.wantsLoadCredentials) {
         if (!model.wantsLoadCredentials) return@LaunchedEffect
         val creds = withContext(Dispatchers.IO) { CredentialsFile.readToResult().get() }
         publish(
-            AppMsg.CredentialsLoaded(
-                curseForgeApiKey = creds?.curseForgeApiKey.orEmpty(),
-                gitHubAccessToken = creds?.gitHubAccessToken.orEmpty(),
+            AppMsg.Internal(
+                InternalMsg.CredentialsLoaded(
+                    curseForgeApiKey = creds?.curseForgeApiKey.orEmpty(),
+                    gitHubAccessToken = creds?.gitHubAccessToken.orEmpty(),
+                ),
             ),
         )
     }
 
-    LaunchedEffect(model.pendingCredentialsUpdate) {
-        val request = model.pendingCredentialsUpdate ?: return@LaunchedEffect
+    LaunchedEffect(model.internal.pendingCredentialsUpdate) {
+        val request = model.internal.pendingCredentialsUpdate ?: return@LaunchedEffect
         val error = withContext(Dispatchers.IO) {
             CredentialsFile.update(
                 updatedCurseForgeApiKey = request.curseForgeApiKey.ifBlank { null },

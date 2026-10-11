@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
-import teksturepako.pakkuDesktop.pro.git.wrapper.NativeGit
+import teksturepako.pakkuDesktop.app.git.NativeGit
 import java.io.File
 
 /**
