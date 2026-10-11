@@ -23,6 +23,8 @@ version = "1.0"
 dependencies {
     // Elm runtime API + plugin SPI (what plugins compile against)
     implementation(project(":pakku-desktop-api"))
+    // Host messages + model; plugins compile against it too
+    implementation(project(":pakku-desktop-app-api"))
 
     // In-repo plugins hashed into OfficialPluginDigests (see build-logic PluginHostConventionPlugin)
     devPlugin(project(":sample-plugin"))

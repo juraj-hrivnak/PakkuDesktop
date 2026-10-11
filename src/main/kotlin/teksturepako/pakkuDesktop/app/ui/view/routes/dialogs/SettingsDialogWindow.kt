@@ -43,6 +43,7 @@ import teksturepako.pakkuDesktop.app.ui.component.settings.SettingsHeapTab
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
+import teksturepako.pakkuDesktop.app.ui.model.InternalMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsCredentials
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
 import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
@@ -67,7 +68,7 @@ fun SettingsDialog(
         runCatching { focusRequester.requestFocus() }
     }
 
-    val saving = model.pendingCredentialsUpdate != null
+    val saving = model.internal.pendingCredentialsUpdate != null
     val uiScale = ProfileData.coerceUiScale(model.profile.data.uiScale)
     val scaleIndex = uiScalePresetIndex(uiScale)
     // Dialog is a separate window at OS density. Keep its content there too so changing
@@ -191,7 +192,7 @@ private fun SettingsGeneralTab(
             color = JewelTheme.contentColor.copy(alpha = 0.55f),
         )
 
-        val creds = model.settingsCredentials
+        val creds = model.internal.settingsCredentials
         if (creds == null) {
             Text("Loading…", color = JewelTheme.contentColor.copy(alpha = 0.65f))
         } else {
@@ -202,9 +203,11 @@ private fun SettingsGeneralTab(
                     status = model.credentialsStatus,
                     onSave = { cf, gh ->
                         publish(
-                            AppMsg.CredentialsUpdateRequested(
-                                curseForgeApiKey = cf,
-                                gitHubAccessToken = gh,
+                            AppMsg.Internal(
+                                InternalMsg.CredentialsUpdateRequested(
+                                    curseForgeApiKey = cf,
+                                    gitHubAccessToken = gh,
+                                ),
                             ),
                         )
                     },

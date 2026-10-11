@@ -20,6 +20,8 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.plugins.LoadedPlugin
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState
+import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
+import teksturepako.pakkuDesktop.app.plugins.WithPluginAccess
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
@@ -44,7 +46,11 @@ fun PluginsHost(
         }
         for (plugin in plugins) {
             key(plugin.id) {
-                PluginSlot(plugin, states[plugin.id], publish)
+                if (plugin.id == PAKKU_PRO) {
+                    SelectableText("${plugin.name} — loaded; opens on the activation screen")
+                } else {
+                    PluginSlot(plugin, states[plugin.id], publish)
+                }
             }
         }
         for (failure in failures) {
@@ -55,11 +61,39 @@ fun PluginsHost(
     }
 }
 
+/**
+ * Hard-coded in the host: the id is the allowlist key, and the manifest is not trusted to
+ * pick where a plugin mounts. [PakkuProSlot] is the only place this plugin's view is called.
+ */
+private val PAKKU_PRO = PluginId("pakku-pro")
+
+/** The pakku-pro plugin view, or its load failure. Mounted by the activation route only. */
+@Composable
+fun PakkuProSlot(
+    plugins: PluginRegistry,
+    states: PersistentMap<PluginId, Any?>,
+    failures: PersistentList<PluginLoadState.Failed>,
+    publish: (AppMsg) -> Unit,
+) {
+    val plugin = plugins.loaded[PAKKU_PRO]
+    val failure = failures.firstOrNull { it.dirName == PAKKU_PRO.value }
+    when {
+        plugin != null -> PluginSlot(plugin, states[PAKKU_PRO], publish)
+        failure != null -> PluginFailureRow(failure)
+        else -> SelectableText(
+            "The Pakku Pro plugin is not installed.",
+            color = JewelTheme.contentColor.copy(alpha = 0.65f),
+        )
+    }
+}
+
 @Composable
 private fun PluginSlot(plugin: LoadedPlugin, state: Any?, publish: (AppMsg) -> Unit) {
     RecomposeProbe("plugin:${plugin.id.value}")
     val id = plugin.id
-    plugin.erased.view({ publish(AppMsg.Plugin(id, it)) }, state)
+    WithPluginAccess(plugin.trust) {
+        plugin.erased.view({ publish(AppMsg.Plugin(id, it)) }, state)
+    }
 }
 
 @Composable

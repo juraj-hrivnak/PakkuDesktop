@@ -61,8 +61,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     // Child-owned state
 
     is ModpackMsg.Loaded -> {
-        val updatedSelectedProject = if (model.selectedProject != null) {
-            val selectedKey = model.selectedProject.uiKey()
+        val selectedProject = model.selectedProject
+        val updatedSelectedProject = if (selectedProject != null) {
+            val selectedKey = selectedProject.uiKey()
             msg.lockFile.get()?.getAllProjects()?.find { p ->
                 p.uiKey() == selectedKey
             }
@@ -755,15 +756,15 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.GitDropdown -> {
         val updatedGitDropdown = gitDropdownComponent.update(msg.msg, model.gitDropdown)
         val base = model.withChild(model.gitDropdown, updatedGitDropdown) { copy(gitDropdown = it) }
-        when (msg.msg) {
+        when (val child = msg.msg) {
             GitDropdownMsg.PullRequested              -> base.copy(wantsGitPull = true)
             GitDropdownMsg.PushRequested              -> base.copy(
                 wantsGitPush = true,
                 gitDropdown = updatedGitDropdown.copy(pushDialogVisible = false),
             )
             is GitDropdownMsg.TabSelected             ->
-                if (base.selectedTab == msg.msg.tab) base else base.copy(selectedTab = msg.msg.tab)
-            is GitDropdownMsg.CheckoutRequested       -> base.copy(gitCheckoutBranch = msg.msg.branch)
+                if (base.selectedTab == child.tab) base else base.copy(selectedTab = child.tab)
+            is GitDropdownMsg.CheckoutRequested       -> base.copy(gitCheckoutBranch = child.branch)
             else                                      -> base
         }
     }

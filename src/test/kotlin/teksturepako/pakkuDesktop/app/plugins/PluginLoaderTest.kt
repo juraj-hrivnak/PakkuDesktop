@@ -8,6 +8,7 @@ import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Failed
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
+import teksturepako.pakkuDesktop.plugin.PluginTrust
 import teksturepako.pakku.io.createHash
 import java.net.URLClassLoader
 import java.nio.file.Path
@@ -83,8 +84,9 @@ class PluginLoaderTest {
         readText: (Path) -> String = { it.readText() },
         openClassLoader: (Path) -> URLClassLoader = ::testPluginClassLoader,
         digests: Map<PluginId, String>? = null,
+        official: Set<PluginId> = emptySet(),
     ): PluginRegistry =
-        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot())
+        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot(), official)
             .also { registries += it }
 
     private fun ids(registry: PluginRegistry) = registry.loaded.keys.map { it.value }
@@ -272,6 +274,15 @@ class PluginLoaderTest {
         val registry = load(digests = mapOf(PluginId("counting") to sha256Hex(jar)))
         assertEquals(listOf("counting"), ids(registry))
         assertEquals(emptyList(), registry.failed)
+    }
+
+    @Test
+    fun trustLevelComesFromOfficialSet() {
+        pluginDir("a", manifest("counting", "$FIXTURES.CountingPlugin"))
+        pluginDir("b", manifest("sample", SAMPLE))
+        val registry = load(official = setOf(PluginId("sample")))
+        assertEquals(PluginTrust.Standard, registry.loaded.getValue(PluginId("counting")).trust)
+        assertEquals(PluginTrust.Official, registry.loaded.getValue(PluginId("sample")).trust)
     }
 
     @Test

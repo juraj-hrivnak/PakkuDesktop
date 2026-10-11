@@ -55,11 +55,13 @@ fun mainWindowDriver(
     initialWindowData: WindowData,
     windowCloseMessage: AppMsg = AppMsg.RequestCloseDialog(CloseDialogRequest.Quit(forceClose = true)),
 ): Driver<AppModel, AppMsg> = { publish, model, content ->
+    val initialX = initialWindowData.x
+    val initialY = initialWindowData.y
     val windowState = rememberWindowState(
         placement = initialWindowData.placement,
         isMinimized = false,
-        position = if (initialWindowData.x != null && initialWindowData.y != null) {
-            WindowPosition.Absolute(x = initialWindowData.x.dp, y = initialWindowData.y.dp)
+        position = if (initialX != null && initialY != null) {
+            WindowPosition.Absolute(x = initialX.dp, y = initialY.dp)
         } else {
             WindowPosition(Alignment.Center)
         },

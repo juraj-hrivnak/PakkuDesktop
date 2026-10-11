@@ -76,7 +76,7 @@ fun <T : Enum<T>> NullableProjectEnumSelection(
     } else if (model.selectedProject?.let { projectRef(it) } != null) {
         FlowRow(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
             ContentBox(Modifier.padding(2.dp)) { Text(label) }
-            ContentBox(Modifier.padding(2.dp)) { Text(projectRef(model.selectedProject)!!.name) }
+            ContentBox(Modifier.padding(2.dp)) { Text(projectRef(model.selectedProject!!)!!.name) }
         }
     }
 }

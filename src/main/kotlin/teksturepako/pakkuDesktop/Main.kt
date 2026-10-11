@@ -85,7 +85,6 @@ fun main() {
                     initialWindowData = initialWindowData,
                 ),
                 directoryPickerDriver(),
-                licenseDriver,
                 actionDriver,
                 projectEditDriver,
                 projectMutationDriver,

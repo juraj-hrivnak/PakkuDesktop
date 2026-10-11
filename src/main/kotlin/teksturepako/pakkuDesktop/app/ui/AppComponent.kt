@@ -16,6 +16,7 @@ import teksturepako.pakkuDesktop.app.data.withProjectsUi
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
 import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg.WelcomeDropdown
+import teksturepako.pakkuDesktop.app.ui.view.plugins.PakkuProSlot
 import teksturepako.pakkuDesktop.app.ui.view.routes.ActivationView
 import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
 import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
@@ -168,7 +169,7 @@ private fun AppModel.openSettings(): AppModel = copy(
     showSettings = true,
     settingsTab = SettingsTab.General,
     wantsLoadCredentials = true,
-    settingsCredentials = null,
+    internal = internal.copy(settingsCredentials = null),
     credentialsStatus = null,
     wantsHeapHistogram = false,
 )
@@ -177,22 +178,21 @@ private fun AppModel.closeSettings(): AppModel = copy(
     showSettings = false,
     settingsTab = SettingsTab.General,
     wantsLoadCredentials = false,
-    settingsCredentials = null,
+    internal = InternalModel(),
     credentialsStatus = null,
-    pendingCredentialsUpdate = null,
     wantsHeapHistogram = false,
 )
 
 private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
     val newWelcome = welcomeComponent.update(msg.msg, model.welcome)
     val base = model.withChild(model.welcome, newWelcome) { copy(welcome = it) }
-    return when (msg.msg) {
+    return when (val child = msg.msg) {
         WelcomeMsg.ShowSettings   -> base.openSettings()
         WelcomeMsg.ShowNewModpack -> base.copy(showNewModpack = true)
         is WelcomeMsg.DirectoryPicked ->
-            handleDirectoryPicked(msg.msg.path, base)
+            handleDirectoryPicked(child.path, base)
         is WelcomeMsg.WelcomeDropdown -> {
-            when (val inner = msg.msg.msg) {
+            when (val inner = child.msg) {
                 WelcomeDropdownMsg.NewModpack ->
                     base.copy(showNewModpack = true)
                 WelcomeDropdownMsg.ShowSettings ->
@@ -207,7 +207,7 @@ private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
 private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
     val newModpack = modpackComponent.update(msg.msg, model.modpack)
     val persistListPrefs = msg.msg.persistsProjectsListPrefs()
-    return when (msg.msg) {
+    return when (val child = msg.msg) {
         ModpackMsg.ShowSettings   -> model.commitModpack(newModpack, persistListPrefs).openSettings()
         ModpackMsg.ShowNewModpack -> model.commitModpack(newModpack, persistListPrefs).copy(showNewModpack = true)
 
@@ -222,7 +222,7 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
         }
 
         is ModpackMsg.CloseRequested -> {
-            if (model.modpack.actionName != null && !msg.msg.forceClose) {
+            if (model.modpack.actionName != null && !child.forceClose) {
                 model.commitModpack(newModpack, persistListPrefs)
                     .copy(closeDialog = CloseDialogRequest.CloseModpack())
             } else {
@@ -240,17 +240,17 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
         }
 
         is ModpackMsg.DirectoryPicked ->
-            handleDirectoryPicked(msg.msg.path, model).commitModpack(newModpack, persistListPrefs)
+            handleDirectoryPicked(child.path, model).commitModpack(newModpack, persistListPrefs)
 
         is ModpackMsg.FilesDropped -> {
             val withModpack = model.commitModpack(newModpack, persistListPrefs)
-            val directories = msg.msg.paths.filter { java.nio.file.Files.isDirectory(java.nio.file.Path.of(it)) }
+            val directories = child.paths.filter { java.nio.file.Files.isDirectory(java.nio.file.Path.of(it)) }
             val firstDir = directories.firstOrNull()
             if (firstDir != null) {
                 handleDirectoryPicked(firstDir, withModpack)
             } else {
                 // Treat dropped file names as add query hints (slug-like basenames).
-                val query = msg.msg.paths
+                val query = child.paths
                     .map { java.nio.file.Path.of(it).fileName.toString().substringBeforeLast('.') }
                     .filter { it.isNotBlank() }
                     .joinToString(" ")
@@ -263,7 +263,7 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
         }
 
         // dropdown msgs that bubble here
-        is ModpackMsg.ModpackDropdown -> when (val inner = msg.msg.msg) {
+        is ModpackMsg.ModpackDropdown -> when (val inner = child.msg) {
             is ModpackDropdownMsg.CloseRequested -> {
                 if (model.modpack.actionName != null && !inner.force) {
                     model.commitModpack(newModpack, persistListPrefs)
@@ -353,22 +353,8 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
         wantsCloneParentPicker = false,
     )
 
-    is AppMsg.CredentialsLoaded -> model.copy(
-        wantsLoadCredentials = false,
-        settingsCredentials = SettingsCredentials(
-            curseForgeApiKey = msg.curseForgeApiKey,
-            gitHubAccessToken = msg.gitHubAccessToken,
-        ),
-    )
-    is AppMsg.CredentialsUpdateRequested -> model.copy(
-        pendingCredentialsUpdate = CredentialsUpdateRequest(
-            curseForgeApiKey = msg.curseForgeApiKey,
-            gitHubAccessToken = msg.gitHubAccessToken,
-        ),
-        credentialsStatus = null,
-    )
     is AppMsg.CredentialsUpdateHandled -> model.copy(
-        pendingCredentialsUpdate = null,
+        internal = model.internal.copy(pendingCredentialsUpdate = null),
         credentialsStatus = msg.statusMessage,
     )
 
@@ -386,7 +372,7 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
     is AppMsg.CloneParentPicked -> model.copy(cloneDestParent = msg.path, wantsCloneParentPicker = false)
     AppMsg.CloneParentPickerLaunched -> model.copy(wantsCloneParentPicker = false)
 
-    AppMsg.ShowActivation -> model.copy(screen = AppScreen.Activation, licenseKeyError = null)
+    AppMsg.ShowActivation -> model.copy(screen = AppScreen.Activation)
     AppMsg.HideActivation -> model.copy(
         screen = if (model.profile.data.currentProfile != null) AppScreen.Modpack else AppScreen.Welcome,
     )
@@ -399,29 +385,37 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
     // -- Quit --
     AppMsg.QuitReady                 -> model.copy(wantsQuit = false)
 
-    // -- Pro / license --
-    is AppMsg.ProActivationChecked   -> model.copy(isProActivated = msg.activated)
-
-    is AppMsg.LicenseKeySubmit -> model.copy(pendingLicenseKey = msg.key, licenseKeyError = null)
-
-    is AppMsg.LicenseKeyHandled -> {
-        val activated = msg.activated ?: model.isProActivated
-        model.copy(
-            pendingLicenseKey = null,
-            isProActivated = activated,
-            licenseKeyError = msg.error,
-            screen = if (activated == true && model.screen == AppScreen.Activation) {
-                if (model.profile.data.currentProfile != null) AppScreen.Modpack else AppScreen.Welcome
-            } else {
-                model.screen
-            },
-        )
-    }
+    // -- Internal (credentials, license) --
+    is AppMsg.Internal               -> handleInternalMsg(msg.msg, model)
 
     // -- Child components --
     is AppMsg.Welcome                -> handleWelcomeMsg(msg, model)
     is AppMsg.Modpack                -> handleModpackMsg(msg, model)
     is AppMsg.Plugin                 -> handlePluginMsg(msg, model, plugins)
+}
+
+private fun handleInternalMsg(msg: InternalMsg, model: AppModel): AppModel = when (msg) {
+    is InternalMsg.CredentialsLoaded -> model.copy(
+        wantsLoadCredentials = false,
+        internal = model.internal.copy(
+            settingsCredentials = SettingsCredentials(
+                curseForgeApiKey = msg.curseForgeApiKey,
+                gitHubAccessToken = msg.gitHubAccessToken,
+            ),
+        ),
+    )
+    is InternalMsg.CredentialsUpdateRequested -> model.copy(
+        internal = model.internal.copy(
+            pendingCredentialsUpdate = CredentialsUpdateRequest(
+                curseForgeApiKey = msg.curseForgeApiKey,
+                gitHubAccessToken = msg.gitHubAccessToken,
+            ),
+        ),
+        credentialsStatus = null,
+    )
+    is InternalMsg.ProActivationReported ->
+        if (model.isProActivated == msg.activated) model
+        else model.copy(isProActivated = msg.activated)
 }
 
 private fun handlePluginMsg(msg: AppMsg.Plugin, model: AppModel, plugins: PluginRegistry): AppModel {
@@ -513,10 +507,15 @@ fun appComponent(
                 AppScreen.Activation -> with(scope) {
                     ActivationView(
                         appPublish = publish,
-                        isProActivated = model.isProActivated,
-                        licenseKeyError = model.licenseKeyError,
                         intUiTheme = model.profile.data.intUiTheme,
-                    )
+                    ) {
+                        PakkuProSlot(
+                            plugins = plugins,
+                            states = model.pluginStates,
+                            failures = model.pluginFailures,
+                            publish = publish,
+                        )
+                    }
                 }
             }
         }

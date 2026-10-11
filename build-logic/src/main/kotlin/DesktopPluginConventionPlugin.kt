@@ -12,7 +12,8 @@ import org.gradle.kotlin.dsl.register
 /**
  * A Pakku Desktop plugin module.
  *
- * - Compiles against the host API and Compose as `compileOnly`; the host provides those
+ * - Compiles against the host API, the host messages/model (`:pakku-desktop-app-api`) and
+ *   Compose as `compileOnly`; the host provides those
  *   classes at runtime and the loader rejects jars that bundle them.
  * - `assemblePluginDir` builds `build/plugin-dir/<name>/{plugin.jar, manifest.edn}` from the
  *   jar and `src/plugin/manifest.edn`. `<name>` is the project name without `-plugin`.
@@ -27,6 +28,7 @@ class DesktopPluginConventionPlugin : Plugin<Project> {
         val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
         dependencies {
             "compileOnly"(project(":pakku-desktop-api"))
+            "compileOnly"(project(":pakku-desktop-app-api"))
             "compileOnly"(libs.findLibrary("compose-foundation").get())
         }
 

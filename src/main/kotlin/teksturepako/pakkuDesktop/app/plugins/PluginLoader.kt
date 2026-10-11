@@ -8,6 +8,7 @@ import io.klogging.noCoLogger
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
+import teksturepako.pakkuDesktop.plugin.PluginTrust
 import teksturepako.pakkuDesktop.plugin.TypedPlugin
 import teksturepako.pakku.io.createHash
 import java.io.IOException
@@ -45,12 +46,14 @@ object PluginLoader {
     /**
      * @param readText reads `manifest.edn`; called exactly once per plugin folder.
      * @param openClassLoader creates the plugin's class loader from its jar.
+     * @param official ids loaded with [PluginTrust.Official]; every other plugin is [PluginTrust.Standard].
      */
     fun loadAll(
         root: Path,
         readText: (Path) -> String = { it.readText() },
         openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
         digests: Map<PluginId, String> = OfficialPluginDigests.byId,
+        official: Set<PluginId> = OfficialPluginDigests.official,
     ): PluginRegistry {
         if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
             logger.info("plugins: GraalVM native image; dynamic plugins disabled")
@@ -72,7 +75,7 @@ object PluginLoader {
         val loadedFrom = HashMap<PluginId, String>()
         val failed = ArrayList<PluginLoadState.Failed>()
         for (dir in dirs) {
-            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom, digests)) {
+            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom, digests, official)) {
                 is PluginLoadState.Loaded -> {
                     loaded[state.plugin.id] = state.plugin
                     loadedFrom[state.plugin.id] = dir.name
@@ -93,6 +96,7 @@ object PluginLoader {
         openClassLoader: (Path) -> URLClassLoader,
         loadedFrom: Map<PluginId, String>,
         digests: Map<PluginId, String>,
+        official: Set<PluginId>,
     ): PluginLoadState {
         var stage = Stage.Manifest
         var loader: URLClassLoader? = null
@@ -110,8 +114,9 @@ object PluginLoader {
             stage = Stage.Validate
             val initial = typed.validate()
             val (erased, erasedDrivers) = typed.erase()
+            val trust = if (manifest.id in official) PluginTrust.Official else PluginTrust.Standard
             PluginLoadState.Loaded(
-                LoadedPlugin(manifest.id, manifest.name, erased, erasedDrivers, initial, loader),
+                LoadedPlugin(manifest.id, manifest.name, erased, erasedDrivers, initial, loader, trust),
             )
         } catch (e: VirtualMachineError) {
             throw e

@@ -37,6 +37,7 @@ import teksturepako.pakkuDesktop.app.ui.appUpdate
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
+import teksturepako.pakkuDesktop.app.ui.view.plugins.PakkuProSlot
 import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.elm.RecomposeCounter
@@ -241,6 +242,53 @@ class PluginsHostTest {
         composeRule.onNodeWithText("broken-plugin", substring = true).assertExists()
         composeRule.onNodeWithText("Manifest", substring = true).assertExists()
         composeRule.onNodeWithText("missing manifest.edn", substring = true).assertExists()
+    }
+
+    @Test
+    fun pakkuProViewMountsOnlyInItsSlot() {
+        val pro = loaded("pakku-pro", counterPlugin("pakku-pro"))
+        val other = loaded("plugin-a", counterPlugin("plugin-a"))
+        val plugins = registry(pro, other)
+        val states = persistentMapOf(pro.id to pro.initialState, other.id to other.initialState)
+        var showSlot by mutableStateOf(false)
+
+        composeRule.setContent {
+            JewelTestTheme {
+                Column {
+                    PluginsHost(
+                        plugins = plugins.loadedList,
+                        states = states,
+                        failures = persistentListOf(),
+                        publish = {},
+                        pluginsRoot = Path("plugins"),
+                    )
+                    if (showSlot) PakkuProSlot(plugins, states, persistentListOf(), publish = {})
+                }
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("plugin-a: 0").assertExists()
+        composeRule.onNodeWithText("pakku-pro — loaded", substring = true).assertExists()
+        composeRule.onNodeWithText("pakku-pro: 0").assertDoesNotExist()
+
+        showSlot = true
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("pakku-pro: 0").assertExists()
+    }
+
+    @Test
+    fun pakkuProSlotShowsLoadFailure() {
+        val failure = Failed("pakku-pro", Stage.Trust, "jar digest mismatch")
+        composeRule.setContent {
+            JewelTestTheme {
+                PakkuProSlot(PluginRegistry.Empty, persistentMapOf(), persistentListOf(failure), publish = {})
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("pakku-pro — failed at Trust", substring = true).assertExists()
+        composeRule.onNodeWithText("jar digest mismatch", substring = true).assertExists()
     }
 
     @Test
