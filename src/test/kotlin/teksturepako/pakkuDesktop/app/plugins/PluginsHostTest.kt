@@ -247,7 +247,7 @@ class PluginsHostTest {
     fun samplePluginAndBrokenFixtureShowInHost() {
         val root = createTempDirectory("plugins-host")
         try {
-            val sampleSrc = Path(System.getProperty("pakku.test.samplePluginDir"))
+            val sampleSrc = Path(System.getProperty("pakku.test.pluginsDir")).resolve("sample")
             val sampleDir = root.resolve("sample").createDirectories()
             sampleSrc.resolve("manifest.edn").copyTo(sampleDir.resolve("manifest.edn"))
             sampleSrc.resolve("plugin.jar").copyTo(sampleDir.resolve("plugin.jar"))

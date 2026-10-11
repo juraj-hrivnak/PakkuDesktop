@@ -41,7 +41,7 @@ private const val FIXTURES = "teksturepako.pakkuDesktop.sample.fixtures"
 internal fun sha256Hex(path: Path): String = path.inputStream().use { createHash("sha256", it) }
 
 class PluginLoaderTest {
-    private val sampleJar: Path = Path(System.getProperty("pakku.test.samplePluginDir")).resolve("plugin.jar")
+    private val sampleJar: Path = Path(System.getProperty("pakku.test.pluginsDir")).resolve("sample/plugin.jar")
     private val root: Path = createTempDirectory("plugins")
     private val registries = mutableListOf<PluginRegistry>()
 
@@ -81,7 +81,8 @@ class PluginLoaderTest {
         openClassLoader: (Path) -> URLClassLoader = ::testPluginClassLoader,
         digests: Map<PluginId, String>? = null,
     ): PluginRegistry =
-        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot()).also { registries += it }
+        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot())
+            .also { registries += it }
 
     private fun ids(registry: PluginRegistry) = registry.loaded.keys.map { it.value }
 
@@ -305,11 +306,12 @@ class PluginLoaderTest {
     }
 
     @Test
-    fun defaultDigestsRejectSampleFixture() {
+    fun defaultDigestsAllowRepoSampleInDevBuilds() {
+        if (PluginBuildMode.release) return
         pluginDir("sample", manifest("sample", SAMPLE))
         val registry = PluginLoader.loadAll(root).also { registries += it }
-        assertEquals(emptyList(), ids(registry))
-        assertEquals(listOf(Failed("sample", Stage.Trust, "plugin not allowlisted")), registry.failed)
+        assertEquals(listOf("sample"), ids(registry))
+        assertEquals(emptyList(), registry.failed)
     }
 
     @Test
@@ -322,6 +324,7 @@ class PluginLoaderTest {
         assertEquals(listOf("counting"), ids(registry))
         assertEquals(listOf(Failed("bad", Stage.Trust, "plugin not allowlisted")), registry.failed)
     }
+
 }
 
 private fun testPluginClassLoader(jar: Path): URLClassLoader =
