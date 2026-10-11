@@ -26,6 +26,7 @@ import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.withoutInternal
 import teksturepako.pakkuDesktop.elm.Driver
+import teksturepako.pakkuDesktop.elm.Event
 import teksturepako.pakkuDesktop.elm.LocalMessages
 import teksturepako.pakkuDesktop.plugin.PluginTrust
 
@@ -42,14 +43,21 @@ internal class PluginAccess(private val official: AppAccess, private val standar
 /** Host-only. Null outside `run()` (view-only tests); plugins then get no [LocalApp]. */
 internal val LocalPluginAccess = staticCompositionLocalOf<PluginAccess?> { null }
 
+/** One shared collector for the process; plugins observe [Event] implementations only. */
+internal fun pluginVisibleMessages(upstream: SharedFlow<*>, scope: CoroutineScope): SharedFlow<Event> =
+    upstream
+        .filterIsInstance<Event>()
+        .shareIn(scope, SharingStarted.Eagerly, replay = 0)
+
 /**
  * Every loaded plugin's drivers, lifted to the host model, after the driver that builds
  * [LocalApp]. Build once in `main()` and append to the end of the `run()` driver list so
  * plugin drivers sit inside every host driver.
  *
  * A lifted driver sees only its plugin's `pluginStates` slice, and its `publish` wraps each
- * message in [AppMsg.Plugin]. Host views under a plugin driver see that plugin's
- * `LocalMessages`; host drivers must stay before `pluginDrivers()` in the list.
+ * message in [AppMsg.Plugin]. Under [WithPluginAccess], [LocalApp.messages] and
+ * [LocalMessages] are the same trust-filtered stream of [Event]s that also implement
+ * [AppMsg]; host drivers must stay before `pluginDrivers()` in the list.
  */
 fun pluginDrivers(registry: PluginRegistry): List<Driver<AppModel, AppMsg>> =
     listOf(pluginAccessDriver) +
@@ -59,18 +67,19 @@ private val pluginAccessDriver: Driver<AppModel, AppMsg> = { publish, model, con
     val messages = LocalMessages.current
     val scope = rememberCoroutineScope()
     val current = rememberUpdatedState(model)
-    val access = remember(publish, messages) { pluginAccess(publish, current, messages, scope) }
+    val pluginVisible = remember(messages, scope) { pluginVisibleMessages(messages, scope) }
+    val access = remember(publish, pluginVisible) { pluginAccess(publish, current, pluginVisible, scope) }
     CompositionLocalProvider(LocalPluginAccess provides access) { content() }
 }
 
 private fun pluginAccess(
     publish: (AppMsg) -> Unit,
     model: State<AppModel>,
-    messages: SharedFlow<*>,
+    pluginVisible: SharedFlow<Event>,
     scope: CoroutineScope,
 ): PluginAccess {
-    val all = messages.filterIsInstance<AppMsg>().shareIn(scope, SharingStarted.Eagerly)
-    val public = all.filterNot { it is AppMsg.Internal }.shareIn(scope, SharingStarted.Eagerly)
+    val all = pluginVisible.filterIsInstance<AppMsg>().shareIn(scope, SharingStarted.Eagerly, replay = 0)
+    val public = all.filterNot { it is AppMsg.Internal }.shareIn(scope, SharingStarted.Eagerly, replay = 0)
     val publicModel = derivedStateOf(referentialEqualityPolicy()) { model.value.withoutInternal() }
     val publicPublish: (AppMsg) -> Unit = { msg ->
         if (msg is AppMsg.Internal) {
@@ -85,14 +94,18 @@ private fun pluginAccess(
     )
 }
 
-/** Provides this plugin's [LocalApp] and matching `LocalMessages` around [content]. */
+/** Plugin drivers and views: [LocalApp] plus matching [LocalMessages] ([AppAccess.messages]). */
 @Composable
 internal fun WithPluginAccess(trust: PluginTrust, content: @Composable () -> Unit) {
     val access = LocalPluginAccess.current?.of(trust)
     if (access == null) {
         content()
     } else {
-        CompositionLocalProvider(LocalApp provides access, LocalMessages provides access.messages, content = content)
+        CompositionLocalProvider(
+            LocalApp provides access,
+            LocalMessages provides access.messages,
+            content = content,
+        )
     }
 }
 

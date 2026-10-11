@@ -18,7 +18,9 @@ import teksturepako.pakkuDesktop.plugin.PluginTrust
  * Below [PluginTrust.Official]:
  * - [model] has an empty [AppModel.internal],
  * - [publish] drops [AppMsg.Internal],
- * - [messages] (and `LocalMessages`) never emit [AppMsg.Internal].
+ * - [messages] emits only types that implement [teksturepako.pakkuDesktop.elm.Event] and
+ *   [AppMsg]; standard trust also drops [AppMsg.Internal]. Matches `LocalMessages` in
+ *   plugin drivers and views.
  */
 class AppAccess(
     val trust: PluginTrust,

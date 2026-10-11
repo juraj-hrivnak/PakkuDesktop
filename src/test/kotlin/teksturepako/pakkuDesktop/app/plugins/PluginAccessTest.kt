@@ -141,8 +141,8 @@ class PluginAccessTest {
         }
         composeRule.waitForIdle()
 
-        assertEquals(listOf<AppMsg>(AppMsg.ShowActivation), seenApp)
-        assertEquals(listOf<Any?>(AppMsg.ShowActivation), seenLocal)
+        assertEquals(emptyList<AppMsg>(), seenApp)
+        assertEquals(emptyList<Any?>(), seenLocal)
     }
 
     @Test
@@ -159,6 +159,6 @@ class PluginAccessTest {
         }
         composeRule.waitForIdle()
 
-        assertEquals(listOf(credentials, AppMsg.ShowActivation), seen)
+        assertEquals(emptyList<AppMsg>(), seen)
     }
 }

@@ -16,10 +16,13 @@ import org.junit.rules.RuleChain
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.appUpdate
+import teksturepako.pakkuDesktop.app.api.LocalApp
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
+import teksturepako.pakkuDesktop.app.ui.model.InternalMsg
 import teksturepako.pakkuDesktop.elm.Driver
+import teksturepako.pakkuDesktop.elm.Event
 import teksturepako.pakkuDesktop.elm.LocalMessages
 import teksturepako.pakkuDesktop.elm.assumeAwtForComposeUiTests
 import teksturepako.pakkuDesktop.elm.component
@@ -178,7 +181,20 @@ class PluginDriversTest {
     }
 
     @Test
-    fun pluginDriverCanReadLocalMessages() {
+    fun pluginDriverSharesAppAccessMessages() {
+        mount(
+            registry(
+                a = { _, _, content ->
+                    assertSame(LocalApp.current.messages, LocalMessages.current)
+                    content()
+                },
+                b = { _, _, content -> content() },
+            )
+        )
+    }
+
+    @Test
+    fun pluginDriverDoesNotReceiveNonEventHostMessages() {
         var count = 0
         mount(
             registry(
@@ -192,9 +208,47 @@ class PluginDriversTest {
         )
 
         publishUnrelatedHostMessages(3)
+        publish(AppMsg.HideSettings)
         composeRule.waitForIdle()
 
-        assertEquals(3, count)
+        assertEquals(0, count)
+    }
+
+    @Test
+    fun credentialsLoadedIsNotAnEvent() {
+        val loaded = InternalMsg.CredentialsLoaded("k", "t")
+        assertTrue(Event::class.java !in loaded.javaClass.interfaces)
+    }
+
+    @Test
+    fun hostDriverStillReceivesNonEventHostMessages() {
+        val hostSeen = mutableListOf<Any?>()
+        val plugins = registry(
+            a = { _, _, content -> content() },
+            b = { _, _, content -> content() },
+        )
+        val host = component(
+            init = appComponent(ProjectsUiData(), plugins).init(),
+            update = { msg: AppMsg, model: AppModel -> appUpdate(msg, model, plugins) },
+            view = { _, _ -> Box(Modifier.testTag(HOST_VIEW_TAG)) },
+        )
+        val hostCapture: Driver<AppModel, AppMsg> = { _, _, content ->
+            val messages = LocalMessages.current
+            LaunchedEffect(Unit) { messages.collect { hostSeen += it } }
+            content()
+        }
+        val capture: Driver<AppModel, AppMsg> = { p, m, content ->
+            publish = p
+            latest = m
+            content()
+        }
+        composeRule.setContent { run(host, listOf(hostCapture, capture) + pluginDrivers(plugins)) }
+        composeRule.waitForIdle()
+
+        publish(AppMsg.HideSettings)
+        composeRule.waitForIdle()
+
+        assertEquals(listOf<Any?>(AppMsg.HideSettings), hostSeen)
     }
 
     @Test
