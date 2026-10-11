@@ -89,7 +89,11 @@ fun SettingsDialog(
                     .dialogConfirmCancelKeys(onDismiss = { publish(AppMsg.HideSettings) })
                     .widthIn(
                         min = 360.dp,
-                        max = if (model.settingsTab == SettingsTab.Heap) 720.dp else 520.dp,
+                        max = when (model.settingsTab) {
+                            SettingsTab.Heap -> 720.dp
+                            SettingsTab.Plugins -> 560.dp
+                            else -> 520.dp
+                        },
                     ),
             ) {
                 Column(
@@ -116,9 +120,7 @@ fun SettingsDialog(
                         ) {
                             PluginsHost(
                                 plugins = plugins.loadedList,
-                                states = model.pluginStates,
                                 failures = model.pluginFailures,
-                                publish = publish,
                                 pluginsRoot = pluginsRoot,
                             )
                         }

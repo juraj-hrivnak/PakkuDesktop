@@ -34,6 +34,8 @@ class LoadedPlugin(
     val initialState: Any?,
     val loader: URLClassLoader,
     val trust: PluginTrust,
+    /** SHA-256 of the plugin jar, lowercase hex. Empty for in-memory test plugins. */
+    val sha256: String = "",
 )
 
 /** Immutable result of [PluginLoader.loadAll]. The only owner of plugin classes (C4). */

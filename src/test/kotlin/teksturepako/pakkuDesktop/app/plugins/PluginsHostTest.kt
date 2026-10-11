@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,11 +35,8 @@ import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.appUpdate
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
-import teksturepako.pakkuDesktop.app.ui.model.SettingsTab
 import teksturepako.pakkuDesktop.app.ui.view.plugins.PakkuProSlot
 import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
-import teksturepako.pakkuDesktop.elm.Driver
-import teksturepako.pakkuDesktop.elm.RecomposeCounter
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.run
 import teksturepako.pakkuDesktop.plugin.PluginId
@@ -50,9 +46,7 @@ import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 private data class CounterModel(val n: Int)
 
@@ -71,22 +65,6 @@ private fun counterPlugin(id: String) = TypedPlugin(
             }
         },
         view = { _, model -> BasicText("$id: ${model.n}") },
-    ),
-)
-
-private fun rememberPlugin(id: String) = TypedPlugin(
-    modelClass = Unit::class,
-    msgClass = Unit::class,
-    component = component(
-        init = Unit,
-        update = { _, model -> model },
-        view = { _, _ ->
-            var n by remember { mutableIntStateOf(0) }
-            BasicText(
-                text = "$id: $n",
-                modifier = Modifier.clickable { n += 1 },
-            )
-        },
     ),
 )
 
@@ -109,24 +87,26 @@ class PluginsHostTest {
     val ruleChain: RuleChain = RuleChain.outerRule(assumeAwt()).around(composeRule)
 
     private val loaders = mutableListOf<LoadedPlugin>()
-    private var probesWereEnabled = false
-
-    @BeforeTest
-    fun enableProbes() {
-        probesWereEnabled = RecomposeCounter.enabled
-        RecomposeCounter.enabled = true
-    }
 
     @AfterTest
     fun cleanup() {
-        RecomposeCounter.enabled = probesWereEnabled
-        RecomposeCounter.reset()
         loaders.forEach { it.loader.close() }
         loaders.clear()
     }
 
-    private fun loaded(id: String, typed: TypedPlugin<*, *>): LoadedPlugin =
-        loadedPluginOf(id, typed).also { loaders += it }
+    private fun loaded(id: String, typed: TypedPlugin<*, *>, sha256: String = ""): LoadedPlugin =
+        loadedPluginOf(id, typed).let { plugin ->
+            if (sha256.isEmpty()) plugin else LoadedPlugin(
+                plugin.id,
+                plugin.name,
+                plugin.erased,
+                plugin.erasedDrivers,
+                plugin.initialState,
+                plugin.loader,
+                plugin.trust,
+                sha256,
+            )
+        }.also { loaders += it }
 
     private fun registry(vararg plugins: LoadedPlugin, failures: List<Failed> = emptyList()) =
         PluginRegistry(plugins.associateBy { it.id }, failures)
@@ -134,12 +114,10 @@ class PluginsHostTest {
     private fun hostComponent(plugins: PluginRegistry) = component(
         init = appComponent(ProjectsUiData(), plugins).init(),
         update = { msg: AppMsg, model: AppModel -> appUpdate(msg, model, plugins) },
-        view = { publish, model ->
+        view = { _, model ->
             PluginsHost(
                 plugins = plugins.loadedList,
-                states = model.pluginStates,
                 failures = model.pluginFailures,
-                publish = publish,
                 pluginsRoot = Path("plugins"),
             )
         },
@@ -153,57 +131,37 @@ class PluginsHostTest {
     }
 
     @Test
-    fun unrelatedPluginMessageDoesNotRecomposeUntouchedPlugin() {
-        val a = loaded("plugin-a", counterPlugin("plugin-a"))
+    fun settingsListShowsPluginNamesNotViews() {
+        val a = loaded("plugin-a", counterPlugin("plugin-a"), sha256 = "abc")
         val b = loaded("plugin-b", counterPlugin("plugin-b"))
-        val plugins = registry(a, b)
-        lateinit var publish: (AppMsg) -> Unit
-        val captureDriver: Driver<AppModel, AppMsg> = { p, _, content -> publish = p; content() }
-
-        composeRule.setContent { run(hostComponent(plugins), listOf(captureDriver)) }
+        composeRule.setContent {
+            JewelTestTheme {
+                PluginsHost(
+                    plugins = listOf(a, b),
+                    failures = persistentListOf(),
+                    pluginsRoot = Path("plugins"),
+                )
+            }
+        }
         composeRule.waitForIdle()
-        RecomposeCounter.reset()
 
-        publish(AppMsg.Plugin(PluginId("plugin-a"), CounterMsg.Inc))
-        composeRule.waitForIdle()
-
-        assertEquals(1, RecomposeCounter["plugin:plugin-a"])
-        assertEquals(0, RecomposeCounter["plugin:plugin-b"])
+        composeRule.onNodeWithText("plugin-a").assertExists()
+        composeRule.onNodeWithText("abc").assertExists()
+        composeRule.onNodeWithText("plugin-a: 0").assertDoesNotExist()
+        composeRule.onNodeWithText("plugin-b: 0").assertDoesNotExist()
     }
 
     @Test
-    fun unrelatedHostMessageDoesNotRecomposePlugins() {
-        val a = loaded("plugin-a", counterPlugin("plugin-a"))
-        val b = loaded("plugin-b", counterPlugin("plugin-b"))
-        val plugins = registry(a, b)
-        lateinit var publish: (AppMsg) -> Unit
-        val captureDriver: Driver<AppModel, AppMsg> = { p, _, content -> publish = p; content() }
-
-        composeRule.setContent { run(hostComponent(plugins), listOf(captureDriver)) }
-        composeRule.waitForIdle()
-        RecomposeCounter.reset()
-
-        publish(AppMsg.SettingsTabSelected(SettingsTab.Plugins))
-        composeRule.waitForIdle()
-
-        assertEquals(0, RecomposeCounter["plugin:plugin-a"])
-        assertEquals(0, RecomposeCounter["plugin:plugin-b"])
-    }
-
-    @Test
-    fun reorderKeepsRememberState() {
-        val a = loaded("a", rememberPlugin("a"))
-        val b = loaded("b", rememberPlugin("b"))
-        val states = persistentMapOf(a.id to a.initialState, b.id to b.initialState)
+    fun reorderKeepsRows() {
+        val a = loaded("a", counterPlugin("a"))
+        val b = loaded("b", counterPlugin("b"))
 
         composeRule.setContent {
             var order by remember { mutableStateOf(listOf(a, b)) }
             Column {
                 PluginsHost(
                     plugins = order,
-                    states = states,
                     failures = persistentListOf(),
-                    publish = {},
                     pluginsRoot = Path("plugins"),
                 )
                 BasicText("swap", modifier = Modifier.clickable { order = listOf(b, a) })
@@ -211,16 +169,15 @@ class PluginsHostTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("a: 0").performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("a: 1").performClick()
-        composeRule.waitForIdle()
+        composeRule.onNodeWithText("a").assertExists()
+        composeRule.onNodeWithText("b").assertExists()
+        composeRule.onNodeWithText("a: 0").assertDoesNotExist()
 
         composeRule.onNodeWithText("swap").performClick()
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("a: 2").assertExists()
-        composeRule.onNodeWithText("b: 0").assertExists()
+        composeRule.onNodeWithText("a").assertExists()
+        composeRule.onNodeWithText("b").assertExists()
     }
 
     @Test
@@ -230,9 +187,7 @@ class PluginsHostTest {
             JewelTestTheme {
                 PluginsHost(
                     plugins = emptyList(),
-                    states = persistentMapOf(),
                     failures = persistentListOf(failure),
-                    publish = {},
                     pluginsRoot = Path("plugins"),
                 )
             }
@@ -257,9 +212,7 @@ class PluginsHostTest {
                 Column {
                     PluginsHost(
                         plugins = plugins.loadedList,
-                        states = states,
                         failures = persistentListOf(),
-                        publish = {},
                         pluginsRoot = Path("plugins"),
                     )
                     if (showSlot) PakkuProSlot(plugins, states, persistentListOf(), publish = {})
@@ -268,8 +221,9 @@ class PluginsHostTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("plugin-a: 0").assertExists()
-        composeRule.onNodeWithText("pakku-pro — loaded", substring = true).assertExists()
+        composeRule.onNodeWithText("plugin-a").assertExists()
+        composeRule.onNodeWithText("plugin-a: 0").assertDoesNotExist()
+        composeRule.onNodeWithText("pakku-pro").assertExists()
         composeRule.onNodeWithText("pakku-pro: 0").assertDoesNotExist()
 
         showSlot = true
@@ -287,7 +241,8 @@ class PluginsHostTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("pakku-pro — failed at Trust", substring = true).assertExists()
+        composeRule.onNodeWithText("pakku-pro").assertExists()
+        composeRule.onNodeWithText("Trust").assertExists()
         composeRule.onNodeWithText("jar digest mismatch", substring = true).assertExists()
     }
 
@@ -313,9 +268,9 @@ class PluginsHostTest {
             }
             composeRule.waitForIdle()
 
-            composeRule.onNodeWithText("Sample: 0").performClick()
-            composeRule.waitForIdle()
-            composeRule.onNodeWithText("Sample: 1").assertExists()
+            composeRule.onNodeWithText("Sample plugin").assertExists()
+            composeRule.onNodeWithText(sha256Hex(sampleJar)).assertExists()
+            composeRule.onNodeWithText("Sample: 0").assertDoesNotExist()
             composeRule.onNodeWithText("broken", substring = true).assertExists()
             composeRule.onNodeWithText("Manifest", substring = true).assertExists()
         } finally {

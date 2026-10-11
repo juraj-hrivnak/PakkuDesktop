@@ -5,8 +5,8 @@
 package teksturepako.pakkuDesktop.app.actions
 
 import com.github.michaelbull.result.getOrElse
-import com.github.michaelbull.result.onFailure
-import com.github.michaelbull.result.onSuccess
+import com.github.michaelbull.result.onErr
+import com.github.michaelbull.result.onOk
 import io.klogging.logger
 import teksturepako.pakku.api.actions.createAdditionRequest
 import teksturepako.pakku.api.actions.errors.AlreadyAdded
@@ -114,11 +114,11 @@ suspend fun syncApplySuspend(
     if (updSel.isNotEmpty()) {
         for (project in updSel) {
             lockFile.update(project)
-            project.getSubpath()?.onSuccess { subpath ->
+            project.getSubpath()?.onOk { subpath ->
                 configFile.setProjectConfig(project, lockFile) { _ ->
                     this.subpath = subpath
                 }
-            }?.onFailure { error ->
+            }?.onErr { error ->
                 onToast(actionErrorToast(error))
             }
         }

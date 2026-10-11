@@ -64,7 +64,7 @@ fun ProjectDisplay(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
                             it.providerShortName == shortName && it.oldFile.fileName == projectFile.fileName
                         }
 
-                        if (change != null && updateInfo?.applied != true) {
+                        if (change != null && updateInfo.applied != true) {
                             ProjectFileUpdateCard(
                                 change = change,
                                 onSelectFile = { fileId ->

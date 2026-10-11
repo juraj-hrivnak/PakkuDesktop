@@ -9,11 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
-import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.asAwtTransferable
-import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.integration.readClipboardText
@@ -25,23 +22,17 @@ import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 
 /**
- * Overrides Compose clipboard locals so paste/copy work when AWT cannot see the
+ * Overrides the Compose clipboard so paste/copy work when AWT cannot see the
  * Wayland clipboard (common on Linux). Must sit inside [mainWindowDriver].
  *
  * Reads prefer [readClipboardText] (`wl-paste` on Wayland). Writes go through
  * [writeClipboardText] (`wl-copy` + AWT) so native clients and in-app paste both
  * see what the copy buttons put on the clipboard.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 val clipboardDriver: Driver<AppModel, AppMsg> = { _, _, content ->
     val platformClipboard = LocalClipboard.current
-    val platformManager = LocalClipboardManager.current
     val clipboard = remember(platformClipboard) { FallbackClipboard(platformClipboard) }
-    val clipboardManager = remember(platformManager) { FallbackClipboardManager(platformManager) }
-    CompositionLocalProvider(
-        LocalClipboard provides clipboard,
-        LocalClipboardManager provides clipboardManager,
-    ) {
+    CompositionLocalProvider(LocalClipboard provides clipboard) {
         content()
     }
 }
@@ -82,19 +73,4 @@ private class FallbackClipboard(
 
     override val nativeClipboard: Any
         get() = delegate.nativeClipboard
-}
-
-private class FallbackClipboardManager(
-    private val delegate: ClipboardManager,
-) : ClipboardManager
-{
-    override fun getText(): AnnotatedString? =
-        readClipboardText()?.let { AnnotatedString(it) } ?: delegate.getText()
-
-    override fun setText(annotatedString: AnnotatedString)
-    {
-        writeClipboardText(annotatedString.text)
-    }
-
-    override fun hasText(): Boolean = getText() != null
 }

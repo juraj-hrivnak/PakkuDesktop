@@ -147,7 +147,8 @@ object PluginLoader {
             stage = Stage.Trust
             val size = Files.size(jar)
             check(size in 1..maxJarBytes) { "plugin jar is too large" }
-            verifyTrust(manifest.id, jar, digests, maxJarBytes)
+            val digest = jarSha256(jar, maxJarBytes)
+            verifyTrust(manifest.id, digest, digests)
             stage = Stage.ClassLoad
             checkJarEntries(dir, jar, maxEntries)
             loader = openClassLoader(jar)
@@ -163,7 +164,7 @@ object PluginLoader {
             val (erased, erasedDrivers) = typed.erase()
             val trust = if (manifest.id in official) PluginTrust.Official else PluginTrust.Standard
             PluginLoadState.Loaded(
-                LoadedPlugin(manifest.id, manifest.name, erased, erasedDrivers, initial, loader, trust),
+                LoadedPlugin(manifest.id, manifest.name, erased, erasedDrivers, initial, loader, trust, digest),
             )
         } catch (e: VirtualMachineError) {
             throw e
@@ -236,9 +237,11 @@ object PluginLoader {
     }
 }
 
-private fun verifyTrust(id: PluginId, jar: Path, digests: Map<PluginId, String>, maxJarBytes: Long) {
+private fun jarSha256(jar: Path, maxJarBytes: Long): String =
+    jar.inputStream().use { createHash("sha256", CappedInputStream(it, maxJarBytes)) }
+
+private fun verifyTrust(id: PluginId, actualHex: String, digests: Map<PluginId, String>) {
     val expectedHex = digests[id] ?: throw IllegalArgumentException("plugin not allowlisted")
-    val actualHex = jar.inputStream().use { createHash("sha256", CappedInputStream(it, maxJarBytes)) }
     if (actualHex != expectedHex) {
         throw IllegalArgumentException("jar digest mismatch")
     }

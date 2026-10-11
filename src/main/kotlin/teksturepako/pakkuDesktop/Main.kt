@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop
 
 import com.github.michaelbull.result.get
-import com.github.michaelbull.result.onFailure
+import com.github.michaelbull.result.onErr
 import androidx.compose.runtime.remember
 import dev.nucleusframework.application.NucleusBackend
 import dev.nucleusframework.application.nucleusApplication
@@ -48,7 +48,7 @@ fun main() {
     FileKit.init(appId = "PakkuDesktop")
 
     val credentials = runBlocking { CredentialsFile.readToResult() }
-        .onFailure { error -> debug { println(error.rawMessage) } }
+        .onErr { error -> debug { println(error.rawMessage) } }
         .get()
 
     pakku {
