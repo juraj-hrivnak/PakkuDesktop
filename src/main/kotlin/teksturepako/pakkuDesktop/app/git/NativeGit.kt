@@ -2,17 +2,17 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git.wrapper
+package teksturepako.pakkuDesktop.app.git
 
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffHunk
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffLine
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.DiffHunk
+import teksturepako.pakkuDesktop.app.git.DiffLine
+import teksturepako.pakkuDesktop.app.git.DiffType
+import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitChange
+import teksturepako.pakkuDesktop.app.git.GitCommit
 import kotlinx.collections.immutable.toPersistentList
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitFile
 import java.io.File
 import java.nio.file.Path
 import kotlin.coroutines.cancellation.CancellationException

@@ -2,14 +2,14 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.component.diff
+package teksturepako.pakkuDesktop.app.ui.component.git.diff
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.colorPalette
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
+import teksturepako.pakkuDesktop.app.git.DiffType
 
 internal data class DiffLineStyle(
     val prefix: String,

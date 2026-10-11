@@ -20,9 +20,9 @@ import teksturepako.pakkuDesktop.app.ui.model.ProjectFileChange
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.git.GitChange
+import teksturepako.pakkuDesktop.app.git.GitFile
 import kotlin.test.Test
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame

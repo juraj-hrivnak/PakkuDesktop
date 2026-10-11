@@ -2,9 +2,9 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git.wrapper
+package teksturepako.pakkuDesktop.app.git
 
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitFile
 
 // -- Changelist tree --
 

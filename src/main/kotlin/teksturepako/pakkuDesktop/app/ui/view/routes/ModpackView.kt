@@ -47,8 +47,8 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
-import teksturepako.pakkuDesktop.pro.ui.component.GitDropdown
-import teksturepako.pakkuDesktop.pro.ui.component.GitPushDialog
+import teksturepako.pakkuDesktop.app.ui.component.git.GitDropdown
+import teksturepako.pakkuDesktop.app.ui.component.git.GitPushDialog
 
 @Composable
 fun PakkuApplicationScope.ModpackView(

@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.viewmodel.state
+package teksturepako.pakkuDesktop.app.git
 
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime

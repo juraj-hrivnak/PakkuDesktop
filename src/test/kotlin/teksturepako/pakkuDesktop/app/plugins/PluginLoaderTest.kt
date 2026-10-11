@@ -5,7 +5,9 @@
 package teksturepako.pakkuDesktop.app.plugins
 
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Failed
+import teksturepako.pakkuDesktop.app.git.NativeGit
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
 import teksturepako.pakkuDesktop.plugin.PluginTrust
@@ -82,7 +84,7 @@ class PluginLoaderTest {
 
     private fun load(
         readText: (Path) -> String = { it.readText() },
-        openClassLoader: (Path) -> URLClassLoader = ::testPluginClassLoader,
+        openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
         digests: Map<PluginId, String>? = null,
         official: Set<PluginId> = emptySet(),
     ): PluginRegistry =
@@ -191,10 +193,9 @@ class PluginLoaderTest {
         assertSingleFailure(Failed("p", Stage.Manifest, "missing jar 'plugin.jar'"))
     }
 
-    @Test
-    fun jarBundlingHostClassRejected() {
-        val dir = pluginDir("p", manifest("sample", SAMPLE), withJar = false)
-        val entry = "teksturepako/pakkuDesktop/elm/Component.class"
+    /** The sample jar plus one empty [entry]. */
+    private fun pluginDirWithExtraEntry(name: String, entry: String) {
+        val dir = pluginDir(name, manifest("sample", SAMPLE), withJar = false)
         JarFile(sampleJar.toFile()).use { src ->
             JarOutputStream(dir.resolve("plugin.jar").outputStream()).use { dst ->
                 for (e in src.entries()) {
@@ -206,7 +207,61 @@ class PluginLoaderTest {
                 dst.closeEntry()
             }
         }
+    }
+
+    @Test
+    fun jarBundlingHostClassRejected() {
+        val entry = "teksturepako/pakkuDesktop/elm/Component.class"
+        pluginDirWithExtraEntry("p", entry)
         assertSingleFailure(Failed("p", Stage.ClassLoad, "plugin.jar bundles host class '$entry'"))
+    }
+
+    @Test
+    fun jarBundlingAppOrProClassRejectedBeforeClassLoader() {
+        for (entry in listOf(
+            "teksturepako/pakkuDesktop/app/ui/model/AppMsg.class",
+            "teksturepako/pakkuDesktop/pro/data/Polar.class",
+        )) {
+            root.toFile().deleteRecursively()
+            pluginDirWithExtraEntry("p", entry)
+            var classLoaderOpens = 0
+            val registry = load(openClassLoader = { classLoaderOpens++; pluginClassLoader(it) })
+            assertEquals(0, classLoaderOpens, entry)
+            assertEquals(listOf(Failed("p", Stage.ClassLoad, "plugin.jar bundles host class '$entry'")), registry.failed)
+        }
+    }
+
+    @Test
+    fun parentDelegatesApiTypesOnly() {
+        val dir = pluginDir("p", manifest("sample", SAMPLE))
+        pluginClassLoader(dir.resolve("plugin.jar")).use { loader ->
+            assertSame(PakkuPlugin::class.java, loader.loadClass(PakkuPlugin::class.java.name))
+            assertSame(AppMsg::class.java, loader.loadClass(AppMsg::class.java.name))
+            assertSame(AppMsg.Internal::class.java, loader.loadClass(AppMsg.Internal::class.java.name))
+            assertSame(Unit::class.java, loader.loadClass(Unit::class.java.name))
+            for (hostOnly in listOf(PluginLoader::class.java, NativeGit::class.java, AppComponentKt)) {
+                assertFailsWith<ClassNotFoundException>(hostOnly.name) { loader.loadClass(hostOnly.name) }
+            }
+            assertEquals(loader, loader.loadClass(SAMPLE).classLoader)
+        }
+    }
+
+    @Test
+    fun hostInternalReferenceFailsAtClassLoad() {
+        val hostOnly = "teksturepako.pakkuDesktop.app.ui.driver.CredentialsDriverKt"
+        Class.forName(hostOnly)
+        pluginDir("p", manifest("host-internal", "$FIXTURES.HostInternalPlugin"))
+        assertSingleFailure(Failed("p", Stage.ClassLoad, hostOnly))
+    }
+
+    @Test
+    fun appApiTypesLinkToHostClasses() {
+        pluginDir("p", manifest("app-api", "$FIXTURES.AppApiPlugin"))
+        val registry = load()
+        assertEquals(emptyList(), registry.failed)
+        val linked = registry.loaded.getValue(PluginId("app-api")).loader
+            .loadClass("$FIXTURES.AppApiPlugin").getMethod("getLinked").invoke(null)
+        assertSame(AppMsg.ShowActivation, linked)
     }
 
     @Test
@@ -297,7 +352,7 @@ class PluginLoaderTest {
         val registry = load(
             openClassLoader = {
                 classLoaderOpens++
-                testPluginClassLoader(it)
+                pluginClassLoader(it)
             },
             digests = mapOf(PluginId("counting") to goodHex),
         )
@@ -353,7 +408,7 @@ class PluginLoaderTest {
         val registry = load(
             openClassLoader = {
                 classLoaderOpens++
-                testPluginClassLoader(it)
+                pluginClassLoader(it)
             },
             digests = mapOf(PluginId("pakku-pro") to goodHex),
         )
@@ -375,5 +430,4 @@ class PluginLoaderTest {
 
 }
 
-private fun testPluginClassLoader(jar: Path): URLClassLoader =
-    URLClassLoader(arrayOf(jar.toUri().toURL()), PakkuPlugin::class.java.classLoader)
+private val AppComponentKt: Class<*> = Class.forName("teksturepako.pakkuDesktop.app.ui.AppComponentKt")

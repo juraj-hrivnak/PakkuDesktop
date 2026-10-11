@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git.wrapper
+package teksturepako.pakkuDesktop.app.git
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.sample.fixtures
 
+import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Component
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
@@ -49,3 +50,32 @@ class WrongIdPlugin : PakkuPlugin {
 
 /** Doesn't implement [PakkuPlugin]. */
 class NotAPlugin
+
+/** Class init resolves a host-only class; the plugin parent loader refuses it. */
+class HostInternalPlugin : PakkuPlugin {
+    override val id = PluginId("host-internal")
+
+    override fun create(): TypedPlugin<Unit, Unit> =
+        unitPlugin(component(init = Unit, update = { _, _ -> }, view = { _, _ -> }))
+
+    companion object {
+        init {
+            Class.forName("teksturepako.pakkuDesktop.app.ui.driver.CredentialsDriverKt")
+        }
+    }
+}
+
+/** Links [AppMsg] from `:pakku-desktop-app-api` in [create]; the plugin parent delegates it. */
+class AppApiPlugin : PakkuPlugin {
+    override val id = PluginId("app-api")
+
+    override fun create(): TypedPlugin<Unit, Unit> {
+        linked = AppMsg.ShowActivation
+        return unitPlugin(component(init = Unit, update = { _, _ -> }, view = { _, _ -> }))
+    }
+
+    companion object {
+        @JvmStatic
+        var linked: AppMsg? = null
+    }
+}

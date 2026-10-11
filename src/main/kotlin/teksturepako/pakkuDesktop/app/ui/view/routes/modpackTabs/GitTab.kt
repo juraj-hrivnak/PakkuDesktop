@@ -38,12 +38,12 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitChangelistFlatRow
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
-import teksturepako.pakkuDesktop.pro.git.wrapper.gitChangelistUiSnapshot
-import teksturepako.pakkuDesktop.pro.ui.component.diff.DiffViewer
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitChange
+import teksturepako.pakkuDesktop.app.git.GitChangelistFlatRow
+import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
+import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.GitChange
 
 private val ChangelistIndentPerLevel = 20.dp
 private val ChangelistChevronSlot = 20.dp

@@ -15,9 +15,9 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.GitFile
 
 /*
  * Per-tab slices of [ModpackModel]. Property names mirror [ModpackModel] so tab bodies read

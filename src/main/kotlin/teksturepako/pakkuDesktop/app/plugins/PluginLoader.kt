@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.plugins
 
 import io.klogging.noCoLogger
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
+import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
 import teksturepako.pakkuDesktop.plugin.PluginTrust
@@ -23,15 +24,46 @@ import kotlin.io.path.name
 import kotlin.io.path.inputStream
 import kotlin.io.path.readText
 
+private const val HOST_PACKAGE = "teksturepako.pakkuDesktop."
+
 private val FORBIDDEN_JAR_PREFIXES = listOf(
     "teksturepako/pakkuDesktop/elm/",
     "teksturepako/pakkuDesktop/plugin/",
+    "teksturepako/pakkuDesktop/app/",
+    "teksturepako/pakkuDesktop/pkui/",
+    "teksturepako/pakkuDesktop/pro/",
     "androidx/compose/",
 )
 
-/** Parent-first: `Component`, `Driver` and `PakkuPlugin` resolve to the host's classes. */
-private fun pluginClassLoader(jar: Path): URLClassLoader =
-    URLClassLoader(arrayOf(jar.toUri().toURL()), PakkuPlugin::class.java.classLoader)
+/**
+ * Parent of every plugin class loader. Delegates parent-first, but a class under
+ * [HOST_PACKAGE] is returned only if it was loaded from `:pakku-desktop-api` or
+ * `:pakku-desktop-app-api`; host internals (drivers, the loader, git) throw
+ * [ClassNotFoundException]. This limits what a plugin links by name; it is not a sandbox.
+ */
+internal class PluginParentClassLoader(
+    parent: ClassLoader,
+    private val apiLocations: Set<String>,
+) : ClassLoader(parent) {
+    override fun loadClass(name: String, resolve: Boolean): Class<*> {
+        val cls = super.loadClass(name, resolve)
+        if (name.startsWith(HOST_PACKAGE) && cls.codeLocation() !in apiLocations) throw ClassNotFoundException(name)
+        return cls
+    }
+}
+
+private fun Class<*>.codeLocation(): String? = protectionDomain?.codeSource?.location?.toString()
+
+/** If the API modules share a code source with the host, nothing under [HOST_PACKAGE] is delegated. */
+private val pluginParent: ClassLoader = run {
+    val host = PluginLoader::class.java.codeLocation()
+    val api = setOfNotNull(PakkuPlugin::class.java.codeLocation(), AppModel::class.java.codeLocation())
+    PluginParentClassLoader(PakkuPlugin::class.java.classLoader, api.filterTo(HashSet()) { it != host })
+}
+
+/** Parent-first through [PluginParentClassLoader]: API types resolve to the host's classes. */
+internal fun pluginClassLoader(jar: Path): URLClassLoader =
+    URLClassLoader(arrayOf(jar.toUri().toURL()), pluginParent)
 
 /**
  * Loads every plugin folder under a root directory into a [PluginRegistry].
@@ -108,7 +140,11 @@ object PluginLoader {
             stage = Stage.ClassLoad
             checkJarEntries(dir, jar)
             loader = openClassLoader(jar)
-            val cls = Class.forName(manifest.mainClass, true, loader)
+            val cls = try {
+                Class.forName(manifest.mainClass, true, loader)
+            } catch (e: ExceptionInInitializerError) {
+                throw e.cause ?: e
+            }
             stage = Stage.Instantiate
             val typed = instantiate(cls, manifest).create()
             stage = Stage.Validate
@@ -145,7 +181,7 @@ object PluginLoader {
         return manifest
     }
 
-    /** Rejects jars that bundle the API, `elm` or Compose; the host provides those. */
+    /** Rejects jars that bundle host packages or Compose; the host provides those. */
     private fun checkJarEntries(dir: Path, jar: Path) {
         var bundlesKotlin = false
         JarFile(jar.toFile()).use { file ->

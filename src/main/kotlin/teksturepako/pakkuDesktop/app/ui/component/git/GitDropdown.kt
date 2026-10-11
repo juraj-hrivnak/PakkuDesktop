@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.component
+package teksturepako.pakkuDesktop.app.ui.component.git
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable

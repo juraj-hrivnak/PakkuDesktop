@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.component.diff
+package teksturepako.pakkuDesktop.app.ui.component.git.diff
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
@@ -31,8 +31,8 @@ import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.DiffType
 import kotlin.math.ceil
 import kotlin.math.floor
 

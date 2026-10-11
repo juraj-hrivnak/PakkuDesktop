@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.component.diff
+package teksturepako.pakkuDesktop.app.ui.component.git.diff
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -26,7 +26,7 @@ import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.TooltipPosition
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
+import teksturepako.pakkuDesktop.app.git.DiffContent
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 

@@ -20,11 +20,11 @@ import teksturepako.pakkuDesktop.app.actions.AdditionPlan
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitEvent
-import teksturepako.pakkuDesktop.pro.git.wrapper.GitState
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitEvent
+import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitFile
 
 /** pending project property write for projectEditDriver */
 data class PropertyWrite(

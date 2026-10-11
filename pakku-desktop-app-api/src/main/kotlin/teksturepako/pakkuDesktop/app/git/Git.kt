@@ -2,15 +2,15 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git.wrapper
+package teksturepako.pakkuDesktop.app.git
 
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitBranch
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitCommit
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.GitFile
+import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitCommit
+import teksturepako.pakkuDesktop.app.git.GitFile
 
 /**
  * Progress events surfaced from native git stderr into the ELM model.

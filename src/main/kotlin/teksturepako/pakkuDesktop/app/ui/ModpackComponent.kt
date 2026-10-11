@@ -44,9 +44,9 @@ import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
-import teksturepako.pakkuDesktop.pro.git.wrapper.gitFolderIds
-import teksturepako.pakkuDesktop.pro.git.wrapper.mergeChangelistExpandedFolders
-import teksturepako.pakkuDesktop.pro.ui.component.gitDropdownComponent
+import teksturepako.pakkuDesktop.app.git.gitFolderIds
+import teksturepako.pakkuDesktop.app.git.mergeChangelistExpandedFolders
+import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
 
 // -- modpackUpdate --
 

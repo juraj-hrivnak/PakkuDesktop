@@ -2,7 +2,7 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.ui.component.diff
+package teksturepako.pakkuDesktop.app.ui.component.git.diff
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

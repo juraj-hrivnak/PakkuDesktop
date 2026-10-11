@@ -2,12 +2,12 @@
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
  */
 
-package teksturepako.pakkuDesktop.pro.git.wrapper
+package teksturepako.pakkuDesktop.app.git
 
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffContent
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffHunk
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffLine
-import teksturepako.pakkuDesktop.pro.ui.viewmodel.state.DiffType
+import teksturepako.pakkuDesktop.app.git.DiffContent
+import teksturepako.pakkuDesktop.app.git.DiffHunk
+import teksturepako.pakkuDesktop.app.git.DiffLine
+import teksturepako.pakkuDesktop.app.git.DiffType
 
 /**
  * Parses unified diff text (as produced by `git diff`) into the structured model consumed by the UI.
