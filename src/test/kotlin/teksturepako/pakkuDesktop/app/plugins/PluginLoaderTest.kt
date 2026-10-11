@@ -8,6 +8,7 @@ import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Failed
 import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
+import teksturepako.pakku.io.createHash
 import java.net.URLClassLoader
 import java.nio.file.Path
 import java.util.jar.JarEntry
@@ -17,8 +18,15 @@ import kotlin.io.path.Path
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createTempDirectory
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.inputStream
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.io.path.outputStream
+import kotlin.io.path.readBytes
 import kotlin.io.path.readText
+import kotlin.io.path.writeBytes
 import kotlin.io.path.writeText
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -29,6 +37,8 @@ import kotlin.test.assertTrue
 
 private const val SAMPLE = "teksturepako.pakkuDesktop.sample.SamplePlugin"
 private const val FIXTURES = "teksturepako.pakkuDesktop.sample.fixtures"
+
+internal fun sha256Hex(path: Path): String = path.inputStream().use { createHash("sha256", it) }
 
 class PluginLoaderTest {
     private val sampleJar: Path = Path(System.getProperty("pakku.test.samplePluginDir")).resolve("plugin.jar")
@@ -51,13 +61,32 @@ class PluginLoaderTest {
         return dir
     }
 
-    private fun load(readText: (Path) -> String = { it.readText() }) =
-        PluginLoader.loadAll(root, readText).also { registries += it }
+    private fun allowAllInRoot(): Map<PluginId, String> {
+        if (!root.isDirectory()) return emptyMap()
+        val map = linkedMapOf<PluginId, String>()
+        for (dir in root.listDirectoryEntries().filter { it.isDirectory() }.sortedBy { it.name }) {
+            val manifestFile = dir.resolve("manifest.edn")
+            if (!manifestFile.isRegularFile()) continue
+            val manifest = runCatching { parseManifest(manifestFile.readText()) }.getOrNull() ?: continue
+            val jar = dir.resolve(manifest.jar)
+            if (jar.isRegularFile()) {
+                map[manifest.id] = sha256Hex(jar)
+            }
+        }
+        return map
+    }
+
+    private fun load(
+        readText: (Path) -> String = { it.readText() },
+        openClassLoader: (Path) -> URLClassLoader = ::testPluginClassLoader,
+        digests: Map<PluginId, String>? = null,
+    ): PluginRegistry =
+        PluginLoader.loadAll(root, readText, openClassLoader, digests ?: allowAllInRoot()).also { registries += it }
 
     private fun ids(registry: PluginRegistry) = registry.loaded.keys.map { it.value }
 
-    private fun assertSingleFailure(expected: Failed) {
-        val registry = load()
+    private fun assertSingleFailure(expected: Failed, digests: Map<PluginId, String>? = null) {
+        val registry = load(digests = digests)
         assertEquals(emptyList(), ids(registry))
         assertEquals(listOf(expected), registry.failed)
     }
@@ -195,14 +224,18 @@ class PluginLoaderTest {
         val closedDirs = mutableSetOf<Path>()
         val opened = mutableMapOf<Path, URLClassLoader>()
 
-        val registry = PluginLoader.loadAll(root, openClassLoader = { jar ->
-            object : URLClassLoader(arrayOf(jar.toUri().toURL()), PakkuPlugin::class.java.classLoader) {
-                override fun close() {
-                    closedDirs.add(jar.parent.fileName)
-                    super.close()
-                }
-            }.also { opened[jar.parent.fileName] = it }
-        }).also { registries += it }
+        val registry = PluginLoader.loadAll(
+            root,
+            openClassLoader = { jar ->
+                object : URLClassLoader(arrayOf(jar.toUri().toURL()), PakkuPlugin::class.java.classLoader) {
+                    override fun close() {
+                        closedDirs.add(jar.parent.fileName)
+                        super.close()
+                    }
+                }.also { opened[jar.parent.fileName] = it }
+            },
+            digests = allowAllInRoot(),
+        ).also { registries += it }
 
         assertEquals(setOf(Path("bad")), closedDirs)
         assertSame(opened.getValue(Path("good")), registry.loadedList.single().loader)
@@ -227,4 +260,69 @@ class PluginLoaderTest {
         assertEquals(listOf("sample", "counting"), registry.loadedList.map { it.id.value })
         assertEquals(emptyList(), registry.failed)
     }
+
+    @Test
+    fun trustAllowsMatchingDigest() {
+        val dir = pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
+        val jar = dir.resolve("plugin.jar")
+        val registry = load(digests = mapOf(PluginId("counting") to sha256Hex(jar)))
+        assertEquals(listOf("counting"), ids(registry))
+        assertEquals(emptyList(), registry.failed)
+    }
+
+    @Test
+    fun trustRejectsTamperedJar() {
+        val dir = pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
+        val jar = dir.resolve("plugin.jar")
+        val goodHex = sha256Hex(jar)
+        val bytes = jar.readBytes()
+        bytes[bytes.lastIndex] = (bytes.last().toInt() xor 0x01).toByte()
+        jar.writeBytes(bytes)
+        var classLoaderOpens = 0
+        val registry = load(
+            openClassLoader = {
+                classLoaderOpens++
+                testPluginClassLoader(it)
+            },
+            digests = mapOf(PluginId("counting") to goodHex),
+        )
+        assertEquals(0, classLoaderOpens)
+        assertEquals(emptyList(), ids(registry))
+        assertEquals(listOf(Failed("p", Stage.Trust, "jar digest mismatch")), registry.failed)
+    }
+
+    @Test
+    fun trustRejectsWrongExpectedHex() {
+        pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
+        val wrong = "0".repeat(64)
+        assertSingleFailure(Failed("p", Stage.Trust, "jar digest mismatch"), digests = mapOf(PluginId("counting") to wrong))
+    }
+
+    @Test
+    fun trustRejectsUnlistedId() {
+        pluginDir("p", manifest("counting", "$FIXTURES.CountingPlugin"))
+        assertSingleFailure(Failed("p", Stage.Trust, "plugin not allowlisted"), digests = emptyMap())
+    }
+
+    @Test
+    fun defaultDigestsRejectSampleFixture() {
+        pluginDir("sample", manifest("sample", SAMPLE))
+        val registry = PluginLoader.loadAll(root).also { registries += it }
+        assertEquals(emptyList(), ids(registry))
+        assertEquals(listOf(Failed("sample", Stage.Trust, "plugin not allowlisted")), registry.failed)
+    }
+
+    @Test
+    fun goodAndUnlistedPlugins() {
+        pluginDir("good", manifest("counting", "$FIXTURES.CountingPlugin"))
+        pluginDir("bad", manifest("sample", SAMPLE))
+        val goodDir = root.resolve("good")
+        val goodJar = goodDir.resolve("plugin.jar")
+        val registry = load(digests = mapOf(PluginId("counting") to sha256Hex(goodJar)))
+        assertEquals(listOf("counting"), ids(registry))
+        assertEquals(listOf(Failed("bad", Stage.Trust, "plugin not allowlisted")), registry.failed)
+    }
 }
+
+private fun testPluginClassLoader(jar: Path): URLClassLoader =
+    URLClassLoader(arrayOf(jar.toUri().toURL()), PakkuPlugin::class.java.classLoader)

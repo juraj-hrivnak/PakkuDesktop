@@ -16,7 +16,7 @@ sealed interface PluginLoadState {
     /** Holds a message only; the stack trace is logged, never kept (C3). */
     data class Failed(val dirName: String, val stage: Stage, val message: String) : PluginLoadState
 
-    enum class Stage { Manifest, ClassLoad, Instantiate, Validate }
+    enum class Stage { Manifest, Trust, ClassLoad, Instantiate, Validate }
 }
 
 /**

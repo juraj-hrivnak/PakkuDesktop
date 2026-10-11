@@ -11,8 +11,39 @@ plugins {
     alias(libs.plugins.nucleus)
 }
 
+val generateOfficialPluginDigests by tasks.registering {
+    val out = layout.buildDirectory.file(
+        "generated/officialPluginDigests/teksturepako/pakkuDesktop/app/plugins/OfficialPluginDigests.kt",
+    )
+    outputs.file(out)
+    doLast {
+        out.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(
+                """
+                package teksturepako.pakkuDesktop.app.plugins
+
+                import teksturepako.pakkuDesktop.plugin.PluginId
+
+                /** Plugin id → SHA-256 of the entire plugin.jar, lowercase hex. */
+                object OfficialPluginDigests {
+                    val byId: Map<PluginId, String> = emptyMap()
+                }
+                """.trimIndent() + "\n",
+            )
+        }
+    }
+}
+
 kotlin {
     jvmToolchain(25)
+    sourceSets.named("main") {
+        kotlin.srcDir(layout.buildDirectory.dir("generated/officialPluginDigests"))
+    }
+}
+
+tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
+    dependsOn(generateOfficialPluginDigests)
 }
 
 composeCompiler {

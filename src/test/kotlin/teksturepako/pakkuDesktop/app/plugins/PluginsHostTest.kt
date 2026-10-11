@@ -253,7 +253,9 @@ class PluginsHostTest {
             sampleSrc.resolve("plugin.jar").copyTo(sampleDir.resolve("plugin.jar"))
             root.resolve("broken").createDirectories()
 
-            val plugins = PluginLoader.loadAll(root)
+            val sampleJar = sampleDir.resolve("plugin.jar")
+            val digests = mapOf(PluginId("sample") to sha256Hex(sampleJar))
+            val plugins = PluginLoader.loadAll(root, digests = digests)
             plugins.loadedList.forEach { loaders += it }
 
             composeRule.setContent {

@@ -1,5 +1,5 @@
 [versions]
-pakku = "1.5.0.320-SNAPSHOT"
+pakku = "1.5.0.343-SNAPSHOT"
 kotlin = "2.4.10"
 compose = "1.11.1"
 nucleus = "2.4.6"

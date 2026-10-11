@@ -9,6 +9,7 @@ import teksturepako.pakkuDesktop.app.plugins.PluginLoadState.Stage
 import teksturepako.pakkuDesktop.plugin.PakkuPlugin
 import teksturepako.pakkuDesktop.plugin.PluginId
 import teksturepako.pakkuDesktop.plugin.TypedPlugin
+import teksturepako.pakku.io.createHash
 import java.io.IOException
 import java.lang.reflect.InvocationTargetException
 import java.net.URLClassLoader
@@ -18,6 +19,7 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import kotlin.io.path.inputStream
 import kotlin.io.path.readText
 
 private val FORBIDDEN_JAR_PREFIXES = listOf(
@@ -48,6 +50,7 @@ object PluginLoader {
         root: Path,
         readText: (Path) -> String = { it.readText() },
         openClassLoader: (Path) -> URLClassLoader = ::pluginClassLoader,
+        digests: Map<PluginId, String> = OfficialPluginDigests.byId,
     ): PluginRegistry {
         if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
             logger.info("plugins: GraalVM native image; dynamic plugins disabled")
@@ -69,7 +72,7 @@ object PluginLoader {
         val loadedFrom = HashMap<PluginId, String>()
         val failed = ArrayList<PluginLoadState.Failed>()
         for (dir in dirs) {
-            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom)) {
+            when (val state = loadOne(dir, readText, openClassLoader, loadedFrom, digests)) {
                 is PluginLoadState.Loaded -> {
                     loaded[state.plugin.id] = state.plugin
                     loadedFrom[state.plugin.id] = dir.name
@@ -89,13 +92,16 @@ object PluginLoader {
         readText: (Path) -> String,
         openClassLoader: (Path) -> URLClassLoader,
         loadedFrom: Map<PluginId, String>,
+        digests: Map<PluginId, String>,
     ): PluginLoadState {
         var stage = Stage.Manifest
         var loader: URLClassLoader? = null
         return try {
             val manifest = readManifest(dir, readText, loadedFrom)
-            stage = Stage.ClassLoad
             val jar = dir.resolve(manifest.jar)
+            stage = Stage.Trust
+            verifyTrust(manifest.id, jar, digests)
+            stage = Stage.ClassLoad
             checkJarEntries(dir, jar)
             loader = openClassLoader(jar)
             val cls = Class.forName(manifest.mainClass, true, loader)
@@ -172,5 +178,13 @@ object PluginLoader {
             check(modelClass.isInstance(next)) { "update($msg) returned the wrong model type" }
         }
         return initial
+    }
+}
+
+private fun verifyTrust(id: PluginId, jar: Path, digests: Map<PluginId, String>) {
+    val expectedHex = digests[id] ?: throw IllegalArgumentException("plugin not allowlisted")
+    val actualHex = jar.inputStream().use { createHash("sha256", it) }
+    if (actualHex != expectedHex) {
+        throw IllegalArgumentException("jar digest mismatch")
     }
 }
