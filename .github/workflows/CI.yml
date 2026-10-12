@@ -1,0 +1,46 @@
+name: CI
+run-name: "CI #${{ github.run_number }}"
+
+on:
+  pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Nucleus
+        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v2.5.18
+        with:
+          java-version: '25'
+          packaging-tools: 'true'
+          setup-gradle: 'true'
+          setup-node: 'false'
+
+      - name: Build
+        run: ./gradlew build --stacktrace
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-reports
+          path: '**/build/reports'
+          retention-days: 7
