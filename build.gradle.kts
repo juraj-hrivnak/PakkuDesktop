@@ -1,4 +1,7 @@
+import dev.nucleusframework.desktop.application.dsl.AppImageCategory
 import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.SnapConfinement
+import dev.nucleusframework.desktop.application.dsl.SnapGrade
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
 
 // Kotlin plugins are loaded here once; subprojects apply them by id through build-logic conventions.
@@ -134,18 +137,28 @@ nucleus.application {
 
     nativeDistributions {
         packageName = "Pakku Desktop"
+        appName = "Pakku Desktop"
         packageVersion = appVersion
+        description = "GUI multiplatform modpack manager for Minecraft: Java Edition."
+        homepage = "https://github.com/juraj-hrivnak/PakkuDesktop"
         vendor = "teksturepako"
-        copyright = "© teksturepako"
+        copyright = "© Juraj Hrivnák"
+        artifactName = $$"pakku-desktop-${version}-${os}-${arch}.${ext}"
 
-        // Nucleus supports 16 formats; keep parity with previous setup:
         targetFormats(
-            TargetFormat.Dmg,   // macOS
-            TargetFormat.Nsis,  // NSIS produces a traditional Windows installer (.exe) with full customization.
-            TargetFormat.Deb    // Linux
+            TargetFormat.Deb,
+            TargetFormat.Rpm,
+            TargetFormat.AppImage,
+            TargetFormat.Pacman,
+            TargetFormat.Snap,
+            TargetFormat.Nsis,
+            TargetFormat.Msi,
+            TargetFormat.Portable,
+            TargetFormat.Dmg,
+            TargetFormat.Zip,
         )
 
-        enableAotCache = true
+        enableAotCache = System.getenv("GITHUB_REF") != null
         compressionLevel = CompressionLevel.Maximum
 
         // JVM modules carry over as-is
@@ -169,29 +182,57 @@ nucleus.application {
         macOS {
             iconFile.set(project.file("icon.icns"))
             bundleID = "teksturepako.pakkuDesktop"
+            appCategory = "public.app-category.developer-tools"
+            dockName = "Pakku Desktop"
             packageVersion = nativeVersion
             packageBuildVersion = nativeVersion
             dmgPackageVersion = nativeVersion
+            dmg { title = $$"${productName} ${version}" }
         }
 
         windows {
             menuGroup = group.toString()
             shortcut = true
             iconFile.set(project.file("icon.ico"))
+            upgradeUuid = "a238db66-2327-4082-87bf-b111cf37289c"
             msi.perMachine = false
             packageVersion = nativeVersion
             msiPackageVersion = nativeVersion
             exePackageVersion = nativeVersion
+            nsis {
+                oneClick = false
+                perMachine = false
+                allowToChangeInstallationDirectory = true
+                createDesktopShortcut = true
+                createStartMenuShortcut = true
+                runAfterFinish = true
+                deleteAppDataOnUninstall = false
+            }
         }
 
         linux {
             iconFile.set(project.file("icon.png"))
             packageName = "pakku-desktop"
-
             startupWMClass = "teksturepako-PakkuDesktop"
+            debMaintainer = "teksturepako <71150936+juraj-hrivnak@users.noreply.github.com>"
+            debDepends = listOf("libgtk-3-0", "git")
+            rpmRequires = listOf("gtk3", "libX11", "git")
+            pacmanDepends = listOf("gtk3", "libx11", "git")
             debPackageVersion = debVersion
             rpmPackageVersion = nativeVersion
             pacmanPackageVersion = nativeVersion
+            appImage {
+                category = AppImageCategory.Development
+                genericName = "Modpack Manager"
+                synopsis = "Modern modpack manager for Minecraft"
+            }
+            snap {
+                name = "pakku-desktop"
+                confinement = SnapConfinement.Classic
+                grade = SnapGrade.Devel
+                summary = "Modern modpack manager for Minecraft"
+                base = "core22"
+            }
         }
     }
 }
