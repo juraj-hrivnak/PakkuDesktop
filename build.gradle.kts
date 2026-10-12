@@ -20,6 +20,13 @@ composeCompiler {
     metricsDestination = layout.buildDirectory.dir("compose_compiler")
 }
 
+// The default package lowercases the project name (teksturepako.pakkudesktop), which shares a class
+// directory with teksturepako.pakkuDesktop on case-insensitive file systems (macOS, Windows) and hides
+// every main class from compileTestKotlin.
+compose.resources {
+    packageOfResClass = "teksturepako.pakkuDesktop.generated.resources"
+}
+
 group = "teksturepako"
 
 configurations.configureEach {

@@ -46,7 +46,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: ./gradlew build --stacktrace --no-parallel
+        run: ./gradlew build --stacktrace
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
