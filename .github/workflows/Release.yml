@@ -102,12 +102,12 @@ jobs:
           {
             echo "### Release info"
             echo
-            echo "| | |"
-            echo "|--|--|"
-            echo "| Ref | \`$GITHUB_REF_NAME\` |"
-            echo "| Version | \`$(get version)\` |"
-            echo "| Channel | \`$(get channel)\` |"
-            echo "| Action | $action |"
+            echo '<table>'
+            echo "<tr><td>Ref</td><td><code>$GITHUB_REF_NAME</code></td></tr>"
+            echo "<tr><td>Version</td><td><code>$(get version)</code></td></tr>"
+            echo "<tr><td>Channel</td><td><code>$(get channel)</code></td></tr>"
+            echo "<tr><td>Action</td><td>$action</td></tr>"
+            echo '</table>'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Reject tag
