@@ -22,7 +22,8 @@ composeCompiler {
 
 group = "teksturepako"
 
-// -PreleaseVersion=1.1.0-beta.1 from CI; the base must equal gradle.properties `version`.
+// Full release id (e.g. 1.0.0-alpha.2) lives in gradle.properties; the v* tag must match printVersion (Pakku-style).
+// -PreleaseVersion=… overrides for local packaging tests; CI passes the tag version on release builds.
 val releaseVersion: String = providers.gradleProperty("releaseVersion").orNull ?: version.toString()
 version = releaseVersion
 

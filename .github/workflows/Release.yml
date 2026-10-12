@@ -55,12 +55,12 @@ jobs:
               echo "reject=Tag $tag is not vX.Y.Z or vX.Y.Z-(alpha|beta|rc).N"
               return
             fi
-            local base="${BASH_REMATCH[1]}" kind="${BASH_REMATCH[3]}"
-            if [[ $base != "$gradle" ]]; then
-              echo "reject=Tag $tag has base $base but the Gradle version is $gradle"
+            local tagVersion="${tag#v}" base="${BASH_REMATCH[1]}" kind="${BASH_REMATCH[3]}"
+            if [[ $tagVersion != "$gradle" ]]; then
+              echo "reject=Tag $tag ($tagVersion) does not match Gradle version $gradle"
               return
             fi
-            echo "version=${tag#v}"
+            echo "version=$tagVersion"
             echo "base=$base"
             case "$kind" in
               '')    echo "prerelease=false"; echo "channel=latest" ;;
@@ -76,7 +76,8 @@ jobs:
           fi
 
           if [[ $EVENT_NAME != push ]]; then
-            result="$(printf '%s\n' "version=$gradle" "base=$gradle" prerelease=true channel=alpha publish=false)"
+            base="${gradle%%-*}"
+            result="$(printf '%s\n' "version=$gradle" "base=$base" prerelease=true channel=alpha publish=false)"
           else
             result="$(classify "$GITHUB_REF_NAME" "$gradle")"
             if [[ $result != reject=* && $result == *prerelease=false* ]]; then
