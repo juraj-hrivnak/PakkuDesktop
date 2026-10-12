@@ -19,9 +19,19 @@ concurrency:
 
 jobs:
   build:
-    name: Build and test
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    name: Build and test (${{ matrix.os }} / ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: ${{ github.event_name == 'pull_request' }}
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+          - os: windows-latest
+            arch: amd64
+          - os: macos-latest
+            arch: arm64
     steps:
       - uses: actions/checkout@v7
 
@@ -30,10 +40,12 @@ jobs:
         with:
           java-version: '25'
           packaging-tools: 'true'
+          snap: 'false'
           setup-gradle: 'true'
           setup-node: 'false'
 
       - name: Build
+        shell: bash
         run: ./gradlew build --stacktrace
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -42,6 +54,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: build-reports
+          name: build-reports-${{ matrix.os }}-${{ matrix.arch }}
           path: '**/build/reports'
           retention-days: 7
