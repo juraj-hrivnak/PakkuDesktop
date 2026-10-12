@@ -22,6 +22,10 @@ composeCompiler {
 
 group = "teksturepako"
 
+configurations.configureEach {
+    exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+}
+
 // Full release id (e.g. 1.0.0-alpha.2) lives in gradle.properties; the v* tag must match printVersion (Pakku-style).
 // -PreleaseVersion=… overrides for local packaging tests; CI passes the tag version on release builds.
 val releaseVersion: String = providers.gradleProperty("releaseVersion").orNull ?: version.toString()
@@ -98,7 +102,9 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
 
     // IntelliJ Icons: https://mvnrepository.com/artifact/com.jetbrains.intellij.platform/icons
-    implementation(libs.intellij.icons)
+    implementation(libs.intellij.icons) {
+        exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    }
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
