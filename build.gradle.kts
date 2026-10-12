@@ -18,7 +18,20 @@ composeCompiler {
 }
 
 group = "teksturepako"
-version = "1.0"
+
+// -PreleaseVersion=1.1.0-beta.1 from CI; the base must equal gradle.properties `version`.
+val releaseVersion: String = providers.gradleProperty("releaseVersion").orNull ?: version.toString()
+version = releaseVersion
+
+val appVersion = version.toString()
+val nativeVersion = appVersion.substringBefore("-")
+val debVersion = appVersion.replaceFirst("-", "~")
+
+tasks.register("printVersion") {
+    notCompatibleWithConfigurationCache("Prints version to stdout for CI")
+    val v = version.toString()
+    doLast { println(v) }
+}
 
 dependencies {
     // Elm runtime API + plugin SPI (what plugins compile against)
@@ -121,7 +134,7 @@ nucleus.application {
 
     nativeDistributions {
         packageName = "Pakku Desktop"
-        packageVersion = "1.0.0"
+        packageVersion = appVersion
         vendor = "teksturepako"
         copyright = "© teksturepako"
 
@@ -156,6 +169,9 @@ nucleus.application {
         macOS {
             iconFile.set(project.file("icon.icns"))
             bundleID = "teksturepako.pakkuDesktop"
+            packageVersion = nativeVersion
+            packageBuildVersion = nativeVersion
+            dmgPackageVersion = nativeVersion
         }
 
         windows {
@@ -163,6 +179,9 @@ nucleus.application {
             shortcut = true
             iconFile.set(project.file("icon.ico"))
             msi.perMachine = false
+            packageVersion = nativeVersion
+            msiPackageVersion = nativeVersion
+            exePackageVersion = nativeVersion
         }
 
         linux {
@@ -170,6 +189,9 @@ nucleus.application {
             packageName = "pakku-desktop"
 
             startupWMClass = "teksturepako-PakkuDesktop"
+            debPackageVersion = debVersion
+            rpmPackageVersion = nativeVersion
+            pacmanPackageVersion = nativeVersion
         }
     }
 }
