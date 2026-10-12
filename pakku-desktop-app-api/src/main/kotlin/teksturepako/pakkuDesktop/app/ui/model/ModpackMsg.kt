@@ -258,6 +258,8 @@ sealed interface ModpackMsg {
 
     data class ManualOverridesLoaded(val overrides: List<FetchOverridePreview>) : ModpackMsg
 
+    data class DiskSnapshotLoaded(val snapshot: DiskSnapshot) : ModpackMsg
+
     data object Reset : ModpackMsg
 
     // -- Cross-cutting (parent) --

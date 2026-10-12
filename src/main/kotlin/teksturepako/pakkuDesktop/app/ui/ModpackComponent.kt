@@ -91,6 +91,9 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     is ModpackMsg.ManualOverridesLoaded -> model.copy(manualOverrides = msg.overrides.toPersistentList())
 
+    is ModpackMsg.DiskSnapshotLoaded ->
+        if (msg.snapshot == model.diskSnapshot) model else model.copy(diskSnapshot = msg.snapshot)
+
     ModpackMsg.Reset -> ModpackModel()
 
     is ModpackMsg.TabSelected        ->

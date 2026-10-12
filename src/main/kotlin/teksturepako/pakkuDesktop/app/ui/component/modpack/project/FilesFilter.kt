@@ -41,10 +41,8 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.packFolde
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import kotlin.io.path.Path
-import kotlin.io.path.notExists
+import teksturepako.pakkuDesktop.app.ui.model.pathKey
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FilesFilter(
     publish: (ModpackMsg) -> Unit,
@@ -63,11 +61,14 @@ fun FilesFilter(
         model.syncUpdated,
         model.filesHashMismatchKeys,
         model.manualOverrides,
+        model.diskSnapshot,
     ) {
         buildSet {
             if (model.fetchDownloads.isNotEmpty()) add(FilesChangeKind.Fetch)
             if (model.fetchOverrides.isNotEmpty() ||
-                model.manualOverrides.any { override -> Path(override.fullOutputPath).notExists() }
+                model.manualOverrides.any { override ->
+                    pathKey(override.relativeOutputPath) !in model.diskSnapshot.present
+                }
             ) {
                 add(FilesChangeKind.Override)
             }

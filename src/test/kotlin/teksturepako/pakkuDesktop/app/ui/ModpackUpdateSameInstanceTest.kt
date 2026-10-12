@@ -11,6 +11,7 @@ import kotlinx.datetime.LocalDateTime
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.api.projects.ProjectType
+import teksturepako.pakkuDesktop.app.ui.model.DiskSnapshot
 import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
@@ -18,6 +19,7 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectFileChange
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
+import teksturepako.pakkuDesktop.app.ui.model.pathKey
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.git.GitState
@@ -149,6 +151,27 @@ class ModpackUpdateSameInstanceTest {
         assertNoOp(ModpackModel(), ModpackMsg.ProjectsFilterFocusChanged(false))
         assertNoOp(ModpackModel(), ModpackMsg.FocusProjectsFilterConsumed)
         assertNoOp(ModpackModel(wantsFocusProjectsFilter = true), ModpackMsg.FocusProjectsFilterRequested)
+    }
+
+    @Test
+    fun diskSnapshotLoadedWithEqualSnapshot() {
+        assertNoOp(ModpackModel(), ModpackMsg.DiskSnapshotLoaded(DiskSnapshot()))
+        val snapshot = DiskSnapshot(
+            expected = mapOf(pathKey("mods/a.jar") to "mods/a.jar").toPersistentMap(),
+            present = persistentSetOf(pathKey("mods/a.jar")),
+            untracked = persistentListOf("mods/sub/b.jar"),
+            existingFolders = persistentSetOf("mods/"),
+        )
+        val empty = ModpackModel()
+        val loaded = modpackUpdate(ModpackMsg.DiskSnapshotLoaded(snapshot), empty)
+        assertNotSame(empty, loaded)
+        val again = DiskSnapshot(
+            expected = mapOf(pathKey("mods/a.jar") to "mods/a.jar").toPersistentMap(),
+            present = persistentSetOf(pathKey("mods/a.jar")),
+            untracked = persistentListOf("mods/sub/b.jar"),
+            existingFolders = persistentSetOf("mods/"),
+        )
+        assertNoOp(loaded, ModpackMsg.DiskSnapshotLoaded(again))
     }
 
     @Test

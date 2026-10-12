@@ -228,6 +228,8 @@ data class ModpackModel(
     val fetchOverrides: PersistentList<FetchOverridePreview> = persistentListOf(),
     /** All `.pakku` manual override files (shown on the Files tab even when already copied). */
     val manualOverrides: PersistentList<FetchOverridePreview> = persistentListOf(),
+    /** Files tab disk state. Cleared with the rest of the model on [ModpackMsg.Reset] and modpack close. */
+    val diskSnapshot: DiskSnapshot = DiskSnapshot(),
     val fetchCleanup: PersistentList<FetchCleanupPreview> = persistentListOf(),
     val filesHashMismatchKeys: PersistentSet<String> = persistentSetOf(),
     val syncAdded: PersistentList<Project> = persistentListOf(),

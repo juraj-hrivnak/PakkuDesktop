@@ -62,6 +62,7 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
         model.syncRemoved,
         model.syncUpdated,
         model.manualOverrides,
+        model.diskSnapshot,
         model.filesFilterText,
         model.filesFilterFolders,
         model.filesFilterChangeKinds,

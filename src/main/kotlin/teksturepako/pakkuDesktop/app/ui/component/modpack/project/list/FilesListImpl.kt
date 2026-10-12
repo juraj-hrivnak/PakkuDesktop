@@ -62,9 +62,7 @@ import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import kotlin.io.path.Path
-import kotlin.io.path.exists
 import kotlin.io.path.invariantSeparatorsPathString
-import kotlin.io.path.isDirectory
 import kotlin.io.path.relativeToOrNull
 
 private val FilesDiffRowMinHeight = 40.dp
@@ -146,6 +144,7 @@ fun FilesDiffList(
                         count = folderPairs.size,
                         expanded = expanded,
                         showCheckboxSlot = showSelection && side == FilesDiffSide.Current,
+                        canReveal = folder in model.diskSnapshot.existingFolders,
                         onToggle = {
                             collapsedFolders.value = if (expanded) {
                                 collapsedFolders.value + folder
@@ -229,7 +228,7 @@ private fun FilesDiffRow(
         row?.revealPath?.let { Path(it) }
             ?: row?.relativePath?.takeIf { it.isNotBlank() }?.let { Path(workingPath).resolve(it) }
     }
-    val canOpen = diskPath != null && diskPath.exists()
+    val canOpen = row?.onDisk == true && diskPath != null
 
     fun applyChecked(nextChecked: Boolean) {
         if (!pair.selectable) return
@@ -417,6 +416,7 @@ private fun FolderHeader(
     count: Int,
     expanded: Boolean,
     showCheckboxSlot: Boolean,
+    canReveal: Boolean,
     onToggle: () -> Unit,
 ) {
     val codeBg = JewelTheme.globalColors.borders.disabled.copy(alpha = 0.45f)
@@ -424,7 +424,6 @@ private fun FolderHeader(
     val folderPath = remember(folder) {
         Path(workingPath).resolve(folder.trimEnd('/', '\\'))
     }
-    val canReveal = folderPath.exists() && folderPath.isDirectory()
 
     Row(
         modifier = Modifier

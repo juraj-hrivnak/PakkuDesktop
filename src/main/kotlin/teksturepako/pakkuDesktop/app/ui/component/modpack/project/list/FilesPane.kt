@@ -14,6 +14,7 @@ import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.actions.syncKind
 import teksturepako.pakkuDesktop.app.actions.uiKey
+import teksturepako.pakkuDesktop.app.ui.model.DiskSnapshot
 import teksturepako.pakkuDesktop.app.ui.model.FetchCleanupPreview
 import teksturepako.pakkuDesktop.app.ui.model.FetchDetectResult
 import teksturepako.pakkuDesktop.app.ui.model.FetchDownloadPreview
@@ -24,9 +25,8 @@ import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
-import kotlin.io.path.Path
-import kotlin.io.path.exists
-import kotlin.io.path.pathString
+import teksturepako.pakkuDesktop.app.ui.model.isOnDisk
+import teksturepako.pakkuDesktop.app.ui.model.pathKey
 
 const val FetchSelectionPrefix = "fetch:"
 const val OverrideSelectionPrefix = "override:"
@@ -48,6 +48,8 @@ data class FilesPaneRow(
     val revealPath: String? = null,
     /** Absolute source path when this row is a pending manual-override copy. */
     val sourcePath: String? = null,
+    /** Whether the reveal target is on disk, from [DiskSnapshot]. */
+    val onDisk: Boolean = false,
 )
 
 fun FetchDownloadPreview.selectionKey(): String = "$FetchSelectionPrefix${project.uiKey()}"
@@ -163,20 +165,21 @@ fun FilesTabModel.currentFilesRows(): List<FilesPaneRow> {
         }
         for (cluster in project.filesTabRows()) {
             val primary = cluster.primary
-            val onDisk = primary.getPath(project, config)?.exists() == true
-            if (!onDisk) continue
+            val relativePath = primary.getRelativePathString(project, config) ?: primary.fileName
+            if (pathKey(relativePath) !in diskSnapshot.present) continue
             rows += FilesPaneRow(
                 key = cluster.rowKey(),
                 listKey = cluster.rowKey(),
                 folder = project.filesFolderKey(config),
                 fileName = primary.fileName,
-                relativePath = primary.getRelativePathString(project, config) ?: primary.fileName,
+                relativePath = relativePath,
                 project = project,
                 projectFile = primary,
                 mergedFiles = cluster.files.filter { it !== primary },
                 changeKind = kind,
                 hashMismatch = project.uiKey() in filesHashMismatchKeys,
                 selectable = false,
+                onDisk = true,
             )
         }
     }
@@ -184,15 +187,14 @@ fun FilesTabModel.currentFilesRows(): List<FilesPaneRow> {
     val listedPaths = rows.map { it.relativePath.replace('\\', '/').lowercase() }.toMutableSet()
     val pendingCopyKeys = fetchOverrides.map { it.selectionKey() }.toSet()
     for (override in manualOverrides) {
-        val dest = Path(override.fullOutputPath)
-        val source = Path(override.sourcePath)
-        if (!source.exists() && !dest.exists()) continue
-        // Fetch preview: dest-missing copies belong on New only (blank Current).
-        if (filesPreviewMode == FilesPreviewMode.Fetch && !dest.exists()) continue
         val rel = override.relativeOutputPath.replace('\\', '/')
+        val destOnDisk = pathKey(rel) in diskSnapshot.present
+        // Fetch preview: dest-missing copies belong on New only (blank Current).
+        // Source existence is not checked: Pakku only lists overrides whose source exists.
+        if (filesPreviewMode == FilesPreviewMode.Fetch && !destOnDisk) continue
         if (rel.lowercase() in listedPaths) continue
         listedPaths += rel.lowercase()
-        val pending = override.selectionKey() in pendingCopyKeys || !dest.exists()
+        val pending = override.selectionKey() in pendingCopyKeys || !destOnDisk
         rows += FilesPaneRow(
             key = override.selectionKey(),
             folder = folderKeyFromRelative(override.relativeOutputPath),
@@ -200,18 +202,15 @@ fun FilesTabModel.currentFilesRows(): List<FilesPaneRow> {
             relativePath = override.relativeOutputPath,
             changeKind = if (pending) FilesChangeKind.Override else null,
             selectable = false,
-            revealPath = when {
-                dest.exists() -> dest.pathString
-                source.exists() -> source.pathString
-                else -> null
-            },
+            revealPath = if (destOnDisk) override.fullOutputPath else override.sourcePath,
             sourcePath = override.sourcePath,
+            onDisk = destOnDisk || override.sourcePath.isNotBlank(),
         )
     }
 
     if (filesPreviewMode == FilesPreviewMode.Fetch) {
         for (cleanup in fetchCleanup) {
-            rows += cleanup.toPaneRow(selectable = false)
+            rows += cleanup.toPaneRow(selectable = false, onDisk = diskSnapshot.isOnDisk(cleanup.relativePath))
         }
     }
 
@@ -226,16 +225,18 @@ fun FilesTabModel.proposedFilesRows(): List<FilesPaneRow> {
             for (download in fetchDownloads) {
                 val project = download.project
                 val file = download.projectFile
+                val relativePath = file.getRelativePathString(project, config) ?: file.fileName
                 add(
                     FilesPaneRow(
                         key = download.selectionKey(),
                         folder = project.filesFolderKey(config),
                         fileName = file.fileName,
-                        relativePath = file.getRelativePathString(project, config) ?: file.fileName,
+                        relativePath = relativePath,
                         project = project,
                         projectFile = file,
                         changeKind = FilesChangeKind.Fetch,
                         selectable = true,
+                        onDisk = diskSnapshot.isOnDisk(relativePath),
                     ),
                 )
             }
@@ -243,18 +244,18 @@ fun FilesTabModel.proposedFilesRows(): List<FilesPaneRow> {
                 add(override.toPaneRow())
             }
             for (cleanup in fetchCleanup) {
-                add(cleanup.toPaneRow(selectable = true))
+                add(cleanup.toPaneRow(selectable = true, onDisk = diskSnapshot.isOnDisk(cleanup.relativePath)))
             }
         }
         FilesPreviewMode.Sync -> buildList {
             for (project in syncAdded) {
-                addAll(project.toSyncRows(config, FilesChangeKind.Added, selectable = true))
+                addAll(project.toSyncRows(config, FilesChangeKind.Added, selectable = true, diskSnapshot))
             }
             for (project in syncUpdated) {
-                addAll(project.toSyncRows(config, FilesChangeKind.Updated, selectable = true))
+                addAll(project.toSyncRows(config, FilesChangeKind.Updated, selectable = true, diskSnapshot))
             }
             for (project in syncRemoved) {
-                addAll(project.toSyncRows(config, FilesChangeKind.Removed, selectable = true))
+                addAll(project.toSyncRows(config, FilesChangeKind.Removed, selectable = true, diskSnapshot))
             }
         }
     }
@@ -379,52 +380,97 @@ private fun FetchOverridePreview.toPaneRow(): FilesPaneRow = FilesPaneRow(
     selectable = true,
     revealPath = sourcePath,
     sourcePath = sourcePath,
+    onDisk = sourcePath.isNotBlank(),
 )
 
-private fun FetchCleanupPreview.toPaneRow(selectable: Boolean): FilesPaneRow = FilesPaneRow(
+private fun FetchCleanupPreview.toPaneRow(selectable: Boolean, onDisk: Boolean): FilesPaneRow = FilesPaneRow(
     key = selectionKey(),
     folder = folderKeyFromRelative(relativePath),
     fileName = fileName,
     relativePath = relativePath,
     changeKind = FilesChangeKind.Cleanup,
     selectable = selectable,
+    onDisk = onDisk,
 )
 
 private fun Project.toSyncRows(
     config: ConfigFile?,
     kind: FilesChangeKind,
     selectable: Boolean,
+    diskSnapshot: DiskSnapshot,
 ): List<FilesPaneRow> {
     val rows = filesTabRows()
     if (rows.isEmpty()) {
+        val relativePath = getPathStringWithSubpath(config)
+        val folder = filesFolderKey(config)
         return listOf(
         FilesPaneRow(
             key = uiKey(),
             listKey = "${uiKey()}::empty",
-            folder = filesFolderKey(config),
+            folder = folder,
                 fileName = name.values.firstOrNull() ?: uiKey(),
-                relativePath = getPathStringWithSubpath(config),
+                relativePath = relativePath,
                 project = this,
                 changeKind = kind,
                 selectable = selectable,
+                onDisk = folder in diskSnapshot.existingFolders || diskSnapshot.isOnDisk(relativePath),
             ),
         )
     }
     return rows.map { cluster ->
         val primary = cluster.primary
+        val relativePath = primary.getRelativePathString(this, config) ?: primary.fileName
         FilesPaneRow(
             key = uiKey(),
             listKey = cluster.rowKey(),
             folder = filesFolderKey(config),
             fileName = primary.fileName,
-            relativePath = primary.getRelativePathString(this, config) ?: primary.fileName,
+            relativePath = relativePath,
             project = this,
             projectFile = primary,
             mergedFiles = cluster.files.filter { it !== primary },
             changeKind = kind,
             selectable = selectable,
+            onDisk = diskSnapshot.isOnDisk(relativePath),
         )
     }
+}
+
+internal fun expectedDiskPaths(
+    projects: List<Project>,
+    configFile: ConfigFile?,
+    overrides: List<FetchOverridePreview>,
+): Map<String, String> {
+    val expected = linkedMapOf<String, String>()
+    for (project in projects) {
+        for (cluster in project.filesTabRows()) {
+            val display = cluster.primary.getRelativePathString(project, configFile)
+                ?.replace('\\', '/')
+                ?: continue
+            expected.putIfAbsent(pathKey(display), display)
+        }
+    }
+    for ((relativeOutputPath) in overrides) {
+        val display = relativeOutputPath.replace('\\', '/')
+        expected.putIfAbsent(pathKey(display), display)
+    }
+    return expected
+}
+
+internal fun diskSnapshotFolderKeys(
+    configFile: ConfigFile?,
+    projects: List<Project>,
+    overrides: List<FetchOverridePreview>,
+): List<String> {
+    val fromTypes = ProjectType.entries
+        .filterNot { it == ProjectType.WORLD }
+        .map { type ->
+            val path = type.getPathString(configFile).replace('\\', '/')
+            if (path.endsWith("/")) path else "$path/"
+        }
+    val fromProjects = projects.map { it.filesFolderKey(configFile) }
+    val fromOverrides = overrides.map { folderKeyFromRelative(it.relativeOutputPath) }
+    return (fromTypes + fromProjects + fromOverrides).distinct()
 }
 
 /** Copy a live Pakku list so composition is not iterating it while fetch mutates it. */
