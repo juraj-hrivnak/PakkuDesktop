@@ -28,7 +28,6 @@ version = releaseVersion
 
 val appVersion = version.toString()
 val nativeVersion = appVersion.substringBefore("-")
-val debVersion = appVersion.replaceFirst("-", "~")
 
 tasks.register("printVersion") {
     notCompatibleWithConfigurationCache("Prints version to stdout for CI")
@@ -218,7 +217,7 @@ nucleus.application {
             debDepends = listOf("libgtk-3-0", "git")
             rpmRequires = listOf("gtk3", "libX11", "git")
             pacmanDepends = listOf("gtk3", "libx11", "git")
-            debPackageVersion = debVersion
+            debPackageVersion = appVersion
             rpmPackageVersion = nativeVersion
             pacmanPackageVersion = nativeVersion
             appImage {
