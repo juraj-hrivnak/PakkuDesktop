@@ -12,6 +12,7 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.api.projects.ProjectType
+import teksturepako.pakkuDesktop.app.actions.syncDisplayPaths
 import teksturepako.pakkuDesktop.app.actions.syncKind
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.DiskSnapshot
@@ -399,15 +400,22 @@ private fun Project.toSyncRows(
     selectable: Boolean,
     diskSnapshot: DiskSnapshot,
 ): List<FilesPaneRow> {
-    val rows = filesTabRows()
-    if (rows.isEmpty()) {
+    val syncKind = when (kind) {
+        FilesChangeKind.Added -> SyncKind.Added
+        FilesChangeKind.Updated -> SyncKind.Updated
+        FilesChangeKind.Removed -> SyncKind.Removed
+        else -> error("Not a sync change kind: $kind")
+    }
+    val displayPaths = syncDisplayPaths(this, config, diskSnapshot, syncKind)
+    val clusters = filesTabRows()
+    if (displayPaths.isEmpty()) {
         val relativePath = getPathStringWithSubpath(config)
         val folder = filesFolderKey(config)
         return listOf(
-        FilesPaneRow(
-            key = uiKey(),
-            listKey = "${uiKey()}::empty",
-            folder = folder,
+            FilesPaneRow(
+                key = uiKey(),
+                listKey = "${uiKey()}::empty",
+                folder = folder,
                 fileName = name.values.firstOrNull() ?: uiKey(),
                 relativePath = relativePath,
                 project = this,
@@ -417,18 +425,21 @@ private fun Project.toSyncRows(
             ),
         )
     }
-    return rows.map { cluster ->
-        val primary = cluster.primary
-        val relativePath = primary.getRelativePathString(this, config) ?: primary.fileName
+    return displayPaths.map { relativePath ->
+        val fileName = relativePath.replace('\\', '/').substringAfterLast('/')
+        val cluster = clusters.firstOrNull { row ->
+            row.files.any { it.fileName.equals(fileName, ignoreCase = true) }
+        } ?: clusters.firstOrNull()
+        val primary = cluster?.primary
         FilesPaneRow(
             key = uiKey(),
-            listKey = cluster.rowKey(),
+            listKey = cluster?.rowKey() ?: "${uiKey()}::$relativePath",
             folder = filesFolderKey(config),
-            fileName = primary.fileName,
+            fileName = primary?.fileName ?: fileName,
             relativePath = relativePath,
             project = this,
             projectFile = primary,
-            mergedFiles = cluster.files.filter { it !== primary },
+            mergedFiles = cluster?.files?.filter { it !== primary }.orEmpty(),
             changeKind = kind,
             selectable = selectable,
             onDisk = diskSnapshot.isOnDisk(relativePath),
