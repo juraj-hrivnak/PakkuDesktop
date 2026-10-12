@@ -139,7 +139,7 @@ nucleus.application {
         packageName = "Pakku Desktop"
         appName = "Pakku Desktop"
         packageVersion = appVersion
-        description = "GUI multiplatform modpack manager for Minecraft: Java Edition."
+        description = "GUI multiplatform modpack manager for Minecraft: Java Edition"
         homepage = "https://github.com/juraj-hrivnak/PakkuDesktop"
         vendor = "teksturepako"
         copyright = "© Juraj Hrivnák"
@@ -224,13 +224,13 @@ nucleus.application {
             appImage {
                 category = AppImageCategory.Development
                 genericName = "Modpack Manager"
-                synopsis = "Modern modpack manager for Minecraft"
+                synopsis = "GUI multiplatform modpack manager for Minecraft: Java Edition"
             }
             snap {
                 name = "pakku-desktop"
                 confinement = SnapConfinement.Classic
                 grade = SnapGrade.Devel
-                summary = "Modern modpack manager for Minecraft"
+                summary = "GUI multiplatform modpack manager for Minecraft: Java Edition"
                 base = "core22"
             }
         }

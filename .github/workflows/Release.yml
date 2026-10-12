@@ -1,0 +1,324 @@
+name: Release
+run-name: "Release #${{ github.run_number }} (${{ github.ref_name }})"
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.classify.outputs.version }}
+      base: ${{ steps.classify.outputs.base }}
+      prerelease: ${{ steps.classify.outputs.prerelease }}
+      channel: ${{ steps.classify.outputs.channel }}
+      publish: ${{ steps.classify.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ github.event_name == 'push' && secrets.PUSH_ACCESS_TOKEN || github.token }}
+
+      - name: Setup Nucleus
+        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v2.5.18
+        with:
+          java-version: '25'
+          packaging-tools: 'false'
+          setup-gradle: 'true'
+          setup-node: 'false'
+
+      - name: Classify
+        id: classify
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          classify() {
+            local tag="$1" gradle="$2"
+            local re='^v([0-9]+\.[0-9]+\.[0-9]+)(-(alpha|beta|rc)\.[0-9]+)?$'
+            if [[ ! $tag =~ $re ]]; then
+              echo "reject=Tag $tag is not vX.Y.Z or vX.Y.Z-(alpha|beta|rc).N"
+              return
+            fi
+            local base="${BASH_REMATCH[1]}" kind="${BASH_REMATCH[3]}"
+            if [[ $base != "$gradle" ]]; then
+              echo "reject=Tag $tag has base $base but the Gradle version is $gradle"
+              return
+            fi
+            echo "version=${tag#v}"
+            echo "base=$base"
+            case "$kind" in
+              '')    echo "prerelease=false"; echo "channel=latest" ;;
+              alpha) echo "prerelease=true";  echo "channel=alpha" ;;
+              *)     echo "prerelease=true";  echo "channel=beta" ;;
+            esac
+          }
+
+          gradle="$(./gradlew -q printVersion | tail -n 1)"
+          if [[ -z $gradle ]]; then
+            echo "::error::printVersion printed nothing"
+            exit 1
+          fi
+
+          if [[ $EVENT_NAME != push ]]; then
+            result="$(printf '%s\n' "version=$gradle" "base=$gradle" prerelease=true channel=alpha publish=false)"
+          else
+            result="$(classify "$GITHUB_REF_NAME" "$gradle")"
+            if [[ $result != reject=* && $result == *prerelease=false* ]]; then
+              git fetch --no-tags origin main
+              if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+                result="reject=Stable tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main"
+              fi
+            fi
+            if [[ $result != reject=* ]]; then
+              result="$result"$'\npublish=true'
+            fi
+          fi
+
+          echo "$result" >> "$GITHUB_OUTPUT"
+          if [[ $result == reject=* ]]; then
+            exit 0
+          fi
+
+          get() { sed -n "s/^$1=//p" <<< "$result"; }
+          if [[ $(get prerelease) == true ]]; then type=pre-release; else type=release; fi
+          if [[ $(get publish) == true ]]; then action="publish a $type"; else action="build only, publish nothing"; fi
+          {
+            echo "### Release info"
+            echo
+            echo "| | |"
+            echo "|--|--|"
+            echo "| Ref | \`$GITHUB_REF_NAME\` |"
+            echo "| Version | \`$(get version)\` |"
+            echo "| Channel | \`$(get channel)\` |"
+            echo "| Action | $action |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reject tag
+        if: github.event_name == 'push' && steps.classify.outputs.reject != ''
+        shell: bash
+        env:
+          REJECT: ${{ steps.classify.outputs.reject }}
+          HAS_PUSH_TOKEN: ${{ secrets.PUSH_ACCESS_TOKEN != '' }}
+        run: |
+          echo "::error::$REJECT"
+          echo "### Rejected: $REJECT" >> "$GITHUB_STEP_SUMMARY"
+          if [[ $HAS_PUSH_TOKEN == true ]]; then
+            git push origin --delete "refs/tags/$GITHUB_REF_NAME"
+            echo "Deleted tag $GITHUB_REF_NAME."
+          else
+            echo "PUSH_ACCESS_TOKEN is not set, so the tag was not deleted. Delete it with:"
+            echo "  git push origin --delete refs/tags/$GITHUB_REF_NAME"
+          fi
+          exit 1
+
+  changelog:
+    name: Release notes
+    needs: verify
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Extract changelog section
+        shell: bash
+        run: awk -v h="## ${GITHUB_REF_NAME}" '$0==h{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > NOTES.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: NOTES.md
+          if-no-files-found: error
+          retention-days: 7
+
+  test:
+    name: Test
+    needs: verify
+    uses: ./.github/workflows/CI.yml
+    secrets: inherit
+
+  package:
+    name: Package (${{ matrix.os }} / ${{ matrix.arch }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: amd64
+            snap: 'true'
+            tasks: packageReleaseDeb packageReleaseRpm packageReleaseAppImage packageReleasePacman packageReleaseSnap
+          - os: ubuntu-22.04-arm
+            arch: arm64
+            snap: 'true'
+            tasks: packageReleaseDeb packageReleaseRpm packageReleaseAppImage packageReleasePacman packageReleaseSnap
+          - os: windows-latest
+            arch: amd64
+            snap: 'false'
+            tasks: packageReleaseNsis packageReleaseMsi packageReleasePortable
+          - os: windows-11-arm
+            arch: arm64
+            snap: 'false'
+            tasks: packageReleaseNsis packageReleaseMsi packageReleasePortable
+            node-version: '22' # npm 11 (Node 24) has ECOMPROMISED bugs on Windows ARM64
+          - os: macos-latest
+            arch: arm64
+            snap: 'false'
+            tasks: packageReleaseDmg packageReleaseZip
+          - os: macos-15-intel
+            arch: amd64
+            snap: 'false'
+            tasks: packageReleaseDmg packageReleaseZip
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Nucleus
+        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v2.5.18
+        with:
+          java-version: '25'
+          packaging-tools: 'true'
+          snap: ${{ matrix.snap }}
+          graalvm: 'false'
+          setup-gradle: 'true'
+          setup-node: 'true'
+          node-version: ${{ matrix.node-version || '24' }}
+
+      - name: Build packages
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TASKS: ${{ matrix.tasks }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          read -ra tasks <<< "$TASKS"
+          ./gradlew "${tasks[@]}" "-PreleaseVersion=$RELEASE_VERSION" --stacktrace --no-daemon
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ runner.os }}-${{ matrix.arch }}
+          path: |
+            build/compose/binaries/**/*.deb
+            build/compose/binaries/**/*.rpm
+            build/compose/binaries/**/*.pacman
+            build/compose/binaries/**/*.snap
+            build/compose/binaries/**/*.AppImage
+            build/compose/binaries/**/*.exe
+            build/compose/binaries/**/*.msi
+            build/compose/binaries/**/*.dmg
+            build/compose/binaries/**/*.zip
+            build/compose/binaries/**/*.blockmap
+            build/compose/binaries/**/*.asc
+            !build/compose/binaries/**/app/**
+            !build/compose/binaries/**/runtime/**
+          if-no-files-found: error
+          retention-days: ${{ needs.verify.outputs.publish == 'true' && 7 || 3 }}
+
+  publish:
+    name: Publish release
+    needs: [verify, changelog, test, package]
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-assets-*
+          path: artifacts
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: notes
+
+      - name: Generate update feeds
+        uses: NucleusFramework/Nucleus/.github/actions/generate-update-yml@v2.5.18
+        with:
+          artifacts-path: artifacts
+          version: ${{ needs.verify.outputs.version }}
+          channel: ${{ needs.verify.outputs.channel }}
+
+      - name: Publish
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; uploading into it."
+          else
+            create=(--draft --verify-tag --title "$TAG")
+            if grep -q '[^[:space:]]' notes/NOTES.md; then
+              create+=(--notes-file notes/NOTES.md)
+            else
+              create+=(--generate-notes)
+            fi
+            if [[ $PRERELEASE == true ]]; then
+              create+=(--prerelease)
+            fi
+            gh release create "$TAG" "${create[@]}"
+          fi
+
+          files=()
+          declare -A seen
+          for dir in artifacts/release-assets-*/; do
+            while IFS= read -r -d '' file; do
+              name="$(basename "$file")"
+              if [[ $name =~ \.(yml|yaml)$ ]]; then continue; fi
+              if [[ $name =~ ^(java\.exe|javaw\.exe|signing-metadata\.json|packaging-metadata\.json)$ ]]; then
+                echo "Skipping internal file: $file"
+                continue
+              fi
+              if [[ $name == *.exe && $name != *-* ]]; then
+                echo "Skipping raw launcher: $file"
+                continue
+              fi
+              if [[ -n ${seen[$name]+x} ]]; then
+                echo "Skipping duplicate: $file (already have ${seen[$name]})"
+                continue
+              fi
+              seen[$name]="$file"
+              files+=("$file")
+            done < <(find "$dir" -type f -print0 | sort -z)
+          done
+          for yml in artifacts/update-yml/*.yml; do
+            if [[ -f $yml ]]; then files+=("$yml"); fi
+          done
+
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "::error::No files to upload"
+            exit 1
+          fi
+          echo "Uploading ${#files[@]} files to $TAG"
+          gh release upload "$TAG" "${files[@]}" --clobber
+
+          if [[ $PRERELEASE == true ]]; then
+            gh release edit "$TAG" --draft=false --prerelease --latest=false
+          else
+            gh release edit "$TAG" --draft=false --prerelease=false --latest
+          fi
+          gh release view "$TAG" --json url --jq .url
