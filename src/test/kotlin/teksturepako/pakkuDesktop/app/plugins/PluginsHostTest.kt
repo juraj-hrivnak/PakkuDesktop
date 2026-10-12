@@ -157,14 +157,16 @@ class PluginsHostTest {
         val b = loaded("b", counterPlugin("b"))
 
         composeRule.setContent {
-            var order by remember { mutableStateOf(listOf(a, b)) }
-            Column {
-                PluginsHost(
-                    plugins = order,
-                    failures = persistentListOf(),
-                    pluginsRoot = Path("plugins"),
-                )
-                BasicText("swap", modifier = Modifier.clickable { order = listOf(b, a) })
+            JewelTestTheme {
+                var order by remember { mutableStateOf(listOf(a, b)) }
+                Column {
+                    PluginsHost(
+                        plugins = order,
+                        failures = persistentListOf(),
+                        pluginsRoot = Path("plugins"),
+                    )
+                    BasicText("swap", modifier = Modifier.clickable { order = listOf(b, a) })
+                }
             }
         }
         composeRule.waitForIdle()

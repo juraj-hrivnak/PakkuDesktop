@@ -1,8 +1,8 @@
 [versions]
 pakku = "1.5.0.343-SNAPSHOT"
 kotlin = "2.4.10"
-compose = "1.11.1"
-nucleus = "2.4.6"
+compose = "1.12.0"
+nucleus = "2.5.18"
 jewel = "0.39.1-262.9437.29"
 navigation = "2.9.2"
 lifecycle = "2.11.0"
