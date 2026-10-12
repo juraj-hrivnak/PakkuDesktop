@@ -158,7 +158,7 @@ nucleus.application {
             TargetFormat.Zip,
         )
 
-        enableAotCache = false
+        enableAotCache = System.getenv("GITHUB_REF") != null
         compressionLevel = CompressionLevel.Maximum
 
         // JVM modules carry over as-is

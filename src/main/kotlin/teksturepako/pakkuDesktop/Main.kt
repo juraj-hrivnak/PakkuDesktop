@@ -7,7 +7,9 @@ package teksturepako.pakkuDesktop
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onErr
 import androidx.compose.runtime.remember
+import dev.nucleusframework.aot.runtime.AotRuntime
 import dev.nucleusframework.application.NucleusBackend
+import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import io.github.vinceglb.filekit.FileKit
 import io.klogging.config.ANSI_INFO
@@ -21,12 +23,14 @@ import teksturepako.pakku.debug
 import teksturepako.pakkuDesktop.app.data.ProjectsUiData
 import teksturepako.pakkuDesktop.app.data.WindowData
 import teksturepako.pakkuDesktop.app.plugins.PluginLoader
+import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
 import teksturepako.pakkuDesktop.app.plugins.pluginDrivers
 import teksturepako.pakkuDesktop.app.plugins.pluginsRoot
 import teksturepako.pakkuDesktop.app.ui.appComponent
 import teksturepako.pakkuDesktop.app.ui.application.window.mainWindowDriver
 import teksturepako.pakkuDesktop.app.ui.driver.*
 import teksturepako.pakkuDesktop.elm.run
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -47,25 +51,41 @@ fun main() {
 
     FileKit.init(appId = "PakkuDesktop")
 
-    val credentials = runBlocking { CredentialsFile.readToResult() }
-        .onErr { error -> debug { println(error.rawMessage) } }
-        .get()
+    val aotTrainingRun = AotRuntime.isTraining()
 
-    pakku {
-        curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY") ?: credentials?.curseForgeApiKey)
-        withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
+    if (!aotTrainingRun) {
+        val credentials = runBlocking { CredentialsFile.readToResult() }
+            .onErr { error -> debug { println(error.rawMessage) } }
+            .get()
+
+        pakku {
+            curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY") ?: credentials?.curseForgeApiKey)
+            withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
+        }
+    } else {
+        pakku {
+            curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY"))
+            withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
+        }
     }
 
-    val initialWindowData = runBlocking { WindowData.readOrNew() }
+    val initialWindowData =
+        if (aotTrainingRun) WindowData() else runBlocking { WindowData.readOrNew() }
     val pluginsDir = pluginsRoot()
-    val plugins = PluginLoader.loadAll(pluginsDir)
+    val plugins =
+        if (aotTrainingRun) PluginRegistry.Empty else PluginLoader.loadAll(pluginsDir)
     val rootComponent = appComponent(
-        initialProjectsUi = runBlocking { ProjectsUiData.readOrNew() },
+        initialProjectsUi =
+            if (aotTrainingRun) ProjectsUiData() else runBlocking { ProjectsUiData.readOrNew() },
         plugins = plugins,
         pluginsRoot = pluginsDir,
     )
 
     nucleusApplication(backend = NucleusBackend.Tao) {
+        if (aotTrainingRun) {
+            aotTraining(duration = 45.seconds)
+        }
+
         val drivers = remember {
             listOf(
                 themeDriver,
