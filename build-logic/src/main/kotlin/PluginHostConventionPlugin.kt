@@ -59,9 +59,23 @@ class PluginHostConventionPlugin : Plugin<Project> {
             allTasks.filterIsInstance<GenerateOfficialPluginDigests>().forEach { it.releaseBuild.set(release) }
         }
         pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
-            extensions.getByType<SourceSetContainer>().named("main") {
+            val sourceSets = extensions.getByType<SourceSetContainer>()
+            sourceSets.named("main") {
                 val kotlin = (this as ExtensionAware).extensions.getByName("kotlin") as SourceDirectorySet
                 kotlin.srcDir(generate.flatMap { it.outputDirectory })
+            }
+            sourceSets.named("test") {
+                compileClasspath += sourceSets.named("main").get().output
+                runtimeClasspath += sourceSets.named("main").get().output
+                sourceSets.findByName("dev")?.let { dev ->
+                    compileClasspath += dev.output
+                    runtimeClasspath += dev.output
+                }
+            }
+            tasks.named("compileKotlin") { dependsOn(generate) }
+            tasks.named("compileTestKotlin") {
+                dependsOn(tasks.named("compileKotlin"), tasks.named("classes"))
+                tasks.findByName("compileDevKotlin")?.let { dependsOn(it) }
             }
         }
 
