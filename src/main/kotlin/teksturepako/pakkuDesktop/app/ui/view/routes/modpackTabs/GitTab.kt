@@ -4,25 +4,14 @@
 
 package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -38,21 +27,16 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
-import teksturepako.pakkuDesktop.app.git.GitChangelistFlatRow
+import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
 import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitChange
-
-private val ChangelistIndentPerLevel = 20.dp
-private val ChangelistChevronSlot = 20.dp
-private val ChangelistChevronGap = 4.dp
-private val ChangelistCheckSlot = 32.dp
-/** Status letter (A/M/D) or folder icon: same width keeps file and folder names aligned. */
-private val ChangelistStatusSlot = 20.dp
-private val ChangelistRowMinHeight = 30.dp
-private val ChangelistSelectionStripeWidth = 3.dp
+import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeStatus
 
 @Composable
 fun GitTab(
@@ -193,14 +177,14 @@ private fun SourceControlSidePanel(
                     items = flatRows,
                     key = { row ->
                         when (row) {
-                            is GitChangelistFlatRow.Folder -> "d:${row.fullPath}"
-                            is GitChangelistFlatRow.File -> "f:${row.file.path}"
+                            is PathTreeRow.Folder -> "d:${row.fullPath}"
+                            is PathTreeRow.Item -> "f:${row.path}"
                         }
                     },
                     contentType = { row ->
                         when (row) {
-                            is GitChangelistFlatRow.Folder -> "changelist_folder"
-                            is GitChangelistFlatRow.File -> "changelist_file"
+                            is PathTreeRow.Folder -> "changelist_folder"
+                            is PathTreeRow.Item -> "changelist_file"
                         }
                     },
                 ) { row ->
@@ -341,261 +325,40 @@ private fun GitFooterStatus(
 
 @Composable
 private fun GitChangesListRow(
-    row: GitChangelistFlatRow,
+    row: PathTreeRow<GitFile>,
     currentDiff: DiffContent?,
     diffPendingPath: String?,
     publish: (ModpackMsg) -> Unit,
 ) {
     when (row) {
-        is GitChangelistFlatRow.Folder -> ChangelistFolderRow(row, publish)
-        is GitChangelistFlatRow.File -> ChangelistFileRow(row, currentDiff, diffPendingPath, publish)
-    }
-}
-
-@Composable
-private fun ChangelistFolderRow(
-    row: GitChangelistFlatRow.Folder,
-    publish: (ModpackMsg) -> Unit,
-) {
-    val interaction = remember(row.fullPath) { MutableInteractionSource() }
-    val hovered by interaction.collectIsHoveredAsState()
-    val folderCheckState = when {
-        row.subtreeFileCount == 0 -> ToggleableState.Off
-        row.selectedInSubtree == 0 -> ToggleableState.Off
-        row.selectedInSubtree == row.subtreeFileCount -> ToggleableState.On
-        else -> ToggleableState.Indeterminate
-    }
-    val stripe = Color.Transparent
-    val bg = changelistRowBackground(
-        selectedForDiff = false,
-        hovered = hovered,
-        folderBand = true,
-    )
-    val treeChevron = JewelTheme.treeStyle.icons.chevron(isExpanded = row.expanded, isSelected = false)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ChangelistRowMinHeight)
-            .background(bg)
-            .hoverable(interaction),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SelectionStripe(stripe, selectedForDiff = false)
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 4.dp, horizontal = 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Spacer(Modifier.width(ChangelistIndentPerLevel * row.depth))
-            Box(
-                modifier = Modifier
-                    .size(ChangelistChevronSlot)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember(row.fullPath) { MutableInteractionSource() },
-                    ) {
-                        publish(ModpackMsg.GitChangelistFolderExpansionToggled(row.fullPath))
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    key = treeChevron,
-                    contentDescription = if (row.expanded) "Collapse" else "Expand",
-                    tint = JewelTheme.contentColor.copy(alpha = 0.65f),
-                    hints = arrayOf(),
-                    modifier = Modifier.size(13.dp),
-                )
-            }
-            Spacer(Modifier.width(ChangelistChevronGap))
-            Box(
-                modifier = Modifier
-                    .width(ChangelistCheckSlot)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center,
-            ) {
-                TriStateCheckbox(
-                    state = folderCheckState,
-                    onClick = { publish(ModpackMsg.GitFolderSelectionToggled(row.fullPath)) },
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .width(ChangelistStatusSlot)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Icon(
-                    key = AllIconsKeys.Nodes.Folder,
-                    contentDescription = null,
-                    tint = JewelTheme.contentColor.copy(alpha = 0.85f),
-                    hints = arrayOf(),
-                    modifier = Modifier.size(17.dp),
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember(row.fullPath) { MutableInteractionSource() },
-                    ) {
-                        publish(ModpackMsg.GitChangelistFolderExpansionToggled(row.fullPath))
-                    },
-            ) {
-                Text(
-                    text = row.displayName,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = JewelTheme.contentColor,
-                    style = JewelTheme.defaultTextStyle.copy(
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
-            }
+        is PathTreeRow.Folder ->
+            TreeFolderRow(
+                row = row,
+                onToggleExpanded = {
+                    publish(ModpackMsg.GitChangelistFolderExpansionToggled(row.fullPath))
+                },
+                onToggleSelected = {
+                    publish(ModpackMsg.GitFolderSelectionToggled(row.fullPath))
+                },
+            )
+        is PathTreeRow.Item -> {
+            val file = row.item
+            val isViewed =
+                sameGitPath(file.path, diffPendingPath) ||
+                    sameGitPath(file.path, currentDiff?.newPath) ||
+                    sameGitPath(file.path, currentDiff?.oldPath)
+            val pathLabel = file.path.substringAfterLast('/').ifEmpty { file.path }
+            TreeItemRow(
+                depth = row.depth,
+                label = pathLabel,
+                status = file.status.toTreeStatus(),
+                checked = row.selected,
+                onCheckedChange = { publish(ModpackMsg.GitFileSelectionToggled(file)) },
+                highlighted = isViewed,
+                onClick = { publish(ModpackMsg.GitDiffFileSelected(file)) },
+                interactionKey = file.path,
+            )
         }
-    }
-}
-
-@Composable
-private fun ChangelistFileRow(
-    row: GitChangelistFlatRow.File,
-    currentDiff: DiffContent?,
-    diffPendingPath: String?,
-    publish: (ModpackMsg) -> Unit,
-) {
-    val file = row.file
-    val included = row.selectedForCommit
-    val isViewed =
-        sameGitPath(file.path, diffPendingPath) ||
-            sameGitPath(file.path, currentDiff?.newPath) ||
-            sameGitPath(file.path, currentDiff?.oldPath)
-    val interaction = remember(file.path) { MutableInteractionSource() }
-    val diffClickInteraction = remember(file.path, "diffOpen") { MutableInteractionSource() }
-    val hovered by interaction.collectIsHoveredAsState()
-    val status = file.status
-    val label = gitStatusLetter(status)
-    val statusColor = gitStatusColor(status)
-    val pathLabel = file.path.substringAfterLast('/').ifEmpty { file.path }
-    val stripe = if (isViewed) PakkuDesktopConstants.highlightColor else Color.Transparent
-    val bg = changelistRowBackground(
-        selectedForDiff = isViewed,
-        hovered = hovered,
-        folderBand = false,
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ChangelistRowMinHeight)
-            .background(bg)
-            .hoverable(interaction),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SelectionStripe(stripe, selectedForDiff = isViewed)
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Spacer(Modifier.width(ChangelistIndentPerLevel * row.depth))
-            Spacer(Modifier.width(ChangelistChevronSlot))
-            Spacer(Modifier.width(ChangelistChevronGap))
-            Box(
-                modifier = Modifier
-                    .width(ChangelistCheckSlot)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Checkbox(
-                    checked = included,
-                    onCheckedChange = { publish(ModpackMsg.GitFileSelectionToggled(file)) },
-                )
-            }
-            // Transparent overlay: Jewel Text can consume pointer input, so parent Row.clickable
-            // often never fires on short names (e.g. pakku.json) — overlay receives hits first.
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(ChangelistStatusSlot)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = label,
-                            color = statusColor,
-                            style = JewelTheme.defaultTextStyle.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                        )
-                    }
-                    Text(
-                        text = pathLabel,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (isViewed) JewelTheme.contentColor else JewelTheme.contentColor.copy(alpha = 0.92f),
-                        style = JewelTheme.defaultTextStyle.copy(
-                            fontWeight = if (isViewed) FontWeight.Medium else FontWeight.Normal,
-                        ),
-                    )
-                }
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .clickable(
-                            interactionSource = diffClickInteraction,
-                            indication = null,
-                            onClick = { publish(ModpackMsg.GitDiffFileSelected(file)) },
-                        ),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SelectionStripe(color: Color, selectedForDiff: Boolean) {
-    Spacer(
-        Modifier
-            .width(ChangelistSelectionStripeWidth)
-            .fillMaxHeight()
-            .background(
-                if (selectedForDiff) PakkuDesktopConstants.highlightColor
-                else Color.Transparent,
-            ),
-    )
-}
-
-@Composable
-@ReadOnlyComposable
-private fun changelistRowBackground(
-    selectedForDiff: Boolean,
-    hovered: Boolean,
-    folderBand: Boolean,
-): Color {
-    val content = JewelTheme.contentColor
-    val panel = JewelTheme.globalColors.panelBackground
-    val selectedFill = PakkuDesktopConstants.highlightColor.copy(alpha = if (JewelTheme.isDark) 0.14f else 0.10f)
-    val hoverFill = content.copy(alpha = if (JewelTheme.isDark) 0.07f else 0.06f)
-    val folderFill = lerp(panel, content, if (JewelTheme.isDark) 0.06f else 0.04f)
-    return when {
-        selectedForDiff && hovered -> lerp(selectedFill, hoverFill, 0.35f)
-        selectedForDiff -> selectedFill
-        hovered -> hoverFill
-        folderBand -> folderFill
-        else -> Color.Transparent
     }
 }
 
@@ -606,23 +369,9 @@ private fun gitPathKey(repoRelative: String): String =
 private fun sameGitPath(a: String, b: String?): Boolean =
     b != null && gitPathKey(a) == gitPathKey(b)
 
-private fun gitStatusLetter(status: GitChange): String = when (status) {
-    is GitChange.Added -> "A"
-    is GitChange.Modified -> "M"
-    is GitChange.Deleted -> "D"
-    is GitChange.Untracked -> "U"
-}
-
-@Composable
-private fun gitStatusColor(status: GitChange): Color {
-    val p = JewelTheme.colorPalette
-    val fallback = JewelTheme.contentColor
-    fun pick(ramps: List<Color>): Color =
-        ramps.getOrNull((ramps.lastIndex * 5 / 10).coerceIn(0, ramps.lastIndex)) ?: fallback
-    return when (status) {
-        is GitChange.Added -> pick(p.green)
-        is GitChange.Modified -> pick(p.yellow)
-        is GitChange.Deleted -> pick(p.red)
-        is GitChange.Untracked -> JewelTheme.globalColors.text.disabled
-    }
+private fun GitChange.toTreeStatus(): TreeStatus = when (this) {
+    is GitChange.Added -> TreeStatus.Added
+    is GitChange.Modified -> TreeStatus.Modified
+    is GitChange.Deleted -> TreeStatus.Deleted
+    is GitChange.Untracked -> TreeStatus.Untracked
 }
