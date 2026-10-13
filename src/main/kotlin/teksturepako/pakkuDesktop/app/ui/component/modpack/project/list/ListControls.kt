@@ -136,7 +136,8 @@ fun ListControls(
     selectableKeys: Collection<String>? = null,
     showSelection: Boolean = true,
 ) {
-    val projects = sourceProjects ?: model.lockFile?.get()?.getAllProjects() ?: emptyList()
+    // Live lock-file list; update mutates it off the UI thread.
+    val projects = (sourceProjects ?: model.lockFile?.get()?.getAllProjects()).snapshotList()
     val filteredProjects = projects.filter { it.matchesProjectsListFilters(model, ignoreUpdatesOnly) }
     val sortOrder = model.sortOrder
     val keys = selectableKeys?.toList() ?: filteredProjects.map { it.uiKey() }
