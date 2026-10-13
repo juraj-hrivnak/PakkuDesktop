@@ -45,6 +45,9 @@ fun FilesSelectionControls(
     model: FilesTabModel,
     lastClickedIndex: MutableState<Int?>,
     selectableKeys: Collection<String>,
+    hasFolders: Boolean,
+    linksEmpty: Boolean,
+    folderIds: Set<String> = emptySet(),
 ) {
     val keys = selectableKeys.toList()
     val allSelected = keys.isNotEmpty() && keys.all { it in model.selectedProjectKeys }
@@ -99,6 +102,32 @@ fun FilesSelectionControls(
             }
         }
         Spacer(Modifier.weight(1f))
+        IconButton(
+            enabled = !linksEmpty && hasFolders,
+            onClick = { publish(ModpackMsg.FilesExpandAllFolders) },
+            modifier = Modifier.size(SelectionActionButtonSize),
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Expandall,
+                contentDescription = "Expand all",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        IconButton(
+            enabled = !linksEmpty && hasFolders,
+            onClick = { publish(ModpackMsg.FilesCollapseAllFolders(folderIds)) },
+            modifier = Modifier.size(SelectionActionButtonSize),
+        ) {
+            Icon(
+                key = AllIconsKeys.Actions.Collapseall,
+                contentDescription = "Collapse all",
+                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
+                hints = arrayOf(),
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 

@@ -71,9 +71,9 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRowComp
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderSelectionScope
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeRowMinHeight
-import teksturepako.pakkuDesktop.app.ui.component.tree.mergeExpandedFolders
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -105,7 +105,6 @@ fun FilesLinkList(
     filesPreviewMode: FilesPreviewMode,
     configFile: teksturepako.pakku.api.data.ConfigFile?,
     expandedFolders: Set<String>,
-    onToggleFolderExpanded: (String) -> Unit,
     linkIndexByPathKey: Map<String, Int>,
     lastClickedIndex: MutableState<Int?>,
     publish: (ModpackMsg) -> Unit,
@@ -118,6 +117,10 @@ fun FilesLinkList(
     }
     val rows = remember(tree, expandedFolders, selectedPaths) {
         tree.flatRows(expandedFolders, selectedPaths)
+    }
+    val flatSelectableLinks = remember(rows) { filesFlatSelectableLinks(rows) }
+    val flatSelectableIndexByPathKey = remember(flatSelectableLinks) {
+        flatSelectableLinks.withIndex().associate { (index, link) -> link.pathKey to index }
     }
     val typeLabels = remember(configFile) { typeFolderLabels(configFile) }
     val shiftPressed = LocalShiftKeyState.current.pressed
@@ -168,9 +171,10 @@ fun FilesLinkList(
                         showSelection = showSelection,
                         shiftPressed = shiftPressed,
                         linkIndexByPathKey = linkIndexByPathKey,
+                        flatSelectableLinks = flatSelectableLinks,
+                        flatSelectableIndexByPathKey = flatSelectableIndexByPathKey,
                         allLinks = links,
                         lastClickedIndex = lastClickedIndex,
-                        onToggleFolderExpanded = onToggleFolderExpanded,
                         onSplitDrag = onSplitDrag,
                         publish = publish,
                     )
@@ -296,9 +300,10 @@ fun FilesLinkRow(
     showSelection: Boolean,
     shiftPressed: Boolean,
     linkIndexByPathKey: Map<String, Int>,
+    flatSelectableLinks: List<FilesLink>,
+    flatSelectableIndexByPathKey: Map<String, Int>,
     allLinks: List<FilesLink>,
     lastClickedIndex: MutableState<Int?>,
-    onToggleFolderExpanded: (String) -> Unit,
     onSplitDrag: (deltaPx: Float, splitAreaPx: Float) -> Unit,
     publish: (ModpackMsg) -> Unit,
 ) {
@@ -329,12 +334,38 @@ fun FilesLinkRow(
         },
         diskCell = {
             when (row) {
-                is PathTreeRow.Folder -> TreeFolderRow(
-                    row = row,
-                    onToggleExpanded = { onToggleFolderExpanded(row.fullPath) },
-                    onToggleSelected = null,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                is PathTreeRow.Folder -> {
+                    val selectableKeys = filesSelectableKeysUnderFolder(allLinks, row.fullPath)
+                    val selectedInSubtree = selectableKeys.count { it in selectedProjectKeys }
+                    TreeFolderRow(
+                        row = row,
+                        onToggleExpanded = {
+                            publish(ModpackMsg.FilesFolderExpansionToggled(row.fullPath))
+                        },
+                        onToggleSelected = if (selectableKeys.isEmpty()) {
+                            null
+                        } else {
+                            {
+                                val allSelected = selectableKeys.all { it in selectedProjectKeys }
+                                if (allSelected) {
+                                    publish(ModpackMsg.ProjectsDeselected(selectableKeys))
+                                } else {
+                                    publish(ModpackMsg.ProjectsSelected(selectableKeys))
+                                }
+                                lastClickedIndex.value = null
+                            }
+                        },
+                        selectionScope = if (selectableKeys.isEmpty()) {
+                            null
+                        } else {
+                            TreeFolderSelectionScope(
+                                itemCount = selectableKeys.size,
+                                selectedCount = selectedInSubtree,
+                            )
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
                 is PathTreeRow.Item -> {
                     val link = row.item
                     val checked = link.selectionKey?.let { it in selectedProjectKeys }
@@ -348,8 +379,8 @@ fun FilesLinkRow(
                                 link = link,
                                 nextChecked = next,
                                 shiftPressed = shiftPressed,
-                                linkIndex = linkIndexByPathKey[link.pathKey] ?: 0,
-                                allLinks = allLinks,
+                                flatIndex = flatSelectableIndexByPathKey[link.pathKey],
+                                flatSelectableLinks = flatSelectableLinks,
                                 lastClickedIndex = lastClickedIndex,
                                 publish = publish,
                             )
@@ -669,42 +700,42 @@ private fun toggleLinkSelection(
     link: FilesLink,
     nextChecked: Boolean,
     shiftPressed: Boolean,
-    linkIndex: Int,
-    allLinks: List<FilesLink>,
+    flatIndex: Int?,
+    flatSelectableLinks: List<FilesLink>,
     lastClickedIndex: MutableState<Int?>,
     publish: (ModpackMsg) -> Unit,
 ) {
     val selectionKey = link.selectionKey ?: return
+    val index = flatIndex ?: return
     if (shiftPressed && lastClickedIndex.value != null) {
-        val start = minOf(lastClickedIndex.value!!, linkIndex)
-        val end = maxOf(lastClickedIndex.value!!, linkIndex)
-        val keys = allLinks.slice(start..end)
-            .mapNotNull { it.selectionKey }
-            .toSet()
+        val start = minOf(lastClickedIndex.value!!, index)
+        val end = maxOf(lastClickedIndex.value!!, index)
+        val keys = filesRangeSelectionKeys(flatSelectableLinks, start, end)
         if (nextChecked) publish(ModpackMsg.ProjectsSelected(keys))
         else publish(ModpackMsg.ProjectsDeselected(keys))
     } else {
         if (nextChecked) publish(ModpackMsg.ProjectsSelected(setOf(selectionKey)))
         else publish(ModpackMsg.ProjectsDeselected(setOf(selectionKey)))
-        lastClickedIndex.value = linkIndex
+        lastClickedIndex.value = index
     }
 }
 
-/** Remember expanded folder paths across link list updates. */
-@Composable
-fun rememberFilesExpandedFolders(links: List<FilesLink>): Pair<Set<String>, (String) -> Unit> {
-    var expanded by remember { mutableStateOf(emptySet<String>()) }
-    var previousPaths by remember { mutableStateOf(emptyList<String>()) }
-    LaunchedEffect(links) {
-        val paths = links.map { it.path }
-        expanded = mergeExpandedFolders(expanded, previousPaths, paths)
-        previousPaths = paths
+internal fun filesFlatSelectableLinks(rows: List<PathTreeRow<FilesLink>>): List<FilesLink> =
+    rows.mapNotNull { row ->
+        (row as? PathTreeRow.Item<FilesLink>)?.item?.takeIf { it.selectionKey != null }
     }
-    val toggle: (String) -> Unit = { folder ->
-        expanded = if (folder in expanded) expanded - folder else expanded + folder
-    }
-    return expanded to toggle
-}
+
+internal fun filesSelectableKeysUnderFolder(links: List<FilesLink>, folderPath: String): Set<String> =
+    links.filter { link ->
+        link.selectionKey != null && link.path.startsWith("$folderPath/")
+    }.mapNotNull { it.selectionKey }.toSet()
+
+internal fun filesRangeSelectionKeys(
+    flatSelectableLinks: List<FilesLink>,
+    start: Int,
+    end: Int,
+): Set<String> =
+    flatSelectableLinks.slice(start..end).mapNotNull { it.selectionKey }.toSet()
 
 @Composable
 fun rememberFilesLinkListSplitRatio(

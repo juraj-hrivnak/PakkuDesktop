@@ -209,6 +209,23 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (model.filesFilterChangeKinds == msg.kinds) model else model.copy(filesFilterChangeKinds = msg.kinds.toPersistentSet())
     is ModpackMsg.FilesFilterFocusChanged ->
         if (model.filesFilterFocused == msg.focused) model else model.copy(filesFilterFocused = msg.focused)
+    is ModpackMsg.FilesFolderExpansionToggled -> {
+        val collapsed = model.filesCollapsedFolders
+        val next = if (msg.folderPath in collapsed) {
+            collapsed.remove(msg.folderPath)
+        } else {
+            collapsed.add(msg.folderPath)
+        }
+        if (next == collapsed) model else model.copy(filesCollapsedFolders = next)
+    }
+    ModpackMsg.FilesExpandAllFolders ->
+        if (model.filesCollapsedFolders.isEmpty()) model
+        else model.copy(filesCollapsedFolders = persistentSetOf())
+    is ModpackMsg.FilesCollapseAllFolders -> {
+        val ids = msg.folderIds.toPersistentSet()
+        if (ids == model.filesCollapsedFolders) model
+        else model.copy(filesCollapsedFolders = ids)
+    }
 
     ModpackMsg.FocusProjectsFilterRequested ->
         if (model.wantsFocusProjectsFilter) model else model.copy(wantsFocusProjectsFilter = true)

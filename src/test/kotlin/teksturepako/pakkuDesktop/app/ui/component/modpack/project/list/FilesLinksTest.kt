@@ -110,6 +110,7 @@ class FilesLinksTest {
             filesFilterFolders = persistentSetOf(),
             filesFilterChangeKinds = persistentSetOf(),
             wantsFocusProjectsFilter = false,
+            filesCollapsedFolders = persistentSetOf(),
         )
     }
 

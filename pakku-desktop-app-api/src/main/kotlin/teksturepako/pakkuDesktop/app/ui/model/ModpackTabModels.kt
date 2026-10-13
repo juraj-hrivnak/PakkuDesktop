@@ -105,6 +105,7 @@ data class FilesTabModel(
     val filesFilterFolders: PersistentSet<String>,
     val filesFilterChangeKinds: PersistentSet<FilesChangeKind>,
     val wantsFocusProjectsFilter: Boolean,
+    val filesCollapsedFolders: PersistentSet<String>,
 )
 
 fun ModpackModel.filesTab() = FilesTabModel(
@@ -129,6 +130,7 @@ fun ModpackModel.filesTab() = FilesTabModel(
     filesFilterFolders = filesFilterFolders,
     filesFilterChangeKinds = filesFilterChangeKinds,
     wantsFocusProjectsFilter = wantsFocusProjectsFilter,
+    filesCollapsedFolders = filesCollapsedFolders,
 )
 
 @Immutable

@@ -304,6 +304,9 @@ sealed interface ModpackMsg {
     data class FilesFilterFoldersChanged(val folders: Set<String>) : ModpackMsg
     data class FilesFilterChangeKindsChanged(val kinds: Set<FilesChangeKind>) : ModpackMsg
     data class FilesFilterFocusChanged(val focused: Boolean) : ModpackMsg
+    data class FilesFolderExpansionToggled(val folderPath: String) : ModpackMsg
+    data object FilesExpandAllFolders : ModpackMsg
+    data class FilesCollapseAllFolders(val folderIds: Set<String>) : ModpackMsg
 
     /** focus filter (Ctrl/Cmd+F) */
     data object FocusProjectsFilterRequested : ModpackMsg

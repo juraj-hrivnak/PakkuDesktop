@@ -31,8 +31,8 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesLink
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesPreviewFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesSelectionControls
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredFilesLinks
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.rememberFilesExpandedFolders
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.rememberFilesLinkListSplitRatio
+import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -64,7 +64,10 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     }
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
-    val (expandedFolders, onToggleFolderExpanded) = rememberFilesExpandedFolders(links)
+    val tree = remember(links) { PathTreeSnapshot.of(links) { it.path } }
+    val expandedFolders = remember(tree.folderIds, model.filesCollapsedFolders) {
+        tree.folderIds - model.filesCollapsedFolders
+    }
     val splitRatio = rememberFilesLinkListSplitRatio(model.filesSplitRatio, publish)
     val selectableKeys = remember(links) {
         links.mapNotNull { it.selectionKey }.distinct()
@@ -92,6 +95,9 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                     model = model,
                     lastClickedIndex = lastClickedIndex,
                     selectableKeys = selectableKeys,
+                    hasFolders = tree.folderIds.isNotEmpty(),
+                    linksEmpty = links.isEmpty(),
+                    folderIds = tree.folderIds,
                 )
             } else {
                 Text(
@@ -117,7 +123,6 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                     filesPreviewMode = model.filesPreviewMode,
                     configFile = model.configFile?.get(),
                     expandedFolders = expandedFolders,
-                    onToggleFolderExpanded = onToggleFolderExpanded,
                     linkIndexByPathKey = linkIndexByPathKey,
                     lastClickedIndex = lastClickedIndex,
                     publish = publish,

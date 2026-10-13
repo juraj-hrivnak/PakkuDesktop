@@ -146,6 +146,13 @@ class ModpackUpdateSameInstanceTest {
     }
 
     @Test
+    fun filesFolderExpansionNoOps() {
+        assertNoOp(ModpackModel(), ModpackMsg.FilesExpandAllFolders)
+        val collapsed = modpackUpdate(ModpackMsg.FilesCollapseAllFolders(setOf("mods")), ModpackModel())
+        assertNoOp(collapsed, ModpackMsg.FilesCollapseAllFolders(setOf("mods")))
+    }
+
+    @Test
     fun focusUnchanged() {
         assertNoOp(ModpackModel(), ModpackMsg.FilesFilterFocusChanged(false))
         assertNoOp(ModpackModel(), ModpackMsg.ProjectsFilterFocusChanged(false))

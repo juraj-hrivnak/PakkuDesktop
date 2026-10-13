@@ -7,8 +7,10 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyDescendant
@@ -39,8 +41,10 @@ import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.ShiftKeyState
+import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
+import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.pathKey
 import teksturepako.pakkuDesktop.elm.RecomposeCounter
 import teksturepako.pakkuDesktop.elm.assumeAwtForComposeUiTests
@@ -81,7 +85,11 @@ class FilesLinkListTest {
     @Composable
     private fun LinkListHost(links: List<FilesLink>, mode: FilesPreviewMode = FilesPreviewMode.Fetch) {
         val listState = rememberLazyListState()
-        val (expanded, onToggleFolder) = rememberFilesExpandedFolders(links)
+        val tree = remember(links) { PathTreeSnapshot.of(links) { it.path } }
+        var collapsedFolders by remember { mutableStateOf(emptySet<String>()) }
+        val expandedFolders = remember(tree.folderIds, collapsedFolders) {
+            tree.folderIds - collapsedFolders
+        }
         val split = remember { mutableStateOf(0.5f) }
         val indexByKey = remember(links) { links.withIndex().associate { (i, l) -> l.pathKey to i } }
         FilesLinkList(
@@ -93,11 +101,18 @@ class FilesLinkListTest {
             focusedProjectUiKey = null,
             filesPreviewMode = mode,
             configFile = null,
-            expandedFolders = expanded,
-            onToggleFolderExpanded = onToggleFolder,
+            expandedFolders = expandedFolders,
             linkIndexByPathKey = indexByKey,
             lastClickedIndex = remember { mutableStateOf(null) },
-            publish = {},
+            publish = { msg ->
+                if (msg is ModpackMsg.FilesFolderExpansionToggled) {
+                    collapsedFolders = if (msg.folderPath in collapsedFolders) {
+                        collapsedFolders - msg.folderPath
+                    } else {
+                        collapsedFolders + msg.folderPath
+                    }
+                }
+            },
             modifier = Modifier.height(400.dp),
         )
     }

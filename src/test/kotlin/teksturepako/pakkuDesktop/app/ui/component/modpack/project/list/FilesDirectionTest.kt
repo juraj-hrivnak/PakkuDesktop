@@ -183,6 +183,7 @@ class FilesDirectionTest {
             filesFilterFolders = persistentSetOf(),
             filesFilterChangeKinds = persistentSetOf(),
             wantsFocusProjectsFilter = false,
+            filesCollapsedFolders = persistentSetOf(),
         )
 
     @Test

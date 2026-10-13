@@ -205,6 +205,12 @@ data class ModpackModel(
     val projectsSplitRatio: Float = ProjectsUiData.DEFAULT_SPLIT_RATIO,
     /** First-pane weight for the Files current|new split. */
     val filesSplitRatio: Float = ProjectsUiData.DEFAULT_FILES_SPLIT_RATIO,
+    /**
+     * Files tab folder paths that are collapsed in the link tree. Empty means all folders expanded.
+     * Unlike [teksturepako.pakkuDesktop.app.git.GitState.expandedFolderPaths], collapsed paths are
+     * kept across fetch/sync rescans when the folder still exists.
+     */
+    val filesCollapsedFolders: PersistentSet<String> = persistentSetOf(),
     /** only projects with a pending update from the last status check */
     val filterUpdatesOnly: Boolean = false,
     val wantsStatusCheck: Boolean = false,

@@ -72,22 +72,31 @@ fun TreeStatus.color(): Color
     }
 }
 
+/** When set, folder tri-state uses these counts instead of [PathTreeRow.Folder] totals (Files tab). */
+data class TreeFolderSelectionScope(
+    val itemCount: Int,
+    val selectedCount: Int,
+)
+
 @Composable
 fun TreeFolderRow(
     row: PathTreeRow.Folder,
     onToggleExpanded: () -> Unit,
     onToggleSelected: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    selectionScope: TreeFolderSelectionScope? = null,
 )
 {
     val interaction = remember(row.fullPath) { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    val subtreeItemCount = selectionScope?.itemCount ?: row.subtreeItemCount
+    val selectedInSubtree = selectionScope?.selectedCount ?: row.selectedInSubtree
     val folderCheckState = when
     {
-        row.subtreeItemCount == 0                     -> ToggleableState.Off
-        row.selectedInSubtree == 0                    -> ToggleableState.Off
-        row.selectedInSubtree == row.subtreeItemCount -> ToggleableState.On
-        else                                          -> ToggleableState.Indeterminate
+        subtreeItemCount == 0              -> ToggleableState.Off
+        selectedInSubtree == 0             -> ToggleableState.Off
+        selectedInSubtree == subtreeItemCount -> ToggleableState.On
+        else                               -> ToggleableState.Indeterminate
     }
     val stripe = Color.Transparent
     val bg = treeRowBackground(
