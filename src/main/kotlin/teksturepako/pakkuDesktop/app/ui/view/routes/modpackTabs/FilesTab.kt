@@ -123,6 +123,7 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                     filesPreviewMode = model.filesPreviewMode,
                     configFile = model.configFile?.get(),
                     expandedFolders = expandedFolders,
+                    existingDiskFolders = model.diskSnapshot.existingFolders,
                     linkIndexByPathKey = linkIndexByPathKey,
                     lastClickedIndex = lastClickedIndex,
                     publish = publish,

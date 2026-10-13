@@ -102,6 +102,7 @@ class FilesLinkListTest {
             filesPreviewMode = mode,
             configFile = null,
             expandedFolders = expandedFolders,
+            existingDiskFolders = emptySet(),
             linkIndexByPathKey = indexByKey,
             lastClickedIndex = remember { mutableStateOf(null) },
             publish = { msg ->

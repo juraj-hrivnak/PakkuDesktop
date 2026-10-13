@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
+import teksturepako.pakkuDesktop.app.ui.component.tree.stickyFolderPathChain
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -70,6 +71,44 @@ class FilesTreeStateTest {
             "mods",
         )
         assertEquals(setOf("fetch:a", "fetch:b"), keys)
+    }
+
+    @Test
+    fun stickyFolderChainIncludesAncestorsAndNestedFolder() {
+        val fileRow = PathTreeRow.Item(
+            item = link("mods/fabric/a.jar"),
+            path = "mods/fabric/a.jar",
+            depth = 2,
+            selected = false,
+        )
+        assertEquals(listOf("mods", "mods/fabric"), stickyFolderPathChain(fileRow))
+        val folderRow = PathTreeRow.Folder(
+            fullPath = "mods/fabric",
+            displayName = "fabric",
+            depth = 1,
+            expanded = true,
+            subtreeItemCount = 1,
+            selectedInSubtree = 0,
+        )
+        assertEquals(listOf("mods", "mods/fabric"), stickyFolderPathChain(folderRow))
+    }
+
+    @Test
+    fun pinnedFoldersKeepParentsWhenScrollingNestedSubtree() {
+        val links = listOf(
+            link("mods/a.jar", "fetch:a"),
+            link("mods/fabric/b.jar", "fetch:b"),
+        )
+        val tree = PathTreeSnapshot.of(links) { it.path }
+        val expanded = tree.folderIds
+        val rows = tree.flatRows(expanded, emptySet())
+        val folderIndexByPath = rows.mapIndexedNotNull { index, row ->
+            (row as? PathTreeRow.Folder)?.fullPath?.let { it to index }
+        }.toMap()
+        val folderRowByPath = rows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
+        val fileIndex = rows.indexOfFirst { it is PathTreeRow.Item && it.path == "mods/fabric/b.jar" }
+        val pinned = pinnedFolderRowsForScroll(rows, fileIndex, folderIndexByPath, folderRowByPath)
+        assertEquals(listOf("mods", "mods/fabric"), pinned.map { it.fullPath })
     }
 
     @Test

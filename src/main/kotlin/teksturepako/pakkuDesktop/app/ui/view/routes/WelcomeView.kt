@@ -62,7 +62,7 @@ fun PakkuApplicationScope.WelcomeView(
         },
     ) {
         AlignedTitleBarContent(alignment = Alignment.Start) {
-            Text("Welcome to $displayName!")
+            Text(displayName)
             WelcomeViewDropdown(
                 publish = publish,
                 model = model,

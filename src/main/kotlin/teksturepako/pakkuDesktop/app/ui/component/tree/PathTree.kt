@@ -50,6 +50,15 @@ class PathTreeSnapshot<T> private constructor(
 
 fun pathFolderIds(paths: Sequence<String>): Set<String> = paths.flatMap(::folderPrefixes).toSet()
 
+/** Every folder prefix of [path] (e.g. `mods/foo/a.jar` → `mods`, `mods/foo`). */
+fun folderPathPrefixList(path: String): List<String> = folderPrefixes(path).toList()
+
+/** Folder rows to pin above the current scroll context (ancestors, plus the folder row itself). */
+fun stickyFolderPathChain(row: PathTreeRow<*>): List<String> = when (row) {
+    is PathTreeRow.Folder -> folderPathPrefixList(row.fullPath) + row.fullPath
+    is PathTreeRow.Item -> folderPathPrefixList(row.path)
+}
+
 private fun folderPrefixes(path: String): Sequence<String> = sequence {
     val parts = path.split('/').filter { it.isNotEmpty() }
     if (parts.size <= 1) return@sequence

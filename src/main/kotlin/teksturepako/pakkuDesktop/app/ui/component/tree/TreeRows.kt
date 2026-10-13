@@ -85,6 +85,7 @@ fun TreeFolderRow(
     onToggleSelected: (() -> Unit)?,
     modifier: Modifier = Modifier,
     selectionScope: TreeFolderSelectionScope? = null,
+    trailing: @Composable RowScope.() -> Unit = {},
 )
 {
     val interaction = remember(row.fullPath) { MutableInteractionSource() }
@@ -159,16 +160,17 @@ fun TreeFolderRow(
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f).clickable(
-                        indication = null,
-                        interactionSource = remember(row.fullPath) { MutableInteractionSource() },
-                    ) {
-                        onToggleExpanded()
-                    },
+                modifier = Modifier.weight(1f),
             ) {
                 Text(
                     text = row.displayName,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember(row.fullPath, "label") { MutableInteractionSource() },
+                            onClick = onToggleExpanded,
+                        ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = JewelTheme.contentColor,
@@ -176,6 +178,7 @@ fun TreeFolderRow(
                         fontWeight = FontWeight.Medium,
                     ),
                 )
+                trailing()
             }
         }
     }
