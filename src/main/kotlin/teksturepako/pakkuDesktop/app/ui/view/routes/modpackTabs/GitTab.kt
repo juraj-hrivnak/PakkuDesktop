@@ -53,10 +53,15 @@ import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeStatus
+import teksturepako.pakkuDesktop.app.ui.component.context.GitFileRowContextMenu
+import teksturepako.pakkuDesktop.app.ui.component.context.GitFolderRowContextMenu
+import java.nio.file.Path
+
 @Composable
 fun GitTab(
     publish: (ModpackMsg) -> Unit,
     model: GitTabModel,
+    modpackRoot: Path?,
 ) {
     RecomposeProbe("GitTab")
     val gitState = model.git
@@ -100,6 +105,8 @@ fun GitTab(
                             grouped = grouped,
                             currentDiff = diffContent,
                             diffPendingPath = diffPendingPath,
+                            modpackRoot = modpackRoot,
+                            gitBusy = model.gitBusy,
                             publish = publish,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -137,6 +144,8 @@ private fun SourceControlSidePanel(
     grouped: Boolean,
     currentDiff: DiffContent?,
     diffPendingPath: String?,
+    modpackRoot: Path?,
+    gitBusy: Boolean,
     publish: (ModpackMsg) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -228,6 +237,8 @@ private fun SourceControlSidePanel(
                                 row = row,
                                 currentDiff = currentDiff,
                                 diffPendingPath = diffPendingPath,
+                                modpackRoot = modpackRoot,
+                                gitBusy = gitBusy,
                                 publish = publish,
                             )
                         }
@@ -238,6 +249,8 @@ private fun SourceControlSidePanel(
                         row = folderRow,
                         currentDiff = currentDiff,
                         diffPendingPath = diffPendingPath,
+                        modpackRoot = modpackRoot,
+                        gitBusy = gitBusy,
                         publish = publish,
                     )
                 }
@@ -354,11 +367,18 @@ private fun GitChangesListRow(
     row: PathTreeRow<GitFile>,
     currentDiff: DiffContent?,
     diffPendingPath: String?,
+    modpackRoot: Path?,
+    gitBusy: Boolean,
     publish: (ModpackMsg) -> Unit,
 ) {
     when (row) {
         is PathTreeRow.Folder -> {
             val group = GitChangeGroup.ofFolder(row.fullPath)
+            GitFolderRowContextMenu(
+                folderPath = row.fullPath,
+                expanded = row.expanded,
+                publish = publish,
+            ) {
             TreeFolderRow(
                 row = row,
                 onToggleExpanded = {
@@ -382,6 +402,7 @@ private fun GitChangesListRow(
                     )
                 }
             }
+            }
         }
         is PathTreeRow.Item -> {
             val file = row.item
@@ -390,6 +411,12 @@ private fun GitChangesListRow(
                     sameGitPath(file.path, currentDiff?.newPath) ||
                     sameGitPath(file.path, currentDiff?.oldPath)
             val pathLabel = file.path.substringAfterLast('/').ifEmpty { file.path }
+            GitFileRowContextMenu(
+                file = file,
+                publish = publish,
+                busy = gitBusy,
+                modpackRoot = modpackRoot,
+            ) {
             TreeItemRow(
                 depth = row.depth,
                 label = pathLabel,
@@ -400,6 +427,7 @@ private fun GitChangesListRow(
                 onClick = { publish(ModpackMsg.GitDiffFileSelected(file)) },
                 interactionKey = file.path,
             )
+            }
         }
     }
 }

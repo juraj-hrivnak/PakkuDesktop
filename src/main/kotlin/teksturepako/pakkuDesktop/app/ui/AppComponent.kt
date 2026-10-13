@@ -146,7 +146,18 @@ private fun applyCloseConfirm(model: AppModel, req: CloseDialogRequest): AppMode
 }
 
 private fun handleCloseDialogMsg(msg: AppMsg, model: AppModel): AppModel = when (msg) {
-    is AppMsg.RequestCloseDialog -> model.copy(closeDialog = msg.request)
+    is AppMsg.RequestCloseDialog -> {
+        val req = msg.request
+        if (req is CloseDialogRequest.Quit && model.screen == AppScreen.Welcome) {
+            if (model.modpack.actionName != null) {
+                model.copy(closeDialog = req)
+            } else {
+                applyCloseConfirm(model, req)
+            }
+        } else {
+            model.copy(closeDialog = req)
+        }
+    }
     AppMsg.DismissCloseDialog    -> model.copy(closeDialog = null, pendingCloseAfterTerminate = null)
 
     AppMsg.ConfirmCloseDialog -> {

@@ -134,7 +134,11 @@ fun PakkuApplicationScope.ModpackView(
                                 SelectedTab.PROJECTS -> ProjectsTab(publish, model.projectsTab())
                                 SelectedTab.FILES    -> FilesTab(publish, model.filesTab())
                                 SelectedTab.MODPACK  -> ModpackTab(publish, model.modpackTab())
-                                SelectedTab.COMMIT   -> GitTab(publish, model.gitTab())
+                                SelectedTab.COMMIT   -> GitTab(
+                                    publish,
+                                    model.gitTab(),
+                                    appModel.profile.data.currentProfilePath,
+                                )
                             }
                         }
                     }

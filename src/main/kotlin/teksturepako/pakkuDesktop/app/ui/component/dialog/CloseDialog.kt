@@ -28,15 +28,21 @@ fun CloseDialog(publish: (AppMsg) -> Unit, model: AppModel) {
     val onDismiss = { publish(AppMsg.DismissCloseDialog) }
     val onConfirm = { publish(AppMsg.ConfirmCloseDialog) }
 
+    val bodyMessage = when {
+        actionName != null -> "Do you want to terminate the action?"
+        request is CloseDialogRequest.OpenDirectory -> "'${request.path}' will be opened instead."
+        else -> null
+    }
+
     PkUiDialog(
         onDismiss = onDismiss,
         title = when {
-            actionName != null -> "'$actionName' is still running"
-            quitting -> "Quit Pakku Desktop?"
-            else -> "Close this modpack?"
+            actionName != null -> "Action '$actionName' is running."
+            else -> "Do you want to close this modpack?"
         },
         icon = if (actionName != null) AllIconsKeys.General.WarningDialog else AllIconsKeys.General.QuestionDialog,
         size = PkUiDialogSize.Small,
+        scrollable = bodyMessage != null,
         onConfirm = onConfirm,
         focusKey = request,
         footer = {
@@ -51,13 +57,11 @@ fun CloseDialog(publish: (AppMsg) -> Unit, model: AppModel) {
             )
         },
     ) {
-        Text(
-            when {
-                actionName != null -> "Do you want to terminate the action?"
-                request is CloseDialogRequest.OpenDirectory -> "'${request.path}' will be opened instead."
-                else -> "You can reopen it from the welcome screen."
-            },
-            color = JewelTheme.contentColor.copy(alpha = 0.75f),
-        )
+        if (bodyMessage != null) {
+            Text(
+                bodyMessage,
+                color = JewelTheme.contentColor.copy(alpha = 0.75f),
+            )
+        }
     }
 }

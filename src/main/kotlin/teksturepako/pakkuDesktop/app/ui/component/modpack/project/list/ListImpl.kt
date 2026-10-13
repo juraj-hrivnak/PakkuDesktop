@@ -23,6 +23,7 @@ import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.app.actions.listItemKey
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
+import teksturepako.pakkuDesktop.app.ui.component.context.ProjectRowContextMenu
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectCard
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -42,6 +43,7 @@ fun ListImpl(
 
     val scrollState = remember { LazyListState(0, 0) }
     val filteredProjects = model.filteredAndSortedProjects(lockFile.getAllProjects().snapshotList())
+    val busy = model.actionName != null
 
     Row(Modifier.fillMaxSize().padding(vertical = 8.dp)) {
         LazyColumn(
@@ -95,35 +97,43 @@ fun ListImpl(
                         )
                     }
 
-                    ProjectCard(
+                    ProjectRowContextMenu(
                         project = project,
-                        focused = focused,
-                        checked = checked,
-                        updateInfo = model.updatePreviews?.get(projectKey),
-                        statusChecked = model.updatePreviews != null,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable(
-                                interactionSource = remember(projectKey) { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastClickAt.longValue <= ProjectCardDoubleClickMs) {
-                                        lastClickAt.longValue = 0L
-                                        if (checked) {
-                                            publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
+                        publish = publish,
+                        busy = busy,
+                        updatePreviews = model.updatePreviews,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        ProjectCard(
+                            project = project,
+                            focused = focused,
+                            checked = checked,
+                            updateInfo = model.updatePreviews?.get(projectKey),
+                            statusChecked = model.updatePreviews != null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember(projectKey) { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        val now = System.currentTimeMillis()
+                                        if (now - lastClickAt.longValue <= ProjectCardDoubleClickMs) {
+                                            lastClickAt.longValue = 0L
+                                            if (checked) {
+                                                publish(ModpackMsg.ProjectsDeselected(setOf(projectKey)))
+                                            } else {
+                                                publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
+                                            }
+                                            lastClickedIndex.value = index
                                         } else {
-                                            publish(ModpackMsg.ProjectsSelected(setOf(projectKey)))
+                                            lastClickAt.longValue = now
+                                            publish(ModpackMsg.ProjectSelected(project))
+                                            lastClickedIndex.value = index
                                         }
-                                        lastClickedIndex.value = index
-                                    } else {
-                                        lastClickAt.longValue = now
-                                        publish(ModpackMsg.ProjectSelected(project))
-                                        lastClickedIndex.value = index
-                                    }
-                                },
-                            ),
-                    )
+                                    },
+                                ),
+                        )
+                    }
                 }
             }
         }
