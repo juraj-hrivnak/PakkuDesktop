@@ -37,6 +37,10 @@ data class PropertyWrite(
  */
 data class MetaWrite(
     val replaceConfig: ((ConfigFile) -> ConfigFile)? = null,
+    /** UI field id for [ModpackModel.modpackMetaErrors]; cleared after a successful write. */
+    val fieldKey: String? = null,
+    /** Runs on the current on-disk state before [mutate]; blocks the write when non-empty. */
+    val validate: (ConfigFile, LockFile) -> List<ActionError> = { _, _ -> emptyList() },
     val mutate: (ConfigFile, LockFile) -> Unit = { _, _ -> },
 )
 
@@ -425,6 +429,7 @@ sealed interface ModpackMsg {
     /** Modpack tab metadata write */
     data class MetaWriteRequested(val request: MetaWrite) : ModpackMsg
     data object MetaWriteCompleted : ModpackMsg
+    data class MetaWriteFailed(val fieldKey: String?, val errors: List<ActionError>) : ModpackMsg
 
     // -- Toasts --
 

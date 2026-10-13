@@ -51,8 +51,21 @@ val projectEditDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         withContext(Dispatchers.IO) {
             val config = request.replaceConfig?.invoke(configFile) ?: configFile
             request.mutate(config, lockFile)
-            config.write()
-            lockFile.write()
+            val configError = config.write()
+            val lockError = lockFile.write()
+            listOfNotNull(configError, lockError)
+        }.let { writeErrors ->
+            if (writeErrors.isNotEmpty()) {
+                publish(
+                    AppMsg.Modpack(
+                        ModpackMsg.MetaWriteFailed(
+                            fieldKey = request.fieldKey,
+                            errors = writeErrors,
+                        ),
+                    ),
+                )
+                return@LaunchedEffect
+            }
         }
 
         val newLockFile   = withContext(Dispatchers.IO) { LockFile.readToResult() }

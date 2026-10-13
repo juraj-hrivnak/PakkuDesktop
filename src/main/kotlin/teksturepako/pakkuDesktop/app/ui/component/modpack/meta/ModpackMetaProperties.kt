@@ -26,15 +26,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.GroupHeader
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import teksturepako.pakku.api.projects.ProjectType
+import teksturepako.pakkuDesktop.app.ui.component.Switch
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.metaFieldErrors
 
 @Composable
 fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel) {
@@ -53,7 +53,7 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
     fun write(request: MetaWrite) = publish(ModpackMsg.MetaWriteRequested(request))
 
     Column(
-        Modifier.widthIn(max = ModpackContentMaxWidth).fillMaxWidth(),
+        Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Row(
@@ -66,14 +66,12 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
-            if (model.editingModpack) {
-                DefaultButton(onClick = { publish(ModpackMsg.ModpackEditing(false)) }) {
-                    Text("Done")
-                }
-            } else {
-                OutlinedButton(onClick = { publish(ModpackMsg.ModpackEditing(true)) }) {
-                    Text("Edit")
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Edit: ", fontSize = 13.sp)
+                Switch(
+                    checked = model.editingModpack,
+                    onCheckedChange = { publish(ModpackMsg.ModpackEditing(it)) },
+                )
             }
         }
 
@@ -137,6 +135,7 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
                 selected = target,
                 publish = publish,
                 model = model,
+                fieldErrors = model.metaFieldErrors(ModpackMetaField.TARGET),
                 mutate = { _, lk, text ->
                     if (text.isNotBlank()) lk.setTarget(text.trim().lowercase())
                 },
@@ -148,16 +147,30 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
                 editing = editing,
                 emptyText = "No Minecraft versions",
                 addPlaceholder = "e.g. 1.20.1",
-                validate = { next ->
-                    if (next.isEmpty()) "At least one Minecraft version is required" else lock.mcVersionsConflict(next)
+                fieldErrors = model.metaFieldErrors(ModpackMetaField.MC_VERSIONS),
+                onChange = { next ->
+                    write(
+                        MetaWrite(
+                            fieldKey = ModpackMetaField.MC_VERSIONS,
+                            validate = { _, lk -> lk.mcVersionsChangeErrors(next) },
+                            mutate = { _, lk -> lk.setMcVersions(next) },
+                        ),
+                    )
                 },
-                onChange = { next -> write(MetaWrite { _, lk -> lk.setMcVersions(next) }) },
             )
             ModpackLoadersField(
                 loaders = loaders,
                 editing = editing,
-                validate = { next -> lock.loadersConflict(next) },
-                onChange = { next -> write(MetaWrite { _, lk -> lk.setLoaders(linkedMapOf(*next.toTypedArray())) }) },
+                fieldErrors = model.metaFieldErrors(ModpackMetaField.LOADERS),
+                onChange = { next ->
+                    write(
+                        MetaWrite(
+                            fieldKey = ModpackMetaField.LOADERS,
+                            validate = { _, lk -> lk.loadersChangeErrors(next.map { it.first }) },
+                            mutate = { _, lk -> lk.setLoaders(linkedMapOf(*next.toTypedArray())) },
+                        ),
+                    )
+                },
             )
         }
 
@@ -241,7 +254,7 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
     }
 }
 
-private val ModpackContentMaxWidth = 760.dp
+internal val ModpackContentMaxWidth = 760.dp
 
 @Composable
 private fun ModpackSection(title: String, description: String, content: @Composable ColumnScope.() -> Unit) {
@@ -278,6 +291,8 @@ private fun HeroNameField(
             )
         }
 
+        LaunchModpackAutoSave(value, textFieldState, onCommit = { commit() })
+
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 "Name",
@@ -289,7 +304,7 @@ private fun HeroNameField(
                 textFieldState,
                 Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(ModpackSingleLineInputHeight)
                     .onFocusChanged { focus ->
                         val wasFocused = focused
                         focused = focus.isFocused

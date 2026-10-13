@@ -138,13 +138,18 @@ data class ModpackTabModel(
     val lockFile: Result<LockFile, ActionError>?,
     val configFile: Result<ConfigFile, ActionError>?,
     val editingModpack: Boolean,
+    val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
 )
 
 fun ModpackModel.modpackTab() = ModpackTabModel(
     lockFile = lockFile,
     configFile = configFile,
     editingModpack = editingModpack,
+    metaErrors = modpackMetaErrors,
 )
+
+fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =
+    metaErrors[field]?.orEmpty() ?: emptyList()
 
 @Immutable
 data class GitTabModel(

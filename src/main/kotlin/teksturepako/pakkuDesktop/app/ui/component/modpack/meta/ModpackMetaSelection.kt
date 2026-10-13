@@ -15,17 +15,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,19 +51,29 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
+import kotlinx.coroutines.delay
 
 private val FieldVerticalPadding = 6.dp
+private const val ModpackAutoSaveDebounceMs = 450L
 private val LoaderNameWidth = 96.dp
+
+/** Single-line modpack inputs (text fields, combos, hero name in edit mode). */
+internal val ModpackSingleLineInputHeight = 32.dp
+
+/** Description editor / read-only block height. */
+internal val ModpackDescriptionInputHeight = 120.dp
 
 @Composable
 fun ModpackFieldLabel(label: String) {
@@ -107,33 +119,70 @@ fun ModpackCommitTextField(
         if (label.isNotBlank()) ModpackFieldLabel(label)
 
         if (model.editingModpack) {
-            CommitTextField(
-                value = value,
-                placeholder = placeholder,
-                singleLine = singleLine,
-                modifier = Modifier.fillMaxWidth(),
-                onCommit = { text ->
-                    publish(
-                        ModpackMsg.MetaWriteRequested(
-                            MetaWrite { config, lock -> mutate(config, lock, text) },
-                        ),
-                    )
-                },
-            )
+            if (singleLine) {
+                CommitTextField(
+                    value = value,
+                    placeholder = placeholder,
+                    modifier = Modifier.fillMaxWidth(),
+                    onCommit = { text ->
+                        publish(
+                            ModpackMsg.MetaWriteRequested(
+                                MetaWrite { config, lock -> mutate(config, lock, text) },
+                            ),
+                        )
+                    },
+                )
+            } else {
+                CommitTextArea(
+                    value = value,
+                    placeholder = placeholder,
+                    modifier = Modifier.fillMaxWidth(),
+                    onCommit = { text ->
+                        publish(
+                            ModpackMsg.MetaWriteRequested(
+                                MetaWrite { config, lock -> mutate(config, lock, text) },
+                            ),
+                        )
+                    },
+                )
+            }
         } else if (value.isBlank()) {
             MutedValue(placeholder)
+        } else if (!singleLine) {
+            ModpackDescriptionPreview(value)
         } else {
             Text(value, color = JewelTheme.contentColor, fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
         }
     }
 }
 
-/** Text field that calls [onCommit] on focus loss or Enter (single line), only when the text changed. */
+/** Writes [pakku.json] / lock changes while Edit is on — debounced, plus flush on blur or field dispose. */
+@Composable
+internal fun LaunchModpackAutoSave(
+    value: String,
+    textFieldState: TextFieldState,
+    onCommit: (String) -> Unit,
+) {
+    LaunchedEffect(textFieldState, value) {
+        snapshotFlow { textFieldState.text.toString() }.collect { latest ->
+            delay(ModpackAutoSaveDebounceMs)
+            if (textFieldState.text.toString() != latest) return@collect
+            if (latest != value) onCommit(latest)
+        }
+    }
+    DisposableEffect(value) {
+        onDispose {
+            val text = textFieldState.text.toString()
+            if (text != value) onCommit(text)
+        }
+    }
+}
+
+/** Single-line field: commits on focus loss or Enter when the text changed. */
 @Composable
 private fun CommitTextField(
     value: String,
     placeholder: String,
-    singleLine: Boolean,
     modifier: Modifier,
     onCommit: (String) -> Unit,
 ) {
@@ -151,17 +200,19 @@ private fun CommitTextField(
         if (text != value) onCommit(text)
     }
 
+    LaunchModpackAutoSave(value, textFieldState, onCommit)
+
     TextField(
         textFieldState,
         modifier
-            .then(if (singleLine) Modifier.height(32.dp) else Modifier.heightIn(min = 72.dp))
+            .height(ModpackSingleLineInputHeight)
             .onFocusChanged { focus ->
                 val wasFocused = focused
                 focused = focus.isFocused
                 if (wasFocused && !focus.isFocused) commit()
             }
             .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown || !singleLine) return@onPreviewKeyEvent false
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
                     Key.Enter, Key.NumPadEnter -> {
                         commit()
@@ -174,6 +225,58 @@ private fun CommitTextField(
     )
 }
 
+/** Multi-line description block: auto-saves while typing; Enter inserts a newline. */
+@Composable
+private fun CommitTextArea(
+    value: String,
+    placeholder: String,
+    modifier: Modifier,
+    onCommit: (String) -> Unit,
+) {
+    val textFieldState = rememberTextFieldState(value)
+    var focused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(value) {
+        if (!focused && textFieldState.text.toString() != value) {
+            textFieldState.setTextAndPlaceCursorAtEnd(value)
+        }
+    }
+
+    fun commit() {
+        val text = textFieldState.text.toString()
+        if (text != value) onCommit(text)
+    }
+
+    LaunchModpackAutoSave(value, textFieldState, onCommit)
+
+    TextArea(
+        textFieldState,
+        modifier
+            .height(ModpackDescriptionInputHeight)
+            .onFocusChanged { focus ->
+                val wasFocused = focused
+                focused = focus.isFocused
+                if (wasFocused && !focus.isFocused) commit()
+            },
+        placeholder = { Text(placeholder) },
+    )
+}
+
+@Composable
+private fun ModpackDescriptionPreview(value: String) {
+    val textFieldState = rememberTextFieldState(value)
+    LaunchedEffect(value) {
+        if (textFieldState.text.toString() != value) {
+            textFieldState.setTextAndPlaceCursorAtEnd(value)
+        }
+    }
+    TextArea(
+        textFieldState,
+        readOnly = true,
+        modifier = Modifier.fillMaxWidth().height(ModpackDescriptionInputHeight),
+    )
+}
+
 @Composable
 fun ModpackChoiceCombo(
     label: String,
@@ -182,6 +285,9 @@ fun ModpackChoiceCombo(
     publish: (ModpackMsg) -> Unit,
     model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
+    fieldKey: String? = null,
+    validateChoice: (ConfigFile, LockFile, String) -> List<ActionError> = { _, _, _ -> emptyList() },
+    fieldErrors: List<ActionError> = emptyList(),
 ) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = FieldVerticalPadding),
@@ -200,18 +306,24 @@ fun ModpackChoiceCombo(
                     if (option.equals(selected, ignoreCase = true)) return@ListComboBox
                     publish(
                         ModpackMsg.MetaWriteRequested(
-                            MetaWrite { config, lock -> mutate(config, lock, option) },
+                            MetaWrite(
+                                fieldKey = fieldKey,
+                                validate = { config, lock -> validateChoice(config, lock, option) },
+                                mutate = { config, lock -> mutate(config, lock, option) },
+                            ),
                         ),
                     )
                 },
-                modifier = Modifier.width(240.dp),
+                modifier = Modifier.width(240.dp).height(ModpackSingleLineInputHeight),
                 listState = rememberListComboBoxState(options, selectedIndex),
             )
+            ModpackFieldErrors(fieldErrors)
         } else if (selected.isBlank()) {
             MutedValue("—")
         } else {
             Text(selected, color = JewelTheme.contentColor, fontSize = 13.sp)
         }
+        if (!model.editingModpack) ModpackFieldErrors(fieldErrors)
     }
 }
 
@@ -221,6 +333,7 @@ fun ModpackTargetChips(
     publish: (ModpackMsg) -> Unit,
     model: ModpackTabModel,
     mutate: (ConfigFile, LockFile, String) -> Unit,
+    fieldErrors: List<ActionError> = emptyList(),
 ) {
     ModpackChoiceCombo(
         label = "Target",
@@ -229,12 +342,14 @@ fun ModpackTargetChips(
         publish = publish,
         model = model,
         mutate = mutate,
+        fieldKey = ModpackMetaField.TARGET,
+        validateChoice = { _, lock, target -> lock.targetChangeErrors(target) },
+        fieldErrors = fieldErrors,
     )
 }
 
 /**
  * Ordered string list shown as tags; editing adds an input row and per-tag remove.
- * [validate] can veto a change and explain why (shown under the field).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -247,13 +362,10 @@ fun ModpackStringListField(
     onChange: (List<String>) -> Unit,
     description: String? = null,
     monospace: Boolean = true,
-    validate: (List<String>) -> String? = { null },
+    fieldErrors: List<ActionError> = emptyList(),
 ) {
-    var error by remember(entries) { mutableStateOf<String?>(null) }
-
     fun submit(next: List<String>) {
-        error = validate(next)
-        if (error == null) onChange(next)
+        onChange(next)
     }
 
     Column(
@@ -286,7 +398,7 @@ fun ModpackStringListField(
                 val text = input.text.toString().trim()
                 if (text.isEmpty() || text in entries) return
                 submit(entries + text)
-                if (error == null) input.clearText()
+                input.clearText()
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -296,7 +408,7 @@ fun ModpackStringListField(
                     input,
                     Modifier
                         .width(280.dp)
-                        .height(32.dp)
+                        .height(ModpackSingleLineInputHeight)
                         .onPreviewKeyEvent { event ->
                             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                             when (event.key) {
@@ -315,7 +427,7 @@ fun ModpackStringListField(
             }
         }
 
-        error?.let { FieldError(it) }
+        ModpackFieldErrors(fieldErrors)
     }
 }
 
@@ -354,8 +466,14 @@ private fun ValueTag(text: String, monospace: Boolean, onRemove: (() -> Unit)?) 
 }
 
 @Composable
-private fun FieldError(text: String) {
-    Text(text, color = PakkuDesktopConstants.coral, fontSize = 12.sp)
+fun ModpackFieldErrors(errors: List<ActionError>, modifier: Modifier = Modifier) {
+    if (errors.isEmpty()) return
+    Column(
+        modifier.padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        errors.forEach { ActionErrorContent(it) }
+    }
 }
 
 /** `loaders` of `pakku-lock.json`: loader name → version, in file order. */
@@ -364,13 +482,10 @@ fun ModpackLoadersField(
     loaders: List<Pair<String, String>>,
     editing: Boolean,
     onChange: (List<Pair<String, String>>) -> Unit,
-    validate: (Collection<String>) -> String?,
+    fieldErrors: List<ActionError> = emptyList(),
 ) {
-    var error by remember(loaders) { mutableStateOf<String?>(null) }
-
     fun submit(next: List<Pair<String, String>>) {
-        error = validate(next.map { it.first })
-        if (error == null) onChange(next)
+        onChange(next)
     }
 
     Column(
@@ -396,7 +511,6 @@ fun ModpackLoadersField(
                     CommitTextField(
                         value = version,
                         placeholder = "Version",
-                        singleLine = true,
                         modifier = Modifier.width(184.dp),
                         onCommit = { text ->
                             submit(loaders.toMutableList().also { it[index] = name to text.trim() })
@@ -426,7 +540,9 @@ fun ModpackLoadersField(
                     items = available,
                     selectedIndex = addIndex,
                     onSelectedItemChange = { addIndex = it },
-                    modifier = Modifier.width(LoaderNameWidth + 8.dp + 184.dp),
+                    modifier = Modifier
+                        .width(LoaderNameWidth + 8.dp + 184.dp)
+                        .height(ModpackSingleLineInputHeight),
                     listState = rememberListComboBoxState(available, addIndex),
                 )
                 OutlinedButton(onClick = { submit(loaders + (available[addIndex] to "")) }) {
@@ -435,7 +551,7 @@ fun ModpackLoadersField(
             }
         }
 
-        error?.let { FieldError(it) }
+        ModpackFieldErrors(fieldErrors)
     }
 }
 

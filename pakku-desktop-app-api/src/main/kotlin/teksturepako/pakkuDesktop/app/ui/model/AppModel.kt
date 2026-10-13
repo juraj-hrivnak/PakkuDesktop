@@ -271,6 +271,8 @@ data class ModpackModel(
     /** cleared by projectEditDriver when done */
     val pendingPropertyWrite: PropertyWrite? = null,
     val pendingMetaWrite: MetaWrite? = null,
+    /** Inline validation / write failures on the Modpack tab, keyed by [ModpackMetaField]. */
+    val modpackMetaErrors: PersistentMap<String, PersistentList<ActionError>> = persistentMapOf(),
 
     // -- Git (Pro) --
     val git: GitState = GitState(),

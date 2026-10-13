@@ -47,6 +47,10 @@ class ModpackUpdateSameInstanceTest {
     fun writeCompletedWhenAlreadyCleared() {
         assertNoOp(ModpackModel(), ModpackMsg.PropertyWriteCompleted)
         assertNoOp(ModpackModel(), ModpackMsg.MetaWriteCompleted)
+        assertNoOp(
+            ModpackModel(),
+            ModpackMsg.MetaWriteFailed(fieldKey = "target", errors = emptyList()),
+        )
     }
 
     @Test

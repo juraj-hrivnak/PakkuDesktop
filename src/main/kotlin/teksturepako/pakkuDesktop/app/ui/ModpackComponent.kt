@@ -17,6 +17,7 @@ import teksturepako.pakkuDesktop.app.actions.AdditionPlan
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
+import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackMetaField
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.canApplyFetch
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.canApplySync
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.clearFilesPreview
@@ -622,9 +623,43 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.PropertyWriteCompleted    ->
         if (model.pendingPropertyWrite == null) model else model.copy(pendingPropertyWrite = null)
 
-    is ModpackMsg.MetaWriteRequested -> model.copy(pendingMetaWrite = msg.request)
-    ModpackMsg.MetaWriteCompleted    ->
-        if (model.pendingMetaWrite == null) model else model.copy(pendingMetaWrite = null)
+    is ModpackMsg.MetaWriteRequested -> {
+        val lock = model.lockFile?.get() ?: return@modpackUpdate model
+        val config = model.configFile?.get() ?: return@modpackUpdate model
+        val fieldKey = msg.request.fieldKey ?: ModpackMetaField.GENERAL
+        val errors = msg.request.validate(config, lock)
+        if (errors.isNotEmpty()) {
+            model.copy(modpackMetaErrors = model.modpackMetaErrors.put(fieldKey, errors.toPersistentList()))
+        } else {
+            model.copy(
+                pendingMetaWrite = msg.request,
+                modpackMetaErrors = model.modpackMetaErrors.remove(fieldKey),
+            )
+        }
+    }
+    ModpackMsg.MetaWriteCompleted -> {
+        val fieldKey = model.pendingMetaWrite?.fieldKey
+        if (model.pendingMetaWrite == null) {
+            model
+        } else {
+            model.copy(
+                pendingMetaWrite = null,
+                modpackMetaErrors = fieldKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
+            )
+        }
+    }
+    is ModpackMsg.MetaWriteFailed -> {
+        if (msg.errors.isEmpty() && model.pendingMetaWrite == null) return@modpackUpdate model
+        val fieldKey = msg.fieldKey ?: ModpackMetaField.GENERAL
+        model.copy(
+            pendingMetaWrite = null,
+            modpackMetaErrors = if (msg.errors.isEmpty()) {
+                model.modpackMetaErrors
+            } else {
+                model.modpackMetaErrors.put(fieldKey, msg.errors.toPersistentList())
+            },
+        )
+    }
 
     is ModpackMsg.ToastAdded     -> model.copy(
         toasts = model.toasts.mutate { toasts ->
