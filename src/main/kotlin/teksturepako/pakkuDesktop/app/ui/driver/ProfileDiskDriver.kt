@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import com.github.michaelbull.result.get
+import dev.nucleusframework.aot.runtime.AotRuntime
 import io.klogging.logger
 import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,11 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.pathString
 
 private val logger = logger("ProfileDiskDriver")
+
+// AOT training runs with the macOS .app as its working directory; a file written there fails codesign.
+private suspend fun ProfileData.save() {
+    if (!AotRuntime.isTraining()) write()
+}
 
 // -- profileDiskDriver --
 
@@ -68,7 +74,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         withContext(Dispatchers.IO) {
             workingPath = path.absolutePathString()
             logger.info { "workingPath set to [$workingPath]" }
-            newData.write()
+            newData.save()
         }
 
         publish(AppMsg.ProfileCurrentResolved(newData))
@@ -81,7 +87,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             val data = latestModel.profile.data
             withContext(Dispatchers.IO) {
                 workingPath = "."
-                data.write()
+                data.save()
             }
         }
     }
@@ -90,7 +96,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (!model.profile.loaded) return@LaunchedEffect
         val data = latestModel.profile.data
         withContext(Dispatchers.IO) {
-            data.write()
+            data.save()
         }
     }
 

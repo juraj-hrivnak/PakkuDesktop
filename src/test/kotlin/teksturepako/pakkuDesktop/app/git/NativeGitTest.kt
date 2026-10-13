@@ -33,6 +33,7 @@ class NativeGitTest {
         git("config", "user.email", "test@example.com")
         git("config", "user.name", "Test")
         git("config", "commit.gpgsign", "false")
+        git("config", "core.autocrlf", "false")
         write("a.txt", "a1\n")
         write("b.txt", "b1\n")
         git("add", "-A")
