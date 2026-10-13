@@ -77,7 +77,6 @@ suspend fun syncApplySuspend(
                 },
                 onSuccess = { project, _, replacing, _ ->
                     if (replacing == null) lockFile.add(project) else lockFile.update(project)
-                    lockFile.linkProjectToDependents(project)
                 },
                 lockFile = lockFile,
                 platforms = platforms,
