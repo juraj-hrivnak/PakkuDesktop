@@ -57,6 +57,6 @@ fun ProjectsList(
 
         Divider(Orientation.Horizontal)
 
-        ListActions(publish, model)
+        ListActions(publish, model, lastClickedIndex)
     }
 }

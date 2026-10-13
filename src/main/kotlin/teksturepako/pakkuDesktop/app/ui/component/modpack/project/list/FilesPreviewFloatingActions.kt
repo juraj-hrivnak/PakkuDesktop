@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.painter.hints.Size
 import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
@@ -68,6 +69,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                 buttonSize = 44.dp,
                 accent = fetchAccent,
                 isDefault = lastFab == FilesFabAction.Fetch,
+                tooltip = "Apply to file system",
             ) { hovered ->
                 val accentHot = hovered || lastFab == FilesFabAction.Fetch || fetching
                 Icon(
@@ -95,17 +97,18 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                     buttonSize = 44.dp,
                     accent = addAccent,
                     isDefault = lastFab == FilesFabAction.Add,
+                    tooltip = "Add to Pakku",
                 ) { hovered ->
                     Icon(
-                        key = AllIconsKeys.General.InlineAdd,
+                        key = AllIconsKeys.General.Add,
                         contentDescription = "Add to Pakku",
                         tint = when {
                             !canAdd -> Color.Gray
                             hovered || lastFab == FilesFabAction.Add || applying -> addAccent
                             else -> JewelTheme.contentColor
                         },
-                        hints = arrayOf(),
-                        modifier = Modifier.size(22.dp),
+                        hints = arrayOf(Size(20)),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -119,6 +122,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                     buttonSize = 44.dp,
                     accent = updateAccent,
                     isDefault = lastFab == FilesFabAction.Update,
+                    tooltip = "Update in Pakku",
                 ) { hovered ->
                     Icon(
                         key = AllIconsKeys.Actions.CheckOut,
@@ -128,7 +132,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                             hovered || lastFab == FilesFabAction.Update || applying -> updateAccent
                             else -> JewelTheme.contentColor
                         },
-                        hints = arrayOf(),
+                        hints = arrayOf(Size(20)),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -143,6 +147,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                     buttonSize = 44.dp,
                     accent = removeAccent,
                     isDefault = lastFab == FilesFabAction.Remove,
+                    tooltip = "Remove from Pakku",
                 ) { hovered ->
                     Icon(
                         key = AllIconsKeys.General.Delete,

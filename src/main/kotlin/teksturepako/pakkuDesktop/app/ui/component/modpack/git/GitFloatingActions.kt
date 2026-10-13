@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.painter.hints.Size
 import org.jetbrains.jewel.ui.theme.colorPalette
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FloatingActionIcon
@@ -57,6 +58,7 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
             buttonSize = 44.dp,
             accent = pullAccent,
             isDefault = lastFab == GitFabAction.Pull,
+            tooltip = "Pull",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Pull
             Icon(
@@ -67,7 +69,7 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
                     accentHot -> pullAccent
                     else -> JewelTheme.contentColor
                 },
-                hints = arrayOf(),
+                hints = arrayOf(Size(20)),
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -81,6 +83,7 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
             buttonSize = 44.dp,
             accent = pushAccent,
             isDefault = lastFab == GitFabAction.Push,
+            tooltip = "Push",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Push
             Icon(
@@ -91,7 +94,7 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
                     accentHot -> pushAccent
                     else -> JewelTheme.contentColor
                 },
-                hints = arrayOf(),
+                hints = arrayOf(Size(20)),
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -105,6 +108,7 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
             buttonSize = 44.dp,
             accent = commitAccent,
             isDefault = lastFab == GitFabAction.Commit,
+            tooltip = "Commit selected files",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Commit
             Icon(

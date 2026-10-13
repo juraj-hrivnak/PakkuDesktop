@@ -59,25 +59,63 @@ fun stickyFolderPathChain(row: PathTreeRow<*>): List<String> = when (row) {
     is PathTreeRow.Item -> folderPathPrefixList(row.path)
 }
 
-/** Ancestor folder rows that scrolled off but still apply to the visible subtree. */
-fun pinnedFolderRowsForScroll(
-    rows: List<PathTreeRow<*>>,
-    anchorIndex: Int,
-    anchorScrollOffsetPx: Int,
-    folderIndexByPath: Map<String, Int>,
-    folderRowByPath: Map<String, PathTreeRow.Folder>,
-): List<PathTreeRow.Folder> {
-    if (rows.isEmpty()) return emptyList()
-    val index = anchorIndex.coerceIn(0, rows.lastIndex)
-    val anchorRow = rows[index]
-    val chain = stickyFolderPathChain(anchorRow)
-    val pinFolderAtAnchor =
-        anchorRow is PathTreeRow.Folder && anchorScrollOffsetPx > 0
-    return chain.mapNotNull { path ->
-        val folderIndex = folderIndexByPath[path] ?: return@mapNotNull null
-        val pinned = folderIndex < index || (pinFolderAtAnchor && folderIndex == index)
-        if (pinned) folderRowByPath[path] else null
+/** A laid-out list row, in pixels relative to the top of the list viewport. */
+data class VisibleTreeRow(val index: Int, val top: Int, val size: Int)
+
+/** A folder header drawn over the list at [top] (may be negative while pushed out). */
+data class StickyFolderHeader(val folder: PathTreeRow.Folder, val top: Int)
+
+/** Lookups for computing sticky folder headers over [PathTreeSnapshot.flatRows]. */
+class StickyFolderIndex(private val rows: List<PathTreeRow<*>>)
+{
+    private val folderIndexByPath: Map<String, Int> = buildMap {
+        rows.forEachIndexed { index, row -> if (row is PathTreeRow.Folder) put(row.fullPath, index) }
     }
+    private val subtreeEnd: IntArray = folderSubtreeEnds(rows)
+
+    /**
+     * Header `n` sits in slot `n * slotHeightPx` while the row under that slot belongs to its
+     * subtree, and is pushed up by the first row after its subtree.
+     */
+    fun headers(visible: List<VisibleTreeRow>, slotHeightPx: Int): List<StickyFolderHeader>
+    {
+        if (rows.isEmpty() || visible.isEmpty()) return emptyList()
+        val headers = mutableListOf<StickyFolderHeader>()
+        while (true)
+        {
+            val slotTop = headers.size * slotHeightPx
+            val under = visible.firstOrNull { it.top + it.size > slotTop } ?: break
+            val row = rows.getOrNull(under.index) ?: break
+            val path = stickyFolderPathChain(row)
+                .filter { it in folderIndexByPath }
+                .getOrNull(headers.size) ?: break
+            val folderIndex = folderIndexByPath.getValue(path)
+            if (folderIndex == under.index && under.top >= slotTop) break
+            val nextTop = visible.firstOrNull { it.index == subtreeEnd[folderIndex] }?.top
+            val top = if (nextTop == null) slotTop else minOf(slotTop, nextTop - slotHeightPx)
+            headers += StickyFolderHeader(rows[folderIndex] as PathTreeRow.Folder, top)
+        }
+        return headers
+    }
+}
+
+private fun PathTreeRow<*>.rowDepth(): Int = when (this)
+{
+    is PathTreeRow.Folder -> depth
+    is PathTreeRow.Item   -> depth
+}
+
+/** For each folder row, the index of the first row after its subtree (`rows.size` if none). */
+private fun folderSubtreeEnds(rows: List<PathTreeRow<*>>): IntArray
+{
+    val ends = IntArray(rows.size) { rows.size }
+    val open = ArrayDeque<Int>()
+    rows.forEachIndexed { index, row ->
+        val depth = row.rowDepth()
+        while (open.isNotEmpty() && rows[open.last()].rowDepth() >= depth) ends[open.removeLast()] = index
+        if (row is PathTreeRow.Folder) open.addLast(index)
+    }
+    return ends
 }
 
 private fun folderPrefixes(path: String): Sequence<String> = sequence {

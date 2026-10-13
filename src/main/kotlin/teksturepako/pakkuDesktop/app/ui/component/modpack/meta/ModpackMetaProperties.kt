@@ -26,13 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -46,14 +45,15 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
     val version = config.getVersion()
     val author = config.getAuthor()
     val description = config.getDescription()
-    val mcVersion = lock.getFirstMcVersion().orEmpty()
-    val loaderEntry = lock.getLoadersWithVersions().firstOrNull()
-    val loaderName = loaderEntry?.first.orEmpty()
-    val loaderVersion = loaderEntry?.second.orEmpty()
+    val mcVersions = lock.getMcVersions().toList()
+    val loaders = lock.getLoadersWithVersions()
     val target = lock.getProjectProvider().get()?.serialName.orEmpty()
+    val editing = model.editingModpack
+
+    fun write(request: MetaWrite) = publish(ModpackMsg.MetaWriteRequested(request))
 
     Column(
-        Modifier.fillMaxWidth(),
+        Modifier.widthIn(max = ModpackContentMaxWidth).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Row(
@@ -108,34 +108,21 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
                     )
                 }
             }
-            if (!model.editingModpack &&
-                (mcVersion.isNotBlank() || loaderName.isNotBlank() || target.isNotBlank())
-            ) {
+            if (!editing && (mcVersions.isNotEmpty() || loaders.isNotEmpty() || target.isNotBlank())) {
                 Text(
-                    buildString {
-                        if (mcVersion.isNotBlank()) append("MC $mcVersion")
-                        if (loaderName.isNotBlank()) {
-                            if (isNotEmpty()) append(" · ")
-                            append(loaderName)
-                            if (loaderVersion.isNotBlank()) append(" $loaderVersion")
-                        }
-                        if (target.isNotBlank()) {
-                            if (isNotEmpty()) append(" · ")
-                            append(target)
-                        }
-                    },
+                    listOfNotNull(
+                        mcVersions.takeIf { it.isNotEmpty() }?.joinToString(", ", prefix = "MC "),
+                        loaders.takeIf { it.isNotEmpty() }?.joinToString(", ") { (loader, ver) ->
+                            if (ver.isBlank()) loader else "$loader $ver"
+                        },
+                        target.ifBlank { null },
+                    ).joinToString(" · "),
                     color = JewelTheme.contentColor.copy(alpha = 0.65f),
                     fontSize = 12.sp,
                 )
             }
-        }
-
-        Divider(Orientation.Horizontal)
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            GroupHeader("Description")
             ModpackCommitTextField(
-                label = "",
+                label = "Description",
                 value = description,
                 placeholder = "No description",
                 singleLine = false,
@@ -145,49 +132,7 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
             )
         }
 
-        Divider(Orientation.Horizontal)
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            GroupHeader("Runtime")
-            Text(
-                "Primary Minecraft version, loader, and export target.",
-                color = JewelTheme.contentColor.copy(alpha = 0.45f),
-                fontSize = 12.sp,
-            )
-
-            ModpackCommitTextField(
-                label = "Minecraft",
-                value = mcVersion,
-                placeholder = "e.g. 1.20.1",
-                publish = publish,
-                model = model,
-                mutate = { _, lk, text ->
-                    if (text.isNotBlank()) lk.setMcVersions(listOf(text.trim()))
-                },
-            )
-
-            ModpackLoaderChips(
-                selected = loaderName,
-                publish = publish,
-                model = model,
-                mutate = { _, lk, text ->
-                    val ver = lk.getLoadersWithVersions().firstOrNull()?.second.orEmpty()
-                    if (text.isNotBlank()) lk.setLoaders(mapOf(text.trim().lowercase() to ver))
-                },
-            )
-
-            ModpackCommitTextField(
-                label = "Loader version",
-                value = loaderVersion,
-                placeholder = "e.g. 0.15.0",
-                publish = publish,
-                model = model,
-                mutate = { _, lk, text ->
-                    val loader = lk.getLoadersWithVersions().firstOrNull()?.first.orEmpty()
-                    if (loader.isNotBlank()) lk.setLoader(loader, text.trim())
-                },
-            )
-
+        ModpackSection("Minecraft", "pakku-lock.json — what projects are resolved against.") {
             ModpackTargetChips(
                 selected = target,
                 publish = publish,
@@ -196,7 +141,114 @@ fun ModpackMetaProperties(publish: (ModpackMsg) -> Unit, model: ModpackTabModel)
                     if (text.isNotBlank()) lk.setTarget(text.trim().lowercase())
                 },
             )
+            ModpackStringListField(
+                label = "Minecraft versions",
+                description = "The first version is the primary one; the rest are also accepted for project files.",
+                entries = mcVersions,
+                editing = editing,
+                emptyText = "No Minecraft versions",
+                addPlaceholder = "e.g. 1.20.1",
+                validate = { next ->
+                    if (next.isEmpty()) "At least one Minecraft version is required" else lock.mcVersionsConflict(next)
+                },
+                onChange = { next -> write(MetaWrite { _, lk -> lk.setMcVersions(next) }) },
+            )
+            ModpackLoadersField(
+                loaders = loaders,
+                editing = editing,
+                validate = { next -> lock.loadersConflict(next) },
+                onChange = { next -> write(MetaWrite { _, lk -> lk.setLoaders(linkedMapOf(*next.toTypedArray())) }) },
+            )
         }
+
+        ModpackSection("Export", "pakku.json — what goes into exported modpacks.") {
+            ModpackCheckboxField(
+                label = "Export server-side projects to client",
+                description = "Include server-only projects in client exports.",
+                checked = config.getExportServerSideProjectsToClient(),
+                editing = editing,
+                onChange = { checked ->
+                    write(MetaWrite { cfg, _ -> cfg.setExportServerSideProjectsToClient(checked) })
+                },
+            )
+            OverrideList.entries.forEach { list ->
+                ModpackStringListField(
+                    label = list.title,
+                    description = "${list.description} Paths and globs, relative to the modpack.",
+                    entries = config.overrideEntries(list),
+                    editing = editing,
+                    emptyText = "None",
+                    addPlaceholder = "e.g. config/**",
+                    onChange = { next -> write(MetaWrite(replaceConfig = { it.withOverrideEntries(list, next) })) },
+                )
+            }
+        }
+
+        ModpackSection("Project paths", "pakku.json — where each project type is placed. Leave blank for the default.") {
+            ProjectType.entries.chunked(2).forEach { row ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    row.forEach { type ->
+                        Box(Modifier.weight(1f)) {
+                            ModpackCommitTextField(
+                                label = type.prettyName.replaceFirstChar { it.titlecase() } + "s",
+                                value = config.paths[type.serialName].orEmpty(),
+                                placeholder = type.getPathString(null),
+                                publish = publish,
+                                model = model,
+                                mutate = { cfg, _, text ->
+                                    val path = text.trim()
+                                    if (path.isEmpty()) cfg.paths.remove(type.serialName) else cfg.paths[type.serialName] = path
+                                },
+                            )
+                        }
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+
+        val parent = config.parent
+        if (parent != null || config.excludes.isNotEmpty()) {
+            ModpackSection("Parent modpack", "pakku.json — the modpack this one is synced from.") {
+                if (parent != null) {
+                    ModpackReadOnlyField("Source", parent.type)
+                    ModpackReadOnlyField("Repository", parent.id, monospace = true)
+                    ModpackReadOnlyField("Ref", "${parent.ref} (${parent.refType.name.lowercase()})", monospace = true)
+                    ModpackReadOnlyField("Remote", parent.remoteName, monospace = true)
+                    ModpackReadOnlyField("Version", parent.version, monospace = true)
+                }
+                ModpackStringListField(
+                    label = "Excludes",
+                    description = "Parent projects left out of this modpack.",
+                    entries = config.excludes.toList(),
+                    editing = editing,
+                    emptyText = "None",
+                    addPlaceholder = "Project slug, name, or Pakku ID",
+                    onChange = { next ->
+                        write(
+                            MetaWrite { cfg, _ ->
+                                cfg.excludes.clear()
+                                cfg.excludes.addAll(next)
+                            },
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+private val ModpackContentMaxWidth = 760.dp
+
+@Composable
+private fun ModpackSection(title: String, description: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        GroupHeader(title)
+        ModpackFieldHint(description)
+        content()
     }
 }
 

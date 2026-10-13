@@ -345,27 +345,3 @@ private fun treeRowBackground(
         else                       -> Color.Transparent
     }
 }
-
-@Composable
-fun PinnedTreeFolderStrip(
-    folderRows: List<PathTreeRow.Folder>,
-    modifier: Modifier = Modifier,
-    rowContent: @Composable (PathTreeRow.Folder) -> Unit,
-) {
-    if (folderRows.isEmpty()) return
-    Column(
-        modifier.fillMaxWidth().wrapContentHeight(),
-    ) {
-        folderRows.forEach { folderRow ->
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(TreeRowMinHeight)
-                    .background(JewelTheme.globalColors.panelBackground),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                rowContent(folderRow)
-            }
-        }
-    }
-}

@@ -4,12 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.button
 
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
@@ -20,18 +15,16 @@ fun ThemeButton(
     intUiTheme: IntUiThemes,
 ) {
     if (intUiTheme.isDark()) {
-        IconButton(
+        ToolbarActionButton(
+            key = PakkuDesktopIcons.darkTheme,
+            label = "Switch to light theme",
             onClick = { appPublish(AppMsg.ThemeChangeRequested(IntUiThemes.Light)) },
-            Modifier.size(30.dp),
-        ) {
-            Icon(PakkuDesktopIcons.darkTheme, "dark_theme")
-        }
+        )
     } else {
-        IconButton(
+        ToolbarActionButton(
+            key = PakkuDesktopIcons.lightTheme,
+            label = "Switch to dark theme",
             onClick = { appPublish(AppMsg.ThemeChangeRequested(IntUiThemes.Dark)) },
-            Modifier.size(30.dp),
-        ) {
-            Icon(PakkuDesktopIcons.lightTheme, "light_theme")
-        }
+        )
     }
 }

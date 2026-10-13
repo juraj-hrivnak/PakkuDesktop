@@ -17,17 +17,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TriStateCheckbox
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.actions.uiKey
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarSeparator
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
@@ -36,8 +39,6 @@ import teksturepako.pakkuDesktop.app.ui.modifier.clickableHover
 
 /** Must match the checkbox column in [ListImpl] for pixel alignment. */
 internal val ProjectsListCheckboxColumnWidth = 40.dp
-
-private val SelectionActionButtonSize = 28.dp
 
 @Composable
 fun FilesSelectionControls(
@@ -48,90 +49,83 @@ fun FilesSelectionControls(
     hasFolders: Boolean,
     linksEmpty: Boolean,
     folderIds: Set<String> = emptySet(),
+    showSelection: Boolean = true,
 ) {
-    val keys = selectableKeys.toList()
-    val allSelected = keys.isNotEmpty() && keys.all { it in model.selectedProjectKeys }
-    val selectedCount = model.selectedProjectKeys.size
-
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        if (showSelection) {
             Spacer(Modifier.width(3.dp))
-            Box(
-                modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
-                contentAlignment = Alignment.Center,
-            ) {
-                Checkbox(
-                    checked = allSelected,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            publish(ModpackMsg.ProjectsSelected(keys.toSet()))
-                        } else {
-                            publish(ModpackMsg.ProjectsCleared())
-                        }
-                        lastClickedIndex.value = null
-                    },
-                    modifier = Modifier.padding(4.dp),
-                )
-            }
-            if (selectedCount > 0) {
-                IconButton(
-                    enabled = true,
-                    onClick = {
-                        publish(ModpackMsg.ProjectsCleared())
-                        lastClickedIndex.value = null
-                    },
-                    modifier = Modifier.size(SelectionActionButtonSize),
-                ) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Unselectall,
-                        contentDescription = "Clear selection",
-                        tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                        hints = arrayOf(),
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
+            MasterSelectionCheckbox(
+                keys = selectableKeys,
+                selectedKeys = model.selectedProjectKeys,
+                publish = publish,
+                lastClickedIndex = lastClickedIndex,
+            )
+            ToolbarSeparator()
         }
-        Spacer(Modifier.weight(1f))
-        IconButton(
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Expandall,
+            label = "Expand all",
             enabled = !linksEmpty && hasFolders,
             onClick = { publish(ModpackMsg.FilesExpandAllFolders) },
-            modifier = Modifier.size(SelectionActionButtonSize),
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Expandall,
-                contentDescription = "Expand all",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        IconButton(
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Collapseall,
+            label = "Collapse all",
             enabled = !linksEmpty && hasFolders,
             onClick = { publish(ModpackMsg.FilesCollapseAllFolders(folderIds)) },
-            modifier = Modifier.size(SelectionActionButtonSize),
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Collapseall,
-                contentDescription = "Collapse all",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(16.dp),
+        )
+        if (!showSelection) {
+            Text(
+                text = "Fetch writes Pakku's files to disk. Sync reads disk changes into Pakku.",
+                color = JewelTheme.contentColor.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
     }
 }
 
-/** Master checkbox + clear selection; Name / Last updated sort on the right. */
+/** Tri-state "select all" box aligned with the list's checkbox column. */
+@Composable
+private fun MasterSelectionCheckbox(
+    keys: Collection<String>,
+    selectedKeys: Set<String>,
+    publish: (ModpackMsg) -> Unit,
+    lastClickedIndex: MutableState<Int?>?,
+) {
+    val selectedCount = keys.count { it in selectedKeys }
+    val state = when {
+        keys.isEmpty() || selectedCount == 0 -> ToggleableState.Off
+        selectedCount == keys.size -> ToggleableState.On
+        else -> ToggleableState.Indeterminate
+    }
+    Box(
+        modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
+        contentAlignment = Alignment.Center,
+    ) {
+        TriStateCheckbox(
+            state = state,
+            enabled = keys.isNotEmpty(),
+            onClick = {
+                if (state == ToggleableState.On) {
+                    publish(ModpackMsg.ProjectsCleared())
+                } else {
+                    publish(ModpackMsg.ProjectsSelected(keys.toSet()))
+                }
+                lastClickedIndex?.value = null
+            },
+            modifier = Modifier.padding(4.dp),
+        )
+    }
+}
+
+/** Master checkbox; Name / Last updated sort on the right. */
 @Composable
 fun ListControls(
     publish: (ModpackMsg) -> Unit,
@@ -146,57 +140,19 @@ fun ListControls(
     val filteredProjects = projects.filter { it.matchesProjectsListFilters(model, ignoreUpdatesOnly) }
     val sortOrder = model.sortOrder
     val keys = selectableKeys?.toList() ?: filteredProjects.map { it.uiKey() }
-    val allSelected = keys.isNotEmpty() && keys.all { it in model.selectedProjectKeys }
-    val selectedCount = model.selectedProjectKeys.size
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 0.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showSelection) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier.width(ProjectsListCheckboxColumnWidth),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Checkbox(
-                        checked = allSelected,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                publish(ModpackMsg.ProjectsSelected(keys.toSet()))
-                            } else {
-                                publish(ModpackMsg.ProjectsCleared())
-                            }
-                            lastClickedIndex?.value = null
-                        },
-                        modifier = Modifier.padding(4.dp),
-                    )
-                }
-                if (selectedCount > 0) {
-                    IconButton(
-                        enabled = true,
-                        onClick = {
-                            publish(ModpackMsg.ProjectsCleared())
-                            lastClickedIndex?.value = null
-                        },
-                        modifier = Modifier.size(SelectionActionButtonSize),
-                    ) {
-                        Icon(
-                            key = AllIconsKeys.Actions.Unselectall,
-                            contentDescription = "Clear selection",
-                            tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                            hints = arrayOf(),
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-            }
+            MasterSelectionCheckbox(
+                keys = keys,
+                selectedKeys = model.selectedProjectKeys,
+                publish = publish,
+                lastClickedIndex = lastClickedIndex,
+            )
         }
 
         Spacer(Modifier.weight(1f))

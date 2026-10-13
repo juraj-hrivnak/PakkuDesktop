@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -227,8 +228,11 @@ class FilesDirectionTest {
         composeRule.setContent {
             JewelTestTheme {
                 FilesFooterStatus(
-                    filesTabModel().copy(filesPreviewMode = FilesPreviewMode.Fetch),
+                    publish = {},
+                    model = filesTabModel().copy(filesPreviewMode = FilesPreviewMode.Fetch),
                     links = fetchLinks(),
+                    selectableKeys = emptyList(),
+                    lastClickedIndex = remember { mutableStateOf<Int?>(null) },
                 )
             }
         }

@@ -31,6 +31,18 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+/** Type + date column; the project name takes the rest of the header row. */
+private val ProjectCardMetaMaxWidth = 104.dp
+
+private val PublishedDateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH).withZone(ZoneId.systemDefault())
+
+internal fun Instant.formatPublishedDate(): String =
+    PublishedDateFormatter.format(java.time.Instant.ofEpochMilli(toEpochMilliseconds()))
 
 /**
  * @param focused Right-pane / inspector selection (cyan).
@@ -73,7 +85,7 @@ fun ProjectCard(
     val published = latest?.datePublished
         ?.toStdlibInstant()
         ?.takeUnless { it == Instant.DISTANT_PAST }
-        ?.formatPublished()
+        ?.formatPublishedDate()
 
     Column(
         modifier = modifier
@@ -96,7 +108,7 @@ fun ProjectCard(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top,
         ) {
             FlowRow(
@@ -130,7 +142,7 @@ fun ProjectCard(
                 }
             }
             Column(
-                modifier = Modifier.wrapContentWidth(),
+                modifier = Modifier.widthIn(max = ProjectCardMetaMaxWidth),
                 horizontalAlignment = Alignment.End,
             ) {
                 Text(

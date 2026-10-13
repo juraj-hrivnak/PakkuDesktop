@@ -16,12 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.michaelbull.result.get
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.FilesFilter
@@ -89,24 +86,16 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                 model = model,
                 focusRequester = filterFocusRequester,
             )
-            if (scanned) {
-                FilesSelectionControls(
-                    publish = publish,
-                    model = model,
-                    lastClickedIndex = lastClickedIndex,
-                    selectableKeys = selectableKeys,
-                    hasFolders = tree.folderIds.isNotEmpty(),
-                    linksEmpty = links.isEmpty(),
-                    folderIds = tree.folderIds,
-                )
-            } else {
-                Text(
-                    text = "Fetch writes Pakku's files to disk. Sync reads disk changes into Pakku.",
-                    color = JewelTheme.contentColor.copy(alpha = 0.5f),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                )
-            }
+            FilesSelectionControls(
+                publish = publish,
+                model = model,
+                lastClickedIndex = lastClickedIndex,
+                selectableKeys = selectableKeys,
+                hasFolders = tree.folderIds.isNotEmpty(),
+                linksEmpty = links.isEmpty(),
+                folderIds = tree.folderIds,
+                showSelection = scanned,
+            )
         }
 
         Divider(Orientation.Horizontal)
@@ -135,6 +124,12 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
         }
 
         Divider(Orientation.Horizontal)
-        FilesFooterStatus(model, links = links)
+        FilesFooterStatus(
+            publish = publish,
+            model = model,
+            links = links,
+            selectableKeys = selectableKeys,
+            lastClickedIndex = lastClickedIndex,
+        )
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.painter.hints.Size
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
@@ -40,8 +42,10 @@ import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
 private val RailButtonSize = 36.dp
-private val RailIconSize = 24.dp
-private val RailButtonShape = RoundedCornerShape(6.dp)
+
+/** New UI tool-window stripe icons are drawn at 20×20 (the `@20x20` variants). */
+private val RailIconSize = 20.dp
+private val RailButtonShape = RoundedCornerShape(8.dp)
 
 /** Left navigation rail — width matches the title-bar Pakku icon slot. */
 @Composable
@@ -74,7 +78,7 @@ fun ModpackRail(
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.FILES)) },
             )
             RailButton(
-                key = AllIconsKeys.Toolwindows.ToolWindowStructure,
+                key = AllIconsKeys.Actions.Properties,
                 tooltip = "Modpack",
                 selected = selectedTab == SelectedTab.MODPACK,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
@@ -99,19 +103,23 @@ private fun RailButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     val content = JewelTheme.contentColor
 
     // Theme content color only — avoid SelectableIconButton’s opaque selected fill (reads as black).
     val tint = when {
         selected -> content
         hovered -> content.copy(alpha = 0.9f)
-        else -> content.copy(alpha = 0.7f)
+        else -> content.copy(alpha = 0.75f)
     }
-    val fill = when {
-        selected -> content.copy(alpha = 0.12f)
-        hovered -> content.copy(alpha = 0.08f)
-        else -> Color.Transparent
-    }
+    val fill = animatedColor(
+        when {
+            selected -> content.copy(alpha = 0.14f)
+            pressed -> content.copy(alpha = 0.12f)
+            hovered -> content.copy(alpha = 0.08f)
+            else -> Color.Transparent
+        },
+    )
 
     PkUiTooltip({ Text(tooltip) }) {
         Box(
@@ -132,7 +140,7 @@ private fun RailButton(
                 key = key,
                 contentDescription = tooltip,
                 tint = tint,
-                hints = arrayOf(),
+                hints = arrayOf(Size(20)),
                 modifier = Modifier.size(RailIconSize),
             )
         }

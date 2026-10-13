@@ -31,9 +31,13 @@ data class PropertyWrite(
     val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
 )
 
-/** pack metadata mutation; projectEditDriver applies + writes */
+/**
+ * pack metadata mutation; projectEditDriver applies + writes.
+ * [replaceConfig] runs before [mutate], for `pakku.json` fields [ConfigFile] has no setter for.
+ */
 data class MetaWrite(
-    val mutate: (ConfigFile, LockFile) -> Unit,
+    val replaceConfig: ((ConfigFile) -> ConfigFile)? = null,
+    val mutate: (ConfigFile, LockFile) -> Unit = { _, _ -> },
 )
 
 /** `pakku init` inputs */

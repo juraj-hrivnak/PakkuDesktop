@@ -7,7 +7,8 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
-import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
+import teksturepako.pakkuDesktop.app.ui.component.tree.StickyFolderIndex
+import teksturepako.pakkuDesktop.app.ui.component.tree.VisibleTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.stickyFolderPathChain
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -95,44 +96,24 @@ class FilesTreeStateTest {
     }
 
     @Test
-    fun pinnedFoldersKeepParentsWhenScrollingNestedSubtree() {
+    fun stickyHeadersStayInPlaceAndGetPushedByNextRow() {
         val links = listOf(
             link("mods/a.jar", "fetch:a"),
             link("mods/fabric/b.jar", "fetch:b"),
         )
         val tree = PathTreeSnapshot.of(links) { it.path }
-        val expanded = tree.folderIds
-        val rows = tree.flatRows(expanded, emptySet())
-        val folderIndexByPath = rows.mapIndexedNotNull { index, row ->
-            (row as? PathTreeRow.Folder)?.fullPath?.let { it to index }
-        }.toMap()
-        val folderRowByPath = rows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
-        val fileIndex = rows.indexOfFirst { it is PathTreeRow.Item && it.path == "mods/fabric/b.jar" }
-        val pinned = pinnedFolderRowsForScroll(
-            rows,
-            fileIndex,
-            anchorScrollOffsetPx = 0,
-            folderIndexByPath,
-            folderRowByPath,
-        )
-        assertEquals(listOf("mods", "mods/fabric"), pinned.map { it.fullPath })
-        val nestedFolderIndex = rows.indexOfFirst { it is PathTreeRow.Folder && it.fullPath == "mods/fabric" }
-        val pinnedAtNestedFolder = pinnedFolderRowsForScroll(
-            rows,
-            nestedFolderIndex,
-            anchorScrollOffsetPx = 0,
-            folderIndexByPath,
-            folderRowByPath,
-        )
-        assertEquals(listOf("mods"), pinnedAtNestedFolder.map { it.fullPath })
-        val pinnedWhileScrollingFolderAway = pinnedFolderRowsForScroll(
-            rows,
-            nestedFolderIndex,
-            anchorScrollOffsetPx = 4,
-            folderIndexByPath,
-            folderRowByPath,
-        )
-        assertEquals(listOf("mods", "mods/fabric"), pinnedWhileScrollingFolderAway.map { it.fullPath })
+        // mods, mods/fabric, mods/fabric/b.jar, mods/a.jar
+        val rows = tree.flatRows(tree.folderIds, emptySet())
+        val index = StickyFolderIndex(rows)
+        val h = 30
+        fun headersAt(scroll: Int) =
+            index.headers(rows.indices.map { VisibleTreeRow(it, it * h - scroll, h) }, h)
+                .map { it.folder.fullPath to it.top }
+
+        assertEquals(emptyList(), headersAt(0))
+        assertEquals(listOf("mods" to 0, "mods/fabric" to h), headersAt(10))
+        assertEquals(listOf("mods" to 0, "mods/fabric" to 20), headersAt(40))
+        assertEquals(listOf("mods" to 0), headersAt(61))
     }
 
     @Test

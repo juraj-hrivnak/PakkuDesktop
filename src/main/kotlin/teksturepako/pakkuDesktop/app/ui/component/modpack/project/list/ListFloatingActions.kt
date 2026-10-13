@@ -50,9 +50,12 @@ import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.painter.hints.Size
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.tooltipStyle
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -106,13 +109,18 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
             buttonSize = 44.dp,
             accent = addAccent,
             isDefault = lastFab == ProjectsFabAction.Add,
-        ) { _ ->
+            tooltip = "Add projects",
+        ) { hovered ->
             Icon(
-                key = AllIconsKeys.General.InlineAdd,
+                key = AllIconsKeys.General.Add,
                 contentDescription = "Add projects",
-                tint = if (busy) Color.Gray else JewelTheme.contentColor,
-                hints = arrayOf(),
-                modifier = Modifier.size(22.dp),
+                tint = when {
+                    busy -> Color.Gray
+                    hovered || lastFab == ProjectsFabAction.Add -> addAccent
+                    else -> JewelTheme.contentColor
+                },
+                hints = arrayOf(Size(20)),
+                modifier = Modifier.size(20.dp),
             )
         }
 
@@ -129,6 +137,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
             buttonSize = 44.dp,
             accent = updateFabAccent,
             isDefault = lastFab == ProjectsFabAction.Update,
+            tooltip = if (checkMode) "Check for updates" else "Update selected projects",
         ) { hovered ->
             val accentHot = hovered || lastFab == ProjectsFabAction.Update || checking
             if (showCheckIcon) {
@@ -145,7 +154,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer {
-                            rotationZ = if (checking) spinDegrees else 0f
+                            rotationZ = if (checking) -spinDegrees else 0f
                         },
                 )
             } else {
@@ -157,7 +166,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
                         accentHot -> updateAccent
                         else -> JewelTheme.contentColor
                     },
-                    hints = arrayOf(),
+                    hints = arrayOf(Size(20)),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -172,6 +181,7 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
             buttonSize = 44.dp,
             accent = removeAccent,
             isDefault = lastFab == ProjectsFabAction.Remove,
+            tooltip = "Remove selected projects",
         ) { hovered ->
             Icon(
                 key = AllIconsKeys.General.Delete,
@@ -202,6 +212,25 @@ fun FloatingActionIcon(
     buttonSize: Dp,
     accent: Color,
     isDefault: Boolean = false,
+    tooltip: String? = null,
+    content: @Composable (hovered: Boolean) -> Unit,
+) {
+    if (tooltip != null) {
+        PkUiTooltip(tooltip = { Text(tooltip) }) {
+            FloatingActionIconBody(onClick, enabled, buttonSize, accent, isDefault, content)
+        }
+    } else {
+        FloatingActionIconBody(onClick, enabled, buttonSize, accent, isDefault, content)
+    }
+}
+
+@Composable
+private fun FloatingActionIconBody(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    buttonSize: Dp,
+    accent: Color,
+    isDefault: Boolean,
     content: @Composable (hovered: Boolean) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }

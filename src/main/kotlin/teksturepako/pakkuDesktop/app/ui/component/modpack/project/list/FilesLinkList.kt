@@ -68,14 +68,14 @@ import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.integration.revealInFileManager
 import teksturepako.pakkuDesktop.app.ui.LocalShiftKeyState
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRowCompact
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
-import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderSelectionScope
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
-import teksturepako.pakkuDesktop.app.ui.component.tree.PinnedTreeFolderStrip
+import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeRowMinHeight
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
@@ -129,72 +129,27 @@ fun FilesLinkList(
     val typeLabels = remember(configFile) { typeFolderLabels(configFile) }
     val shiftPressed = LocalShiftKeyState.current.pressed
     val updatedSplit = rememberUpdatedState(splitRatio)
-    val onSplitDrag = remember(onSplitRatioChange, splitRatio) {
-        { deltaPx: Float, splitAreaPx: Float ->
-            val next = splitRatio.value + deltaPx / splitAreaPx
-            onSplitRatioChange(next.coerceIn(0.05f, 0.95f))
-        }
-    }
-    val folderIndexByPath = remember(rows) {
-        rows.mapIndexedNotNull { index, row ->
-            (row as? PathTreeRow.Folder)?.fullPath?.let { it to index }
-        }.toMap()
-    }
-    val folderRowByPath = remember(rows) {
-        rows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
-    }
-    val pinnedFolderRows by remember(rows, folderIndexByPath, folderRowByPath, listState) {
-        derivedStateOf {
-            pinnedFolderRowsForScroll(
-                rows = rows,
-                anchorIndex = listState.firstVisibleItemIndex,
-                anchorScrollOffsetPx = listState.firstVisibleItemScrollOffset,
-                folderIndexByPath = folderIndexByPath,
-                folderRowByPath = folderRowByPath,
-            )
-        }
-    }
     Column(modifier.fillMaxSize()) {
         FilesLinkListHeader(
             splitRatio = splitRatio,
-            onSplitDrag = onSplitDrag,
+            onSplitRatioChange = onSplitRatioChange,
             filesPreviewMode = filesPreviewMode,
             workingDirLabel = remember { workingPathDisplayName() },
+            // Rows below are inset by the scrollbar gutter; the header must split the same width.
+            modifier = Modifier.padding(end = FilesListScrollbarGutter),
         )
         Divider(Orientation.Horizontal)
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            Column(
+            Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(end = FilesListScrollbarGutter),
+                    .padding(vertical = 8.dp)
+                    .padding(end = FilesListScrollbarGutter)
+                    .clipToBounds(),
             ) {
-                PinnedTreeFolderStrip(
-                    folderRows = pinnedFolderRows,
-                    modifier = Modifier.padding(top = 8.dp),
-                ) { folderRow ->
-                    FilesLinkRow(
-                        row = folderRow,
-                        splitRatio = { updatedSplit.value.value },
-                        typeLabels = typeLabels,
-                        selectedProjectKeys = selectedProjectKeys,
-                        focusedProjectUiKey = focusedProjectUiKey,
-                        showSelection = showSelection,
-                        shiftPressed = shiftPressed,
-                        linkIndexByPathKey = linkIndexByPathKey,
-                        flatSelectableLinks = flatSelectableLinks,
-                        flatSelectableIndexByPathKey = flatSelectableIndexByPathKey,
-                        allLinks = links,
-                        existingDiskFolders = existingDiskFolders,
-                        lastClickedIndex = lastClickedIndex,
-                        onSplitDrag = onSplitDrag,
-                        publish = publish,
-                    )
-                }
                 LazyColumn(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(top = if (pinnedFolderRows.isEmpty()) 8.dp else 0.dp, bottom = 8.dp)
+                        .fillMaxSize()
                         .allowDragAndDrop { paths ->
                             publish(ModpackMsg.FilesDropped(paths.map { it.toString() }))
                         },
@@ -221,11 +176,30 @@ fun FilesLinkList(
                                 allLinks = links,
                                 existingDiskFolders = existingDiskFolders,
                                 lastClickedIndex = lastClickedIndex,
-                                onSplitDrag = onSplitDrag,
+                                onSplitRatioChange = onSplitRatioChange,
                                 publish = publish,
                             )
                         }
                     }
+                }
+                StickyTreeFolderHeaders(listState, rows) { folderRow ->
+                    FilesLinkRow(
+                        row = folderRow,
+                        splitRatio = { updatedSplit.value.value },
+                        typeLabels = typeLabels,
+                        selectedProjectKeys = selectedProjectKeys,
+                        focusedProjectUiKey = focusedProjectUiKey,
+                        showSelection = showSelection,
+                        shiftPressed = shiftPressed,
+                        linkIndexByPathKey = linkIndexByPathKey,
+                        flatSelectableLinks = flatSelectableLinks,
+                        flatSelectableIndexByPathKey = flatSelectableIndexByPathKey,
+                        allLinks = links,
+                        existingDiskFolders = existingDiskFolders,
+                        lastClickedIndex = lastClickedIndex,
+                        onSplitRatioChange = onSplitRatioChange,
+                        publish = publish,
+                    )
                 }
             }
             VerticalScrollbar(
@@ -242,7 +216,7 @@ fun FilesLinkList(
 @Composable
 fun FilesLinkListHeader(
     splitRatio: State<Float>,
-    onSplitDrag: (deltaPx: Float, splitAreaPx: Float) -> Unit,
+    onSplitRatioChange: (Float) -> Unit,
     filesPreviewMode: FilesPreviewMode,
     workingDirLabel: String,
     modifier: Modifier = Modifier,
@@ -255,7 +229,7 @@ fun FilesLinkListHeader(
             .fillMaxWidth()
             .height(FilesSplitHeaderHeight),
         gutterChange = null,
-        onSplitDrag = onSplitDrag,
+        onSplitRatioChange = onSplitRatioChange,
         pakkuCell = {
             FilesSideLabel(
                 title = "Pakku",
@@ -286,7 +260,7 @@ private fun FilesSplitRow(
     gutterChange: FilesChangeKind? = null,
     gutterWidth: Dp = FilesLinkGutterWidth,
     gutterContent: (@Composable () -> Unit)? = null,
-    onSplitDrag: ((deltaPx: Float, splitAreaPx: Float) -> Unit)? = null,
+    onSplitRatioChange: ((Float) -> Unit)? = null,
     pakkuCell: @Composable () -> Unit,
     diskCell: @Composable () -> Unit,
 ) {
@@ -321,8 +295,10 @@ private fun FilesSplitRow(
             }
             FilesSplitGutter(
                 change = gutterChange,
-                draggable = onSplitDrag != null,
-                onDragSplit = { deltaPx -> onSplitDrag?.invoke(deltaPx, splitAreaPx) },
+                ratio = r,
+                splitAreaPx = splitAreaPx,
+                minFraction = minFraction,
+                onRatioChange = onSplitRatioChange,
                 borderColor = borderColor,
                 width = gutterWidth,
                 centerContent = gutterContent,
@@ -355,7 +331,7 @@ fun FilesLinkRow(
     allLinks: List<FilesLink>,
     existingDiskFolders: Set<String>,
     lastClickedIndex: MutableState<Int?>,
-    onSplitDrag: (deltaPx: Float, splitAreaPx: Float) -> Unit,
+    onSplitRatioChange: (Float) -> Unit,
     publish: (ModpackMsg) -> Unit,
 ) {
     RecomposeProbe("FilesLinkRow")
@@ -367,7 +343,7 @@ fun FilesLinkRow(
             .height(TreeRowMinHeight)
             .testTag("FilesLinkRow"),
         gutterChange = (row as? PathTreeRow.Item)?.item?.change,
-        onSplitDrag = onSplitDrag,
+        onSplitRatioChange = onSplitRatioChange,
         pakkuCell = {
             when (row) {
                 is PathTreeRow.Folder -> PakkuFolderCell(row, typeLabels)
@@ -478,20 +454,11 @@ private fun DiskFolderTrailing(
     }
     if (!canReveal) return
     val diskPath = remember(folderPath) { Path(workingPath).resolve(folderPath) }
-    PkUiTooltip(tooltip = { Text("Show in folder") }) {
-        IconButton(
-            onClick = { revealInFileManager(diskPath) },
-            modifier = Modifier.size(24.dp),
-        ) {
-            Icon(
-                key = AllIconsKeys.General.OpenDisk,
-                contentDescription = "Show in folder",
-                tint = Color.Gray,
-                hints = arrayOf(),
-                modifier = Modifier.size(14.dp),
-            )
-        }
-    }
+    ToolbarActionButton(
+        key = AllIconsKeys.Actions.MenuOpen,
+        label = "Show in folder",
+        onClick = { revealInFileManager(diskPath) },
+    )
 }
 
 @Composable
@@ -508,20 +475,11 @@ private fun DiskLinkTrailing(link: FilesLink) {
         }
         if (link.onDisk) {
             val diskPath = remember(link.path) { Path(workingPath).resolve(link.path) }
-            PkUiTooltip(tooltip = { Text("Show in folder") }) {
-                IconButton(
-                    onClick = { revealInFileManager(diskPath) },
-                    modifier = Modifier.size(24.dp),
-                ) {
-                    Icon(
-                        key = AllIconsKeys.General.OpenDisk,
-                        contentDescription = "Show in folder",
-                        tint = Color.Gray,
-                        hints = arrayOf(),
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-            }
+            ToolbarActionButton(
+                key = AllIconsKeys.Actions.MenuOpen,
+                label = "Show in folder",
+                onClick = { revealInFileManager(diskPath) },
+            )
         }
     }
 }
@@ -705,24 +663,42 @@ private fun pakkuRowBackground(link: FilesLink, focused: Boolean, checked: Boole
 @Composable
 private fun FilesSplitGutter(
     change: FilesChangeKind?,
-    draggable: Boolean,
-    onDragSplit: (Float) -> Unit,
+    ratio: Float,
+    splitAreaPx: Float,
+    minFraction: Float,
+    onRatioChange: ((Float) -> Unit)?,
     borderColor: Color,
     width: Dp = FilesLinkGutterWidth,
     centerContent: (@Composable () -> Unit)? = null,
 ) {
+    // The gesture outlives recompositions; read the latest layout through these.
+    val latestRatio by rememberUpdatedState(ratio)
+    val latestSplitAreaPx by rememberUpdatedState(splitAreaPx)
+    val latestMinFraction by rememberUpdatedState(minFraction)
+    val latestOnRatioChange by rememberUpdatedState(onRatioChange)
     Box(
         modifier = Modifier
             .width(width)
             .fillMaxHeight()
             .then(
-                if (draggable) {
+                if (onRatioChange != null) {
                     Modifier
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))
                         .pointerInput(Unit) {
-                            detectHorizontalDragGestures { change, dragAmount ->
+                            var startRatio = 0f
+                            var draggedPx = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = {
+                                    startRatio = latestRatio
+                                    draggedPx = 0f
+                                },
+                            ) { change, dragAmount ->
                                 change.consume()
-                                onDragSplit(dragAmount)
+                                draggedPx += dragAmount
+                                val next = startRatio + draggedPx / latestSplitAreaPx
+                                latestOnRatioChange?.invoke(
+                                    next.coerceIn(latestMinFraction, 1f - latestMinFraction),
+                                )
                             }
                         }
                 } else {

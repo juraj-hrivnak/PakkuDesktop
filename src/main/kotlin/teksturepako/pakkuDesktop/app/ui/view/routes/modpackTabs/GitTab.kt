@@ -9,11 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +23,12 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.treeStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarSeparator
 import teksturepako.pakkuDesktop.app.ui.component.modpack.git.GitFloatingActions
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterRow
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterText
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.SelectionStatus
 import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
@@ -39,10 +43,8 @@ import teksturepako.pakkuDesktop.app.git.GitChange
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
-import teksturepako.pakkuDesktop.app.ui.component.tree.PinnedTreeFolderStrip
+import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeStatus
-import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
-
 @Composable
 fun GitTab(
     publish: (ModpackMsg) -> Unit,
@@ -69,12 +71,8 @@ fun GitTab(
             ChangelistToolbar(
                 filesEmpty = files.isEmpty(),
                 selectedCount = selectedCount,
+                totalCount = files.size,
                 hasFolders = changelistSnapshot.folderIds.isNotEmpty(),
-                fileCountLabel = when {
-                    files.isEmpty() -> "no local changes"
-                    files.size == 1 -> "1 file"
-                    else -> "${files.size} files"
-                },
                 publish = publish,
             )
         }
@@ -118,6 +116,7 @@ fun GitTab(
             pulling = model.wantsGitPull,
             pushing = model.wantsGitPush,
             committing = model.wantsGitCommit,
+            publish = publish,
         )
     }
 }
@@ -173,39 +172,15 @@ private fun SourceControlSidePanel(
             Spacer(Modifier.weight(1f))
         } else {
             val listState = rememberLazyListState()
-            val folderIndexByPath = remember(flatRows) {
-                flatRows.mapIndexedNotNull { index, row ->
-                    (row as? PathTreeRow.Folder)?.fullPath?.let { it to index }
-                }.toMap()
-            }
-            val folderRowByPath = remember(flatRows) {
-                flatRows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
-            }
-            val pinnedFolderRows by remember(flatRows, folderIndexByPath, folderRowByPath, listState) {
-                derivedStateOf {
-                    pinnedFolderRowsForScroll(
-                        rows = flatRows,
-                        anchorIndex = listState.firstVisibleItemIndex,
-                        anchorScrollOffsetPx = listState.firstVisibleItemScrollOffset,
-                        folderIndexByPath = folderIndexByPath,
-                        folderRowByPath = folderRowByPath,
-                    )
-                }
-            }
-            Column(Modifier.weight(1f).fillMaxWidth()) {
-                PinnedTreeFolderStrip(pinnedFolderRows) { folderRow ->
-                    GitChangesListRow(
-                        row = folderRow,
-                        currentDiff = currentDiff,
-                        diffPendingPath = diffPendingPath,
-                        publish = publish,
-                    )
-                }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
+                    .clipToBounds(),
+            ) {
                 LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(bottom = 4.dp),
+                    modifier = Modifier.fillMaxSize(),
                     state = listState,
                 ) {
                     flatRows.forEach { row ->
@@ -227,6 +202,14 @@ private fun SourceControlSidePanel(
                         }
                     }
                 }
+                StickyTreeFolderHeaders(listState, flatRows) { folderRow ->
+                    GitChangesListRow(
+                        row = folderRow,
+                        currentDiff = currentDiff,
+                        diffPendingPath = diffPendingPath,
+                        publish = publish,
+                    )
+                }
             }
         }
     }
@@ -236,70 +219,40 @@ private fun SourceControlSidePanel(
 private fun ChangelistToolbar(
     filesEmpty: Boolean,
     selectedCount: Int,
+    totalCount: Int,
     hasFolders: Boolean,
-    fileCountLabel: String,
     publish: (ModpackMsg) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = fileCountLabel,
-            color = JewelTheme.contentColor.copy(alpha = 0.5f),
-            fontSize = 12.sp,
-            modifier = Modifier.padding(end = 8.dp),
-        )
-        IconButton(
-            enabled = !filesEmpty,
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Selectall,
+            label = "Select all",
+            enabled = !filesEmpty && selectedCount < totalCount,
             onClick = { publish(ModpackMsg.GitSelectAllChangedFiles) },
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Selectall,
-                contentDescription = "Select all",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(18.dp),
-            )
-        }
-        IconButton(
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Unselectall,
+            label = "Unselect all",
             enabled = selectedCount > 0,
             onClick = { publish(ModpackMsg.GitClearChangedFileSelection) },
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Unselectall,
-                contentDescription = "Clear selection",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(18.dp),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        IconButton(
+        )
+        ToolbarSeparator()
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Expandall,
+            label = "Expand all",
             enabled = !filesEmpty && hasFolders,
             onClick = { publish(ModpackMsg.GitChangelistExpandAllFolders) },
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Expandall,
-                contentDescription = "Expand all",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(18.dp),
-            )
-        }
-        IconButton(
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Collapseall,
+            label = "Collapse all",
             enabled = !filesEmpty && hasFolders,
             onClick = { publish(ModpackMsg.GitChangelistCollapseAllFolders) },
-        ) {
-            Icon(
-                key = AllIconsKeys.Actions.Collapseall,
-                contentDescription = "Collapse all",
-                tint = JewelTheme.contentColor.copy(alpha = 0.9f),
-                hints = arrayOf(),
-                modifier = Modifier.size(18.dp),
-            )
-        }
+        )
     }
 }
 
@@ -310,13 +263,8 @@ private fun GitFooterStatus(
     pulling: Boolean,
     pushing: Boolean,
     committing: Boolean,
+    publish: (ModpackMsg) -> Unit,
 ) {
-    val selectionLabel = when {
-        totalCount == 0 -> "0 of 0 selected"
-        selectedCount == 0 -> "0 of $totalCount selected"
-        selectedCount == totalCount -> "All $selectedCount of $totalCount selected"
-        else -> "$selectedCount of $totalCount selected"
-    }
     val status = when {
         committing -> "Committing…"
         pulling -> "Pulling…"
@@ -324,33 +272,16 @@ private fun GitFooterStatus(
         else -> null
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = when {
-                totalCount == 1 -> "1 file"
-                else -> "$totalCount files"
-            },
-            color = JewelTheme.contentColor.copy(alpha = 0.55f),
-            fontSize = 12.sp,
-        )
-        if (status != null) {
-            Text(
-                text = status,
-                color = JewelTheme.contentColor.copy(alpha = 0.55f),
-                fontSize = 12.sp,
-            )
-        }
+    FooterRow {
+        FooterText(if (totalCount == 1) "1 file" else "$totalCount files")
+        if (status != null) FooterText(status)
         Spacer(Modifier.weight(1f))
-        Text(
-            text = selectionLabel,
-            color = JewelTheme.contentColor.copy(alpha = 0.55f),
-            fontSize = 12.sp,
+        SelectionStatus(
+            selectedCount = selectedCount,
+            totalCount = totalCount,
+            canSelectAll = selectedCount < totalCount,
+            onSelectAll = { publish(ModpackMsg.GitSelectAllChangedFiles) },
+            onUnselectAll = { publish(ModpackMsg.GitClearChangedFileSelection) },
         )
     }
 }

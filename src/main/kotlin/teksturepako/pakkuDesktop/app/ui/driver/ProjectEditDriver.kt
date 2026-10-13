@@ -49,8 +49,9 @@ val projectEditDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val configFile = model.modpack.configFile?.get() ?: return@LaunchedEffect
 
         withContext(Dispatchers.IO) {
-            request.mutate(configFile, lockFile)
-            configFile.write()
+            val config = request.replaceConfig?.invoke(configFile) ?: configFile
+            request.mutate(config, lockFile)
+            config.write()
             lockFile.write()
         }
 
