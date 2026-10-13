@@ -95,7 +95,7 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                 )
             } else {
                 Text(
-                    text = "Fetch or Sync to preview changes",
+                    text = "Fetch writes Pakku's files to disk. Sync reads disk changes into Pakku.",
                     color = JewelTheme.contentColor.copy(alpha = 0.5f),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
@@ -129,6 +129,6 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
         }
 
         Divider(Orientation.Horizontal)
-        FilesFooterStatus(model, fileCount = links.size)
+        FilesFooterStatus(model, links = links)
     }
 }

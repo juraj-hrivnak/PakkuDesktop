@@ -91,6 +91,8 @@ private val FilesSplitMinPaneWidth = 120.dp
 private val FilesSplitHorizontalPadding = PakkuDesktopConstants.commonPaddingSize
 private val FilesSplitHeaderHeight = 36.dp
 
+private const val LockFileDisplayName = "pakku-lock.json"
+
 @OptIn(FlowPreview::class)
 @Composable
 fun FilesLinkList(
@@ -131,6 +133,8 @@ fun FilesLinkList(
         FilesLinkListHeader(
             splitRatio = splitRatio,
             onSplitDrag = onSplitDrag,
+            filesPreviewMode = filesPreviewMode,
+            workingDirLabel = remember { workingPathDisplayName() },
         )
         Divider(Orientation.Horizontal)
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -187,8 +191,12 @@ fun FilesLinkList(
 fun FilesLinkListHeader(
     splitRatio: State<Float>,
     onSplitDrag: (deltaPx: Float, splitAreaPx: Float) -> Unit,
+    filesPreviewMode: FilesPreviewMode,
+    workingDirLabel: String,
     modifier: Modifier = Modifier,
 ) {
+    val pakkuEmphasized = filesPreviewMode != FilesPreviewMode.Fetch
+    val diskEmphasized = filesPreviewMode != FilesPreviewMode.Sync
     FilesSplitRow(
         ratio = splitRatio.value,
         modifier = modifier
@@ -197,12 +205,25 @@ fun FilesLinkListHeader(
         gutterChange = null,
         onSplitDrag = onSplitDrag,
         pakkuCell = {
-            Text("Pakku", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            FilesSideLabel(
+                title = "Pakku",
+                subtitle = LockFileDisplayName,
+                emphasized = pakkuEmphasized,
+            )
         },
         diskCell = {
-            Text("File system", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            FilesSideLabel(
+                title = "File system",
+                subtitle = workingDirLabel,
+                emphasized = diskEmphasized,
+            )
         },
     )
+}
+
+private fun workingPathDisplayName(): String {
+    val path = Path(workingPath).toAbsolutePath().normalize()
+    return path.fileName?.toString()?.takeIf { it.isNotBlank() } ?: path.toString()
 }
 
 @Composable
@@ -211,13 +232,14 @@ private fun FilesSplitRow(
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = FilesSplitHorizontalPadding,
     gutterChange: FilesChangeKind? = null,
+    gutterWidth: Dp = FilesLinkGutterWidth,
+    gutterContent: (@Composable () -> Unit)? = null,
     onSplitDrag: ((deltaPx: Float, splitAreaPx: Float) -> Unit)? = null,
     pakkuCell: @Composable () -> Unit,
     diskCell: @Composable () -> Unit,
 ) {
     val borderColor = JewelTheme.globalColors.borders.normal.copy(alpha = 0.22f)
     BoxWithConstraints(modifier) {
-        val gutterWidth = FilesLinkGutterWidth
         val innerWidth = (maxWidth - horizontalPadding * 2 - gutterWidth).coerceAtLeast(0.dp)
         val minFraction = if (innerWidth > 0.dp) {
             (FilesSplitMinPaneWidth / innerWidth).coerceIn(0.05f, 0.45f)
@@ -249,6 +271,8 @@ private fun FilesSplitRow(
                 draggable = onSplitDrag != null,
                 onDragSplit = { deltaPx -> onSplitDrag?.invoke(deltaPx, splitAreaPx) },
                 borderColor = borderColor,
+                width = gutterWidth,
+                centerContent = gutterContent,
             )
             Box(
                 Modifier
@@ -562,10 +586,12 @@ private fun FilesSplitGutter(
     draggable: Boolean,
     onDragSplit: (Float) -> Unit,
     borderColor: Color,
+    width: Dp = FilesLinkGutterWidth,
+    centerContent: (@Composable () -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
-            .width(FilesLinkGutterWidth)
+            .width(width)
             .fillMaxHeight()
             .then(
                 if (draggable) {
@@ -591,7 +617,11 @@ private fun FilesSplitGutter(
                     .background(borderColor),
             )
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                DirectionGutter(change)
+                if (centerContent != null) {
+                    centerContent()
+                } else {
+                    DirectionGutter(change)
+                }
             }
             Box(
                 Modifier

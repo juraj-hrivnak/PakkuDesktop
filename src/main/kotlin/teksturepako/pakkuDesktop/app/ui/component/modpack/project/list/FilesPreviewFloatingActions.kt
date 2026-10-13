@@ -72,7 +72,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                 val accentHot = hovered || lastFab == FilesFabAction.Fetch || fetching
                 Icon(
                     key = AllIconsKeys.Actions.Checked,
-                    contentDescription = if (fetching) "Fetching" else "Confirm fetch",
+                    contentDescription = if (fetching) "Fetching" else "Apply to file system",
                     tint = when {
                         !canFetch && !fetching -> Color.Gray
                         accentHot -> fetchAccent
@@ -98,7 +98,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                 ) { hovered ->
                     Icon(
                         key = AllIconsKeys.General.InlineAdd,
-                        contentDescription = "Add selected",
+                        contentDescription = "Add to Pakku",
                         tint = when {
                             !canAdd -> Color.Gray
                             hovered || lastFab == FilesFabAction.Add || applying -> addAccent
@@ -122,7 +122,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                 ) { hovered ->
                     Icon(
                         key = AllIconsKeys.Actions.CheckOut,
-                        contentDescription = "Update selected",
+                        contentDescription = "Update in Pakku",
                         tint = when {
                             !canUpdate -> Color.Gray
                             hovered || lastFab == FilesFabAction.Update || applying -> updateAccent
@@ -146,7 +146,7 @@ fun BoxScope.FilesPreviewFloatingActions(publish: (ModpackMsg) -> Unit, model: F
                 ) { hovered ->
                     Icon(
                         key = AllIconsKeys.General.Delete,
-                        contentDescription = "Remove selected",
+                        contentDescription = "Remove from Pakku",
                         tint = when {
                             !canRemove -> Color.Gray
                             hovered || lastFab == FilesFabAction.Remove || applying -> removeAccent

@@ -19,7 +19,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
@@ -103,7 +102,7 @@ fun ListActions(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
 }
 
 @Composable
-fun FilesFooterStatus(model: FilesTabModel, fileCount: Int) {
+fun FilesFooterStatus(model: FilesTabModel, links: List<FilesLink>) {
     val selectedCount = model.selectedProjectKeys.size
     val busy = model.actionName != null
     val scanning = busy && (model.actionName == "Scanning files" || model.actionName == "Detecting files")
@@ -122,8 +121,8 @@ fun FilesFooterStatus(model: FilesTabModel, fileCount: Int) {
     ) {
         Text(
             text = when {
-                fileCount == 1 -> "1 file"
-                else -> "$fileCount files"
+                links.size == 1 -> "1 file"
+                else -> "${links.size} files"
             },
             color = JewelTheme.contentColor.copy(alpha = 0.55f),
             fontSize = 12.sp,
@@ -137,45 +136,13 @@ fun FilesFooterStatus(model: FilesTabModel, fileCount: Int) {
                     fontSize = 12.sp,
                 )
             }
-            model.filesPreviewMode == FilesPreviewMode.Fetch -> {
-                val parts = buildList {
-                    if (model.fetchDownloads.isNotEmpty()) {
-                        add("${model.fetchDownloads.size} to fetch")
-                    }
-                    if (model.fetchOverrides.isNotEmpty()) {
-                        add(
-                            if (model.fetchOverrides.size == 1) "1 manual override"
-                            else "${model.fetchOverrides.size} manual overrides",
-                        )
-                    }
-                    if (model.fetchCleanup.isNotEmpty()) {
-                        add("${model.fetchCleanup.size} to delete")
-                    }
-                }
+            else -> {
                 Text(
-                    text = parts.joinToString(" · ").ifEmpty { "Nothing to fetch" },
+                    text = filesFooterChangeSummary(links, model.filesPreviewMode),
                     color = JewelTheme.contentColor.copy(alpha = 0.55f),
                     fontSize = 12.sp,
                 )
             }
-            model.filesPreviewMode == FilesPreviewMode.Sync -> {
-                val parts = buildList {
-                    if (model.syncAdded.isNotEmpty()) add("${model.syncAdded.size} to add")
-                    if (model.syncRemoved.isNotEmpty()) add("${model.syncRemoved.size} to remove")
-                    if (model.syncUpdated.isNotEmpty()) {
-                        add(
-                            if (model.syncUpdated.size == 1) "1 to update"
-                            else "${model.syncUpdated.size} to update",
-                        )
-                    }
-                }
-                Text(
-                    text = parts.joinToString(" · ").ifEmpty { "Nothing to sync" },
-                    color = JewelTheme.contentColor.copy(alpha = 0.55f),
-                    fontSize = 12.sp,
-                )
-            }
-            else -> Unit
         }
 
         Spacer(Modifier.weight(1f))
