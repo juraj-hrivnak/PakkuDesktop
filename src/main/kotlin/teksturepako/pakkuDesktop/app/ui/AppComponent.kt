@@ -201,6 +201,7 @@ private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
                     handleDirectoryPicked(inner.path, base)
             }
         }
+        is WelcomeMsg.SummariesLoaded -> base
     }
 }
 

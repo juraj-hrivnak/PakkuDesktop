@@ -18,6 +18,9 @@ fun welcomeUpdate(msg: WelcomeMsg, model: WelcomeModel): WelcomeModel = when (ms
     WelcomeMsg.ShowNewModpack,
     is WelcomeMsg.DirectoryPicked,
     is WelcomeMsg.WelcomeDropdown -> model
+
+    is WelcomeMsg.SummariesLoaded ->
+        if (msg.summaries == model.summaries) model else model.copy(summaries = msg.summaries)
 }
 
 // -- welcomeComponent --

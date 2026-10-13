@@ -96,6 +96,7 @@ fun main() {
                 profileDiskDriver,
                 projectsUiDiskDriver,
                 modpackDiskDriver,
+                modpackSummaryDriver,
                 gitDriver,
                 windowDiskDriver(
                     onQuit = {

@@ -5,15 +5,29 @@
 package teksturepako.pakkuDesktop.app.ui.view.routes
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
@@ -28,11 +42,11 @@ import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
-import teksturepako.pakkuDesktop.app.ui.component.HoverablePanel
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
+import teksturepako.pakkuDesktop.app.ui.component.welcome.RecentModpackCard
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
@@ -42,6 +56,7 @@ import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.pkui.component.ContentBox
 import java.nio.file.Files
+import kotlin.math.roundToInt
 
 @Composable
 fun PakkuApplicationScope.WelcomeView(
@@ -73,16 +88,28 @@ fun PakkuApplicationScope.WelcomeView(
         }
     }
 
+    val extend = remember { ExtendOnScrollState() }
+    val bottomGap = 16.dp
+    val bottomGapPx = with(LocalDensity.current) { bottomGap.toPx() }
+
     Column(
         Modifier
             .fillMaxSize()
             .subtractTopHeight(titleBarHeight)
+            .nestedScroll(extend.nestedScrollConnection)
+            .scrollable(rememberScrollableState(extend::consume), Orientation.Vertical)
     ) {
         // Welcome Header
         Row(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.45F)
+                // fully extended, the box's top gap matches its bottom gap
+                .onSizeChanged { extend.maxPx = (it.height - bottomGapPx).coerceAtLeast(0f) }
+                .graphicsLayer {
+                    alpha = 1f - extend.progress
+                    translationY = -extend.progress * 24.dp.toPx()
+                }
                 .padding(PakkuDesktopConstants.commonPaddingSize),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
@@ -95,13 +122,14 @@ fun PakkuApplicationScope.WelcomeView(
             Modifier
                 .fillMaxSize()
                 .weight(1f)
-                .padding(bottom = 16.dp),
+                .padding(bottom = bottomGap),
             contentAlignment = Alignment.Center
         ) {
             FadeIn {
                 ContentBox(
                     Modifier
                         .fillMaxSize(0.9F)
+                        .extendTop { extend.extendPx }
                         .padding(20.dp)
                         .allowDragAndDrop { paths ->
                             val firstDir = paths.firstOrNull { Files.isDirectory(it) } ?: return@allowDragAndDrop
@@ -184,18 +212,11 @@ fun PakkuApplicationScope.WelcomeView(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
                                 profileData.recentProfilesFiltered.forEach { profile ->
-                                    HoverablePanel(
-                                        onClick = { publish(WelcomeMsg.DirectoryPicked(profile.path)) }
-                                    ) {
-                                        FlowColumn(
-                                            Modifier.padding(16.dp),
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            Text(profile.name, Modifier.padding(horizontal = 24.dp), fontSize = 18.sp)
-                                            Text(profile.path, Modifier.padding(horizontal = 24.dp), fontSize = 16.sp, color = Color.Gray)
-                                        }
-                                    }
+                                    RecentModpackCard(
+                                        profile = profile,
+                                        summary = model.summaries[profile.path],
+                                        onClick = { publish(WelcomeMsg.DirectoryPicked(profile.path)) },
+                                    )
                                 }
                             }
 
@@ -208,4 +229,45 @@ fun PakkuApplicationScope.WelcomeView(
             }
         }
     }
+}
+
+/**
+ * Scrolling down first grows the modpacks box upward over the header, then scrolls the list;
+ * scrolling up first scrolls the list back to the top, then shrinks the box.
+ */
+@Stable
+private class ExtendOnScrollState {
+    var maxPx by mutableFloatStateOf(0f)
+    private var offsetPx by mutableFloatStateOf(0f)
+
+    val extendPx: Float get() = offsetPx.coerceIn(0f, maxPx)
+    val progress: Float get() = if (maxPx > 0f) extendPx / maxPx else 0f
+
+    /** [delta] uses scroll-delta signs (negative scrolls down and extends). Returns the consumed part. */
+    fun consume(delta: Float): Float {
+        val current = extendPx
+        val next = (current - delta).coerceIn(0f, maxPx)
+        offsetPx = next
+        return current - next
+    }
+
+    val nestedScrollConnection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+            if (available.y < 0f) Offset(0f, consume(available.y)) else Offset.Zero
+
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+            if (available.y > 0f) Offset(0f, consume(available.y)) else Offset.Zero
+    }
+}
+
+/** Grows the content [extendPx] above this element's top edge; the bottom edge stays put. */
+private fun Modifier.extendTop(extendPx: () -> Float) = layout { measurable, constraints ->
+    if (!constraints.hasBoundedHeight) {
+        val placeable = measurable.measure(constraints)
+        return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+    val extend = extendPx().roundToInt()
+    val height = constraints.maxHeight
+    val placeable = measurable.measure(constraints.copy(minHeight = height + extend, maxHeight = height + extend))
+    layout(placeable.width, height) { placeable.place(0, -extend) }
 }

@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.model
 
+import kotlinx.collections.immutable.PersistentMap
 import teksturepako.pakkuDesktop.app.data.ProfileData
 
 // -- WelcomeDropdown --
@@ -26,4 +27,7 @@ sealed interface WelcomeMsg {
     data object ShowSettings : WelcomeMsg
     data class DirectoryPicked(val path: String) : WelcomeMsg
     data class WelcomeDropdown(val msg: WelcomeDropdownMsg) : WelcomeMsg
+
+    // internal
+    data class SummariesLoaded(val summaries: PersistentMap<String, ModpackSummary>) : WelcomeMsg
 }

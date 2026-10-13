@@ -129,6 +129,8 @@ sealed interface AppScreen {
 data class WelcomeModel(
     val profileData: ProfileData = ProfileData(),
     val dropdown: WelcomeDropdownModel = WelcomeDropdownModel(),
+    /** keyed by [teksturepako.pakkuDesktop.app.data.Profile.path]; filled by modpackSummaryDriver */
+    val summaries: PersistentMap<String, ModpackSummary> = persistentMapOf(),
 )
 
 // -- Profile sub-model --
