@@ -20,13 +20,14 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
 import teksturepako.pakkuDesktop.elm.conflatedPublisher
+import teksturepako.pakkuDesktop.app.git.GitBranch
 import teksturepako.pakkuDesktop.app.git.GitEvent
+import teksturepako.pakkuDesktop.app.git.GitOp
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.NativeGit
 import teksturepako.pakkuDesktop.app.git.awaitOrDestroy
-import teksturepako.pakkuDesktop.app.git.runCapturing
-import teksturepako.pakkuDesktop.app.git.GitBranch
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 
 // -- Repository handle --
 
@@ -72,13 +73,13 @@ private val GIT_PROGRESS_RE = Regex("""(?:remote:\s+)?(.+?):\s+\d+%\s+\((\d+)/(\
 
 /**
  * Runs a git command, streams stderr line-by-line to publish [GitEvent.Progress] events,
- * and returns (exitCode, captured stderr).
+ * and returns the exit code with captured stderr.
  */
 private suspend fun runGitWithProgress(
     workDir: File,
     publish: (AppMsg) -> Unit,
     vararg args: String,
-): Pair<Int, String> = coroutineScope {
+): NativeGit.Output = coroutineScope {
     val proc = ProcessBuilder("git", *args)
         .directory(workDir)
         .start()
@@ -103,7 +104,6 @@ private suspend fun runGitWithProgress(
                         val line = sb.toString().trim()
                         sb.clear()
                         if (line.isNotBlank()) {
-                            stderrCapture.append(line).append('\n')
                             val m = GIT_PROGRESS_RE.find(line)
                             if (m != null) {
                                 val current = m.groupValues[2].toIntOrNull()
@@ -116,6 +116,8 @@ private suspend fun runGitWithProgress(
                                     )
                                     gitProgressCh.trySend(event)
                                 }
+                            } else {
+                                stderrCapture.append(line).append('\n')
                             }
                         }
                     } else {
@@ -139,78 +141,77 @@ private suspend fun runGitWithProgress(
     gitProgressCh.close()
     gitProgressJob.join()
 
-    exitCode to stderrCapture.toString()
+    NativeGit.Output(exitCode, stderrCapture.toString())
 }
 
-private suspend fun runPull(publish: (AppMsg) -> Unit, workDir: File) {
-    try {
-        val (exitCode, stderr) = runGitWithProgress(workDir, publish, "pull", "--progress")
-        if (exitCode != 0) {
-            gitToast(publish, stderr.trim().lines().lastOrNull { it.isNotBlank() } ?: "Pull failed")
+private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: GitState, force: Boolean): NativeGit.Output {
+    val args = buildList {
+        add("push")
+        add("--progress")
+        if (force) add("--force-with-lease")
+        if (state.upstream == null) {
+            val remote = state.defaultRemote ?: return NativeGit.Output(1, "No remote configured")
+            add("-u")
+            add(remote)
+            add("HEAD")
         }
-    } catch (e: Exception) {
-        gitToast(publish, e.message ?: "Pull failed")
     }
+    return runGitWithProgress(workDir, publish, *args.toTypedArray())
 }
 
-private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File) {
-    try {
-        val (exitCode, stderr) = runGitWithProgress(workDir, publish, "push", "--progress")
-        if (exitCode != 0) {
-            gitToast(publish, stderr.trim().lines().lastOrNull { it.isNotBlank() } ?: "Push failed")
-        }
-    } catch (e: Exception) {
-        gitToast(publish, e.message ?: "Push failed")
-    }
+private suspend fun runCheckout(workDir: File, branch: GitBranch): NativeGit.Output {
+    if (!branch.isRemote) return NativeGit.exec(workDir, "checkout", branch.name)
+    val localName = branch.name.substringAfter('/', missingDelimiterValue = branch.name)
+    // Try a plain checkout first in case the local branch already exists.
+    val existing = NativeGit.exec(workDir, "checkout", localName)
+    return if (existing.ok) existing
+    else NativeGit.exec(workDir, "checkout", "-b", localName, "--track", branch.name)
 }
 
-private suspend fun runCommit(publish: (AppMsg) -> Unit, workDir: File, gitState: GitState): Boolean {
-    if (gitState.commitMessage.isBlank()) return false
-    return try {
-        // Stage each selected file individually.
-        for (file in gitState.selectedFiles) {
-            ProcessBuilder("git", "add", "--", file.path)
-                .directory(workDir)
-                .redirectErrorStream(true)
-                .runCapturing()
+/** Runs [op]; returns null on success or the message to toast on failure. */
+private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp, state: GitState): String? {
+    val result: NativeGit.Output = when (op) {
+        GitOp.Refresh -> NativeGit.Output(0, "")
+        GitOp.Fetch -> runGitWithProgress(workDir, publish, "fetch", "--all", "--prune", "--progress")
+        is GitOp.Pull -> runGitWithProgress(
+            workDir, publish,
+            "pull", "--progress", if (op.rebase) "--rebase" else "--no-rebase",
+        )
+        is GitOp.Push -> runPush(publish, workDir, state, op.force)
+        is GitOp.Commit -> {
+            val commit = NativeGit.commitPaths(workDir, op.message, op.paths, op.amend)
+            if (commit.ok && op.pushAfter) {
+                // Upstream may have changed meaning after the commit; re-read before pushing.
+                runPush(publish, workDir, NativeGit.buildState(workDir, state), force = op.amend)
+            } else commit
         }
-        val (exitCode, output) = ProcessBuilder("git", "commit", "-m", gitState.commitMessage)
-            .directory(workDir)
-            .redirectErrorStream(true)
-            .runCapturing()
-        if (exitCode != 0) {
-            // Roll back staged changes on failure.
-            ProcessBuilder("git", "reset", "--mixed", "HEAD")
-                .directory(workDir).redirectErrorStream(true).runCapturing()
-            gitToast(publish, output.trim().ifEmpty { "Commit failed" })
+        is GitOp.Checkout -> runCheckout(workDir, op.branch)
+        is GitOp.CreateBranch -> {
+            val args = buildList {
+                if (op.checkout) addAll(listOf("checkout", "-b")) else add("branch")
+                add(op.name)
+                op.startPoint?.let(::add)
+            }
+            NativeGit.exec(workDir, *args.toTypedArray())
         }
-        exitCode == 0
-    } catch (e: Exception) {
-        gitToast(publish, e.message ?: "Commit failed")
-        false
+        is GitOp.DeleteBranch -> NativeGit.exec(workDir, "branch", if (op.force) "-D" else "-d", op.branch.name)
+        is GitOp.Rollback -> NativeGit.rollback(workDir, op.trackedPaths, op.addedPaths, op.deleteAdded)
+        is GitOp.Stash -> {
+            val args = buildList {
+                addAll(listOf("stash", "push"))
+                if (op.includeUntracked) add("--include-untracked")
+                if (op.message.isNotBlank()) addAll(listOf("-m", op.message.trim()))
+            }
+            NativeGit.exec(workDir, *args.toTypedArray())
+        }
+        is GitOp.Unstash -> NativeGit.exec(workDir, "stash", if (op.pop) "pop" else "apply", op.stash.ref)
+        is GitOp.DropStash -> NativeGit.exec(workDir, "stash", "drop", op.stash.ref)
+        is GitOp.Ignore -> {
+            NativeGit.ignore(workDir, op.paths)
+            NativeGit.Output(0, "")
+        }
     }
-}
-
-private suspend fun runCheckout(publish: (AppMsg) -> Unit, workDir: File, branch: GitBranch) {
-    try {
-        val exitCode = if (branch.isRemote) {
-            val localName = branch.name.substringAfter('/', missingDelimiterValue = branch.name)
-            // Try a plain checkout first in case the local branch already exists.
-            val first = ProcessBuilder("git", "checkout", localName)
-                .directory(workDir).redirectErrorStream(true).runCapturing().first
-            if (first != 0) {
-                // Local branch doesn't exist yet — create it with remote tracking.
-                ProcessBuilder("git", "checkout", "-b", localName, "--track", branch.name)
-                    .directory(workDir).redirectErrorStream(true).runCapturing().first
-            } else first
-        } else {
-            ProcessBuilder("git", "checkout", branch.name)
-                .directory(workDir).redirectErrorStream(true).runCapturing().first
-        }
-        if (exitCode != 0) gitToast(publish, "Checkout failed")
-    } catch (e: Exception) {
-        gitToast(publish, e.message ?: "Checkout failed")
-    }
+    return if (result.ok) null else result.failure("${op.status.removeSuffix("…")} failed")
 }
 
 // -- Driver --
@@ -259,78 +260,29 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         }
     }
 
-    LaunchedEffect(model.modpack.wantsGitPull, model.screen, model.modpack.loaded) {
-        if (!model.modpack.wantsGitPull) return@LaunchedEffect
+    LaunchedEffect(model.modpack.pendingGitOp, model.screen, model.modpack.loaded) {
+        val op = model.modpack.pendingGitOp ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val dir = holder.workDir ?: return@LaunchedEffect
+        val dir = holder.workDir ?: run {
+            publish(AppMsg.Modpack(ModpackMsg.GitOpFinished(op, success = false)))
+            return@LaunchedEffect
+        }
+        val failure = try {
+            withContext(Dispatchers.IO) { runGitOp(publish, dir, op, latestModel.modpack.git) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.message ?: "${op.status.removeSuffix("…")} failed"
+        }
+        if (failure != null) gitToast(publish, failure)
         try {
-            withContext(Dispatchers.IO) {
-                runPull(publish, dir)
-            }
-            val preserve = latestModel.modpack.git
-            withContext(Dispatchers.IO) {
-                refreshGitState(publish, dir, preserve)
-            }
+            withContext(Dispatchers.IO) { refreshGitState(publish, dir, latestModel.modpack.git) }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            gitToast(publish, e.message ?: "Pull failed")
+            gitToast(publish, e.message ?: "Failed to refresh repository")
         }
-        publish(AppMsg.Modpack(ModpackMsg.GitPullFinished))
-    }
-
-    LaunchedEffect(model.modpack.wantsGitPush, model.screen, model.modpack.loaded) {
-        if (!model.modpack.wantsGitPush) return@LaunchedEffect
-        if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val dir = holder.workDir ?: return@LaunchedEffect
-        try {
-            withContext(Dispatchers.IO) {
-                runPush(publish, dir)
-            }
-            val preserve = latestModel.modpack.git
-            withContext(Dispatchers.IO) {
-                refreshGitState(publish, dir, preserve)
-            }
-        } catch (e: Exception) {
-            gitToast(publish, e.message ?: "Push failed")
-        }
-        publish(AppMsg.Modpack(ModpackMsg.GitPushFinished))
-    }
-
-    LaunchedEffect(model.modpack.wantsGitCommit, model.screen, model.modpack.loaded) {
-        if (!model.modpack.wantsGitCommit) return@LaunchedEffect
-        if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val dir = holder.workDir ?: return@LaunchedEffect
-        val commitGit = model.modpack.git
-        val commitOk = try {
-            withContext(Dispatchers.IO) {
-                runCommit(publish, dir, commitGit)
-            }
-        } catch (e: Exception) {
-            gitToast(publish, e.message ?: "Commit failed")
-            false
-        }
-        val preserve = latestModel.modpack.git
-        withContext(Dispatchers.IO) {
-            refreshGitState(publish, dir, preserve)
-        }
-        publish(AppMsg.Modpack(ModpackMsg.GitCommitFinished(commitOk)))
-    }
-
-    LaunchedEffect(model.modpack.gitCheckoutBranch, model.screen, model.modpack.loaded) {
-        val branch = model.modpack.gitCheckoutBranch ?: return@LaunchedEffect
-        if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val dir = holder.workDir ?: return@LaunchedEffect
-        try {
-            withContext(Dispatchers.IO) {
-                runCheckout(publish, dir, branch)
-            }
-            val preserve = latestModel.modpack.git
-            withContext(Dispatchers.IO) {
-                refreshGitState(publish, dir, preserve)
-            }
-        } catch (e: Exception) {
-            gitToast(publish, e.message ?: "Checkout failed")
-        }
-        publish(AppMsg.Modpack(ModpackMsg.GitCheckoutFinished))
+        publish(AppMsg.Modpack(ModpackMsg.GitOpFinished(op, success = failure == null)))
     }
 
     content()

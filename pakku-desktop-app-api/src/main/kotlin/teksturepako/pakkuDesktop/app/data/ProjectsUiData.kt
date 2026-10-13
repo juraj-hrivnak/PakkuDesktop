@@ -55,6 +55,8 @@ data class ProjectsUiData(
      * 2 = list-first split (ratio is list weight).
      */
     @SerialName("split_version") val splitVersion: Int = SPLIT_VERSION_LIST_FIRST,
+    /** Git changelist: unversioned files in their own group (true) or mixed with changes. */
+    @SerialName("git_group_unversioned") val gitGroupUnversioned: Boolean = true,
 ) {
     fun toSortOrder(): SortOrder = when (sortBy) {
         SORT_LAST_UPDATED -> SortOrder.LastUpdated(ascending = sortAscending)
@@ -114,6 +116,7 @@ fun ModpackModel.toProjectsUiData(): ProjectsUiData = ProjectsUiData(
     splitRatio = projectsSplitRatio.coerceIn(0.05f, 0.95f),
     filesSplitRatio = filesSplitRatio.coerceIn(0.05f, 0.95f),
     splitVersion = ProjectsUiData.SPLIT_VERSION_LIST_FIRST,
+    gitGroupUnversioned = gitGroupUnversioned,
 )
 
 fun ModpackModel.withProjectsUi(data: ProjectsUiData): ModpackModel = copy(
@@ -126,4 +129,5 @@ fun ModpackModel.withProjectsUi(data: ProjectsUiData): ModpackModel = copy(
     filterRedistributable = data.filterRedistributable,
     projectsSplitRatio = data.listSplitRatio(),
     filesSplitRatio = data.filesSplitRatio.coerceIn(0.05f, 0.95f),
+    gitGroupUnversioned = data.gitGroupUnversioned,
 )

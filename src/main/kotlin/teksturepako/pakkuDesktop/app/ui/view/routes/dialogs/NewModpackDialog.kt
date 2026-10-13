@@ -6,11 +6,7 @@ package teksturepako.pakkuDesktop.app.ui.view.routes.dialogs
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,22 +16,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.ListComboBox
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.data.ProfileData
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackFieldOptions
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.InitSpec
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogButtons
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSize
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NewModpackDialog(
     profileData: ProfileData,
@@ -63,21 +58,28 @@ fun NewModpackDialog(
         )
     }
 
+    val canSubmit = nameState.text.isNotBlank() && mcState.text.isNotBlank()
+
     PkUiDialog(
-        visible = true,
         onDismiss = onDismiss,
-        title = "Modpack '${profileData.currentProfile?.name}' is not initialized.",
-        onConfirm = { submit() },
-        maxWidth = 480.dp,
+        title = "Create modpack",
+        icon = AllIconsKeys.General.Add,
+        subtitle = "'${profileData.currentProfile?.name}' is not a Pakku modpack yet. Create one in this folder.",
+        size = PkUiDialogSize.Small,
+        onConfirm = { if (canSubmit) submit() },
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = "Create",
+                onPrimary = ::submit,
+                primaryEnabled = canSubmit,
+                onSecondary = onDismiss,
+            )
+        },
     ) {
         Column(
-            Modifier
-                .padding(PakkuDesktopConstants.commonPaddingSize)
-                .widthIn(min = 360.dp),
+            Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Create a new modpack in this folder.")
-
             GroupHeader("Basics")
             LabeledField("Name") {
                 TextField(state = nameState, modifier = Modifier.fillMaxWidth())
@@ -115,27 +117,13 @@ fun NewModpackDialog(
                     ),
                 )
             }
-
-            FlowRow(
-                verticalArrangement = Arrangement.Center,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                OutlinedButton(
-                    onClick = { submit() },
-                    modifier = Modifier.padding(vertical = 4.dp),
-                ) { Text("Create") }
-                DefaultButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.padding(vertical = 4.dp),
-                ) { Text("Cancel") }
-            }
         }
     }
 }
 
 @Composable
 private fun LabeledField(label: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, color = JewelTheme.contentColor.copy(alpha = 0.75f))
         content()
     }

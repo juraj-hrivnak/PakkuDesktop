@@ -19,9 +19,9 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.painter.hints.Size
 import org.jetbrains.jewel.ui.theme.colorPalette
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FloatingActionIcon
-import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
 import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -52,13 +52,13 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
         FloatingActionIcon(
             onClick = {
                 publish(ModpackMsg.GitFabRemembered(GitFabAction.Pull))
-                publish(ModpackMsg.ShowGitPullDialog)
+                publish(ModpackMsg.ShowGitDialog(GitDialog.Update))
             },
             enabled = canPull,
             buttonSize = 44.dp,
             accent = pullAccent,
             isDefault = lastFab == GitFabAction.Pull,
-            tooltip = "Pull",
+            tooltip = "Update Project (Ctrl+T)",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Pull
             Icon(
@@ -77,13 +77,13 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
         FloatingActionIcon(
             onClick = {
                 publish(ModpackMsg.GitFabRemembered(GitFabAction.Push))
-                publish(ModpackMsg.GitDropdown(GitDropdownMsg.ShowPushDialog))
+                publish(ModpackMsg.ShowGitDialog(GitDialog.Push))
             },
             enabled = canPush,
             buttonSize = 44.dp,
             accent = pushAccent,
             isDefault = lastFab == GitFabAction.Push,
-            tooltip = "Push",
+            tooltip = "Push (Ctrl+Shift+K)",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Push
             Icon(
@@ -102,13 +102,13 @@ fun BoxScope.GitFloatingActions(publish: (ModpackMsg) -> Unit, model: GitTabMode
         FloatingActionIcon(
             onClick = {
                 publish(ModpackMsg.GitFabRemembered(GitFabAction.Commit))
-                publish(ModpackMsg.ShowGitCommitDialog)
+                publish(ModpackMsg.ShowGitDialog(GitDialog.Commit))
             },
             enabled = canCommit,
             buttonSize = 44.dp,
             accent = commitAccent,
             isDefault = lastFab == GitFabAction.Commit,
-            tooltip = "Commit selected files",
+            tooltip = "Commit selected files (Ctrl+K)",
         ) { hovered ->
             val accentHot = hovered || lastFab == GitFabAction.Commit
             Icon(

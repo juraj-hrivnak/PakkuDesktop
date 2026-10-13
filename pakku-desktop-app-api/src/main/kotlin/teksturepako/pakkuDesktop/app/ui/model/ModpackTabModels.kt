@@ -18,6 +18,7 @@ import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitOp
 
 /*
  * Per-tab slices of [ModpackModel]. Property names mirror [ModpackModel] so tab bodies read
@@ -156,21 +157,19 @@ data class GitTabModel(
     val git: GitState,
     val gitCurrentDiff: DiffContent?,
     val gitDiffPendingFile: GitFile?,
-    val wantsGitPull: Boolean,
-    val wantsGitPush: Boolean,
-    val wantsGitCommit: Boolean,
+    val pendingGitOp: GitOp?,
     /** [ModpackModel.gitBusy] */
     val gitBusy: Boolean,
     val lastGitFab: GitFabAction?,
+    val groupUnversioned: Boolean,
 )
 
 fun ModpackModel.gitTab() = GitTabModel(
     git = git,
     gitCurrentDiff = gitCurrentDiff,
     gitDiffPendingFile = gitDiffPendingFile,
-    wantsGitPull = wantsGitPull,
-    wantsGitPush = wantsGitPush,
-    wantsGitCommit = wantsGitCommit,
+    pendingGitOp = pendingGitOp,
     gitBusy = gitBusy(),
     lastGitFab = lastGitFab,
+    groupUnversioned = gitGroupUnversioned,
 )

@@ -43,11 +43,22 @@ object NativeGit {
     /**
      * Builds [GitState] purely from native git commands.
      */
-    suspend fun buildState(workDir: File, preserve: GitState): GitState = preserve.copy(
-        branches = readBranches(workDir),
-        outgoingCommits = readOutgoingCommits(workDir),
-        gitFiles = parseGitStatus(workDir).toPersistentList(),
-    )
+    suspend fun buildState(workDir: File, preserve: GitState): GitState {
+        val upstream = run(workDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+            ?.trim()?.takeIf { it.isNotEmpty() && !it.startsWith("@") }
+        return preserve.copy(
+            branches = readBranches(workDir),
+            outgoingCommits = readOutgoingCommits(workDir, hasUpstream = upstream != null),
+            gitFiles = parseGitStatus(workDir).toPersistentList(),
+            upstream = upstream,
+            incomingCount = if (upstream == null) 0
+            else run(workDir, "rev-list", "--count", "HEAD..@{u}")?.trim()?.toIntOrNull() ?: 0,
+            remotes = run(workDir, "remote")?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }
+                .orEmpty().toPersistentList(),
+            headMessage = run(workDir, "log", "-1", "--format=%B")?.trimEnd().orEmpty(),
+            stashes = readStashes(workDir).toPersistentList(),
+        )
+    }
 
     private suspend fun parseGitStatus(workDir: File): List<GitFile> {
         // -uall expands untracked directories into individual files so the tree
@@ -105,9 +116,13 @@ object NativeGit {
             }.toSet()
     }
 
-    private suspend fun readOutgoingCommits(workDir: File): Set<GitCommit> {
-        // `@{u}` fails gracefully when no upstream is configured — run returns null/empty.
-        val output = run(workDir, "log", "@{u}..HEAD", "--format=%h %s") ?: return emptySet()
+    private suspend fun readOutgoingCommits(workDir: File, hasUpstream: Boolean): Set<GitCommit> {
+        // Without an upstream, everything not on any remote is outgoing (first push of a branch).
+        val output = if (hasUpstream) {
+            run(workDir, "log", "@{u}..HEAD", "--format=%h %s")
+        } else {
+            run(workDir, "log", "HEAD", "--not", "--remotes", "--format=%h %s")
+        } ?: return emptySet()
         return output.lineSequence()
             .filter { it.isNotBlank() }
             .take(100)
@@ -116,6 +131,115 @@ object NativeGit {
                 if (space < 0) GitCommit(line.trim(), "")
                 else GitCommit(line.substring(0, space), line.substring(space + 1).trim())
             }
+    }
+
+    private suspend fun readStashes(workDir: File): List<GitStash> {
+        val output = run(workDir, "stash", "list", "--format=%gd%x00%s") ?: return emptyList()
+        return output.lineSequence()
+            .filter { '\u0000' in it }
+            .map { line -> GitStash(ref = line.substringBefore('\u0000'), message = line.substringAfter('\u0000')) }
+            .toList()
+    }
+
+    // -- Operations --
+
+    /** Exit code and merged stdout/stderr of one git command. */
+    data class Output(val exitCode: Int, val text: String) {
+        val ok: Boolean get() = exitCode == 0
+
+        /** Last meaningful line, for a toast. */
+        fun failure(fallback: String): String =
+            text.lineSequence().map { it.trim() }.lastOrNull { it.isNotEmpty() && !it.startsWith("hint:") }
+                ?: fallback
+    }
+
+    /** Runs git with stderr merged into the captured output. [env] is added to the environment. */
+    suspend fun exec(
+        workDir: File,
+        vararg args: String,
+        files: List<String> = emptyList(),
+        env: Map<String, String> = emptyMap(),
+    ): Output {
+        val root = workDir.canonicalFile
+        files.forEach { rel -> requireInside(root, rel) }
+        val allArgs = if (files.isEmpty()) args.toList() else args.toList() + "--" + files
+        val (code, text) = ProcessBuilder("git", *allArgs.toTypedArray())
+            .directory(root)
+            .redirectErrorStream(true)
+            .apply { environment().putAll(env) }
+            .runCapturing()
+        return Output(code, text)
+    }
+
+    /**
+     * Commits exactly [paths] (like IntelliJ's partial commit): a temporary index starts at HEAD,
+     * takes the working-tree state of [paths], and is committed. Anything else the user staged
+     * stays staged; the real index entries of [paths] are then synced to the new HEAD.
+     */
+    suspend fun commitPaths(workDir: File, message: String, paths: List<String>, amend: Boolean): Output {
+        val tempIndex = File.createTempFile("pakku-commit", ".index").apply { delete() }
+        try {
+            val env = mapOf("GIT_INDEX_FILE" to tempIndex.absolutePath)
+            val hasHead = exec(workDir, "rev-parse", "--verify", "-q", "HEAD").ok
+            val read = if (hasHead) exec(workDir, "read-tree", "HEAD", env = env)
+            else exec(workDir, "read-tree", "--empty", env = env)
+            if (!read.ok) return read
+            val add = exec(workDir, "add", "-A", files = paths, env = env)
+            if (!add.ok) return add
+            val commitArgs = buildList {
+                add("commit")
+                if (amend) add("--amend")
+                add("-m")
+                add(message)
+            }
+            val commit = exec(workDir, *commitArgs.toTypedArray(), env = env)
+            if (!commit.ok) return commit
+            exec(workDir, "reset", "-q", files = paths)
+            return commit
+        } finally {
+            tempIndex.delete()
+        }
+    }
+
+    /** Restores tracked [trackedPaths] to HEAD; unstages [addedPaths] and optionally deletes them. */
+    suspend fun rollback(
+        workDir: File,
+        trackedPaths: List<String>,
+        addedPaths: List<String>,
+        deleteAdded: Boolean,
+    ): Output {
+        if (trackedPaths.isNotEmpty()) {
+            val restored = exec(workDir, "checkout", "HEAD", files = trackedPaths)
+            if (!restored.ok) return restored
+        }
+        if (addedPaths.isNotEmpty()) {
+            val unstaged = exec(workDir, "rm", "--cached", "-q", "-r", "--force", files = addedPaths)
+            if (!unstaged.ok) return unstaged
+            if (deleteAdded) {
+                val root = workDir.canonicalFile
+                addedPaths.forEach { requireInside(root, it).delete() }
+            }
+        }
+        return Output(0, "")
+    }
+
+    /** Appends anchored entries for [paths] to the root `.gitignore`, skipping ones already listed. */
+    fun ignore(workDir: File, paths: List<String>) {
+        val root = workDir.canonicalFile
+        paths.forEach { requireInside(root, it) }
+        val gitignore = File(root, ".gitignore")
+        val existing = if (gitignore.exists()) gitignore.readText() else ""
+        val present = existing.lineSequence().map { it.trim() }.toSet()
+        val entries = paths.map { "/" + it.replace(File.separatorChar, '/') }.filter { it !in present }
+        if (entries.isEmpty()) return
+        val prefix = if (existing.isEmpty() || existing.endsWith("\n")) "" else "\n"
+        gitignore.appendText(prefix + entries.joinToString("\n", postfix = "\n"))
+    }
+
+    private fun requireInside(root: File, rel: String): File {
+        val resolved = File(root, rel).canonicalFile
+        check(resolved.path.startsWith(root.path + File.separator) || resolved == root) { "INVALID PATH $rel" }
+        return resolved
     }
 
     // -- Diff --
@@ -208,14 +332,8 @@ object NativeGit {
 
     suspend fun run(workDir: File, vararg args: String, files: Array<out String> = emptyArray()): String? = try {
         val root = workDir.canonicalFile
-        val f = files.map { rel ->
-            val resolved = File(root, rel).canonicalFile
-            check(resolved.path.startsWith(root.path + File.separator) || resolved == root) {
-                "INVALID PATH $rel"
-            }
-            rel
-        }
-        val allArgs = if (f.isEmpty()) args.toList() else args.toList() + "--" + f
+        files.forEach { rel -> requireInside(root, rel) }
+        val allArgs = if (files.isEmpty()) args.toList() else args.toList() + "--" + files
         ProcessBuilder("git", *allArgs.toTypedArray())
             .directory(root)
             .redirectError(ProcessBuilder.Redirect.DISCARD)

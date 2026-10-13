@@ -8,8 +8,12 @@ import kotlinx.datetime.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import teksturepako.pakkuDesktop.app.git.GitChange
+import teksturepako.pakkuDesktop.app.git.GitChangeGroup
 import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
+import teksturepako.pakkuDesktop.app.git.gitFilesUnderTreeFolder
+import teksturepako.pakkuDesktop.app.git.gitFolderIds
+import teksturepako.pakkuDesktop.app.git.gitTreePath
 import teksturepako.pakkuDesktop.app.git.mergeChangelistExpandedFolders
 
 class PathTreeTest {
@@ -110,16 +114,43 @@ class PathTreeTest {
         )
         val expanded = setOf("mods", "config")
         val selected = setOf("mods/B.jar")
-        val adapterRows = gitChangelistUiSnapshot(files).flatRows(expanded, selected)
+        val adapterRows = gitChangelistUiSnapshot(files, grouped = false).flatRows(expanded, selected)
         val legacyRows = legacyGitFlatRows(files, expanded, selected)
         assertEquals(legacyRows, adapterRows.map { it.toLegacyShape() })
+    }
+
+    @Test
+    fun groupedChangelistSplitsUnversionedFiles() {
+        val files = listOf(
+            gitFile("mods/A.jar", GitChange.Added("mods/A.jar")),
+            gitFile("mods/B.jar", GitChange.Untracked("mods/B.jar")),
+            gitFile("readme.txt", GitChange.Modified("readme.txt")),
+        )
+        val changes = GitChangeGroup.Changes.id
+        val unversioned = GitChangeGroup.Unversioned.id
+        val expanded = gitFolderIds(files, grouped = true)
+        assertEquals(setOf(changes, "$changes/mods", unversioned, "$unversioned/mods"), expanded)
+
+        val selected = setOf(gitTreePath(files[1], grouped = true))
+        val rows = gitChangelistUiSnapshot(files, grouped = true).flatRows(expanded, selected)
+        val unversionedRow = rows.filterIsInstance<PathTreeRow.Folder>().single { it.fullPath == unversioned }
+        assertEquals(1, unversionedRow.subtreeItemCount)
+        assertEquals(1, unversionedRow.selectedInSubtree)
+        assertEquals(
+            listOf("mods/A.jar", "readme.txt"),
+            gitFilesUnderTreeFolder(files, changes, grouped = true).map { it.path },
+        )
+        assertEquals(
+            listOf("mods/B.jar"),
+            gitFilesUnderTreeFolder(files, "$unversioned/mods", grouped = true).map { it.path },
+        )
     }
 
     @Test
     fun mergeChangelistExpandedFoldersUsesPathKey() {
         val f1 = gitFile("a/b.txt", GitChange.Modified("a/b.txt"))
         val f2 = gitFile("a/b.txt", GitChange.Added("a/b.txt"))
-        val kept = mergeChangelistExpandedFolders(setOf("a", "gone"), listOf(f1), listOf(f2))
+        val kept = mergeChangelistExpandedFolders(setOf("a", "gone"), listOf(f1), listOf(f2), grouped = false)
         assertEquals(setOf("a"), kept)
     }
 

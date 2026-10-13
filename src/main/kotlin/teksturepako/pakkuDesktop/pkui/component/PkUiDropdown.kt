@@ -225,19 +225,22 @@ fun PkUiDropdown(
         // -- Popup (always dark) --
         if (expanded) {
             val density = LocalDensity.current
+            val submenuState = remember { PkUiSubmenuState() }
 
-            PopupMenu(
-                onDismissRequest = {
-                    dismiss()
-                    true
-                },
-                popupProperties = PopupProperties(focusable = false),
-                modifier = menuModifier
-                    .zIndex(1f)
-                    .defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
-                horizontalAlignment = Alignment.Start,
-                content = menuContent,
-            )
+            CompositionLocalProvider(LocalPkUiSubmenuState provides submenuState) {
+                PopupMenu(
+                    onDismissRequest = {
+                        dismiss()
+                        true
+                    },
+                    popupProperties = PopupProperties(focusable = false),
+                    modifier = menuModifier
+                        .zIndex(1f)
+                        .defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
+                    horizontalAlignment = Alignment.Start,
+                    content = menuContent,
+                )
+            }
         }
     }
 }

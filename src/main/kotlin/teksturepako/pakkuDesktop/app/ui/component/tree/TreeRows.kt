@@ -27,6 +27,7 @@ import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TriStateCheckbox
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.theme.treeStyle
@@ -85,6 +86,8 @@ fun TreeFolderRow(
     onToggleSelected: (() -> Unit)?,
     modifier: Modifier = Modifier,
     selectionScope: TreeFolderSelectionScope? = null,
+    label: String = row.displayName,
+    icon: IconKey = AllIconsKeys.Nodes.Folder,
     trailing: @Composable RowScope.() -> Unit = {},
 )
 {
@@ -156,7 +159,7 @@ fun TreeFolderRow(
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Icon(
-                    key = AllIconsKeys.Nodes.Folder,
+                    key = icon,
                     contentDescription = null,
                     tint = JewelTheme.contentColor.copy(alpha = 0.85f),
                     hints = arrayOf(),
@@ -168,7 +171,7 @@ fun TreeFolderRow(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
-                    text = row.displayName,
+                    text = label,
                     modifier = Modifier
                         .weight(1f)
                         .clickable(

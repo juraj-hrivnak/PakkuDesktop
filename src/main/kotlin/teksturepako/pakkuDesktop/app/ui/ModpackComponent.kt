@@ -45,6 +45,9 @@ import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
+import teksturepako.pakkuDesktop.app.git.GitDialog
+import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.gitFilesUnderTreeFolder
 import teksturepako.pakkuDesktop.app.git.gitFolderIds
 import teksturepako.pakkuDesktop.app.git.mergeChangelistExpandedFolders
 import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
@@ -172,13 +175,13 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         val busy = model.gitBusy()
         val selected = model.git.selectedFiles.isNotEmpty()
         val canPush = model.git.outgoingCommits.isNotEmpty()
-        when (val fab = model.lastGitFab) {
+        when (model.lastGitFab) {
             GitFabAction.Pull if !busy ->
-                modpackUpdate(ModpackMsg.ShowGitPullDialog, model)
+                modpackUpdate(ModpackMsg.ShowGitDialog(GitDialog.Update), model)
             GitFabAction.Push if !busy && canPush ->
-                modpackUpdate(ModpackMsg.GitDropdown(GitDropdownMsg.ShowPushDialog), model)
+                modpackUpdate(ModpackMsg.ShowGitDialog(GitDialog.Push), model)
             GitFabAction.Commit if !busy && selected ->
-                modpackUpdate(ModpackMsg.ShowGitCommitDialog, model)
+                modpackUpdate(ModpackMsg.ShowGitDialog(GitDialog.Commit), model)
             else -> model
         }
     }
@@ -681,6 +684,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             model.git.expandedFolderPaths,
             model.git.gitFiles,
             incoming.gitFiles,
+            model.gitGroupUnversioned,
         ).toPersistentSet()
         val next = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded)
         val git = if (next == model.git) model.git else next
@@ -702,10 +706,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     is ModpackMsg.GitFolderSelectionToggled -> {
         val g = model.git
-        val prefix = msg.folderPath
-        val under = g.gitFiles.filter { f ->
-            f.path == prefix || f.path.startsWith("$prefix/")
-        }.toSet()
+        val under = gitFilesUnderTreeFolder(g.gitFiles, msg.folderPath, model.gitGroupUnversioned).toSet()
         if (under.isEmpty()) model
         else {
             val underPaths = under.map { it.path }.toSet()
@@ -722,7 +723,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     is ModpackMsg.GitChangelistFolderExpansionToggled -> {
         val g = model.git
-        val ids = gitFolderIds(g.gitFiles)
+        val ids = gitFolderIds(g.gitFiles, model.gitGroupUnversioned)
         if (msg.folderPath !in ids) model
         else {
             val next = if (msg.folderPath in g.expandedFolderPaths) {
@@ -735,7 +736,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     }
     ModpackMsg.GitChangelistExpandAllFolders -> {
         val g = model.git
-        val ids = gitFolderIds(g.gitFiles).toPersistentSet()
+        val ids = gitFolderIds(g.gitFiles, model.gitGroupUnversioned).toPersistentSet()
         if (ids == g.expandedFolderPaths) model
         else model.copy(git = g.copy(expandedFolderPaths = ids))
     }
@@ -761,30 +762,33 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.GitEventProgressUpdated  ->
         if (model.gitEventProgress == msg.progress) model else model.copy(gitEventProgress = msg.progress)
 
-    ModpackMsg.ShowGitCommitDialog -> model.copy(gitCommitDialogVisible = true)
-    ModpackMsg.HideGitCommitDialog ->
-        if (!model.gitCommitDialogVisible) model else model.copy(gitCommitDialogVisible = false)
-    ModpackMsg.ShowGitPullDialog   -> model.copy(gitPullDialogVisible = true)
-    ModpackMsg.HideGitPullDialog   ->
-        if (!model.gitPullDialogVisible) model else model.copy(gitPullDialogVisible = false)
+    is ModpackMsg.ShowGitDialog ->
+        if (model.gitBusy() || model.gitDialog == msg.dialog) model else model.copy(gitDialog = msg.dialog)
+    ModpackMsg.HideGitDialog ->
+        if (model.gitDialog == null) model else model.copy(gitDialog = null)
 
-    ModpackMsg.GitPullRequested     -> model.copy(wantsGitPull = true, gitPullDialogVisible = false)
-    ModpackMsg.GitPullFinished      -> model.copy(wantsGitPull = false, gitEventProgress = null)
-    ModpackMsg.GitPushRequested     -> model.copy(wantsGitPush = true)
-    ModpackMsg.GitPushFinished      -> model.copy(wantsGitPush = false, gitEventProgress = null)
-    ModpackMsg.GitCommitRequested   -> model.copy(wantsGitCommit = true, gitCommitDialogVisible = false)
-    is ModpackMsg.GitCommitFinished -> model.copy(
-        wantsGitCommit = false,
-        gitEventProgress = null,
-        gitCommitDialogVisible = false,
-        git = if (msg.success) {
-            model.git.copy(commitMessage = "", selectedFiles = persistentSetOf())
-        } else {
-            model.git
-        },
-    )
-    is ModpackMsg.GitCheckoutRequested -> model.copy(gitCheckoutBranch = msg.branch)
-    ModpackMsg.GitCheckoutFinished  -> model.copy(gitCheckoutBranch = null, gitEventProgress = null)
+    is ModpackMsg.GitOpRequested ->
+        if (model.gitBusy()) model
+        else model.withPendingGitOp(msg.op).copy(
+            // Dropping a stash keeps the unstash list open.
+            gitDialog = if (msg.op is GitOp.DropStash) model.gitDialog else null,
+        )
+    is ModpackMsg.GitOpFinished ->
+        if (model.pendingGitOp != msg.op) model
+        else {
+            val done = model.withPendingGitOp(null).copy(gitEventProgress = null)
+            if (msg.success && msg.op is GitOp.Commit) {
+                done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
+            } else done
+        }
+    is ModpackMsg.GitGroupUnversionedChanged ->
+        if (model.gitGroupUnversioned == msg.grouped) model
+        else model.copy(
+            gitGroupUnversioned = msg.grouped,
+            git = model.git.copy(
+                expandedFolderPaths = gitFolderIds(model.git.gitFiles, msg.grouped).toPersistentSet(),
+            ),
+        )
 
     is ModpackMsg.ModpackDropdown -> {
         val updatedDropdown = modpackDropdownComponent.update(msg.msg, model.modpackDropdown)
@@ -812,17 +816,20 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         val updatedGitDropdown = gitDropdownComponent.update(msg.msg, model.gitDropdown)
         val base = model.withChild(model.gitDropdown, updatedGitDropdown) { copy(gitDropdown = it) }
         when (val child = msg.msg) {
-            GitDropdownMsg.PullRequested              -> base.copy(wantsGitPull = true)
-            GitDropdownMsg.PushRequested              -> base.copy(
-                wantsGitPush = true,
-                gitDropdown = updatedGitDropdown.copy(pushDialogVisible = false),
-            )
-            is GitDropdownMsg.TabSelected             ->
+            is GitDropdownMsg.ShowDialog  -> modpackUpdate(ModpackMsg.ShowGitDialog(child.dialog), base)
+            is GitDropdownMsg.OpRequested -> modpackUpdate(ModpackMsg.GitOpRequested(child.op), base)
+            is GitDropdownMsg.TabSelected ->
                 if (base.selectedTab == child.tab) base else base.copy(selectedTab = child.tab)
-            is GitDropdownMsg.CheckoutRequested       -> base.copy(gitCheckoutBranch = child.branch)
-            else                                      -> base
         }
     }
+}
+
+private fun ModpackModel.withPendingGitOp(op: GitOp?): ModpackModel {
+    val busy = op != null
+    return copy(
+        pendingGitOp = op,
+        gitDropdown = if (gitDropdown.busy == busy) gitDropdown else gitDropdown.copy(busy = busy),
+    )
 }
 
 // -- modpackComponent --

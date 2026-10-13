@@ -4,32 +4,27 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.dialog
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Checkbox
-import org.jetbrains.jewel.ui.component.DefaultButton
-import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.AlreadyAdded
 import teksturepako.pakku.api.actions.errors.NoFiles
@@ -44,15 +39,16 @@ import teksturepako.pakkuDesktop.app.actions.fingerprint
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
+import teksturepako.pakkuDesktop.pkui.component.PkUiChip
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSectionLabel
 
 /** Width of the checkbox column — deps align to the content column beside it. */
 private val CheckboxCol = 28.dp
 
-/** Width of one tree-guide column (continuous ancestor stems + elbow). */
-private val GuideCol = 14.dp
+/** Indent per nested dependency level. */
+private val DepIndent = 18.dp
 
-/** Stroke for Pakku-like tree guides. */
-private val GuideStroke = 1.5.dp
+private val DepIconSize = 14.dp
 
 @Composable
 fun ReviewRootRow(
@@ -76,7 +72,12 @@ fun ReviewRootRow(
         ) {
             if (replacing != null) {
                 ProjectRef(replacing)
-                Text("→", color = JewelTheme.contentColor.copy(alpha = 0.45f), fontSize = 12.sp)
+                Icon(
+                    AllIconsKeys.Vcs.Arrow_right,
+                    contentDescription = "replaced by",
+                    tint = JewelTheme.contentColor.copy(alpha = 0.55f),
+                    modifier = Modifier.size(DepIconSize),
+                )
                 ProjectRef(project)
             } else {
                 ProjectRef(project)
@@ -131,14 +132,16 @@ fun ReviewRootRowSimple(
             warning?.let { ContextualWarning(it, shownFingerprints) }
             if (checked && orphanedChildren.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    SectionLabel(depSectionLabel)
-                    orphanedChildren.forEachIndexed { index, child ->
-                        val isLast = index == orphanedChildren.lastIndex
+                    PkUiDialogSectionLabel(
+                        depSectionLabel,
+                        icon = AllIconsKeys.Toolwindows.Dependencies,
+                        trailing = orphanedChildren.size.toString(),
+                    )
+                    orphanedChildren.forEach { child ->
                         RemovableDepRow(
                             entry = child,
                             checked = child.key in acceptedDepIds,
                             onCheckedChange = { on -> onDepCheckedChange(child.key, on) },
-                            isLast = isLast,
                             shownFingerprints = shownFingerprints,
                         )
                     }
@@ -153,18 +156,16 @@ private fun RemovableDepRow(
     entry: RemovalEntry,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    isLast: Boolean,
     shownFingerprints: MutableSet<String>,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .height(26.dp),
+                .heightIn(min = 26.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            TreeElbow(isLast = isLast, hasChildren = false)
             Box(
                 Modifier.width(CheckboxCol),
                 contentAlignment = Alignment.Center,
@@ -174,8 +175,9 @@ private fun RemovableDepRow(
                     onCheckedChange = onCheckedChange,
                 )
             }
+            DependencyIcon(dimmed = !checked)
             ProjectRef(entry.project, fontSize = 12.sp, iconSize = 14.dp)
-            StatusChip(
+            PkUiChip(
                 text = if (entry.isRecommended) "unused" else "still required",
                 muted = !entry.isRecommended,
                 accent = if (entry.isRecommended) {
@@ -189,7 +191,7 @@ private fun RemovableDepRow(
             ContextualWarning(
                 it,
                 shownFingerprints,
-                Modifier.padding(start = GuideCol + CheckboxCol + 6.dp),
+                Modifier.padding(start = CheckboxCol + DepIconSize + 12.dp),
             )
         }
     }
@@ -247,58 +249,47 @@ private fun DepSection(
     shownFingerprints: MutableSet<String>,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        SectionLabel(label)
+        PkUiDialogSectionLabel(
+            label,
+            icon = AllIconsKeys.Toolwindows.Dependencies,
+            trailing = nodes.countDeps().toString(),
+        )
         DepTree(
             nodes = nodes,
             depth = 0,
-            ancestorContinues = emptyList(),
             cue = cue,
             shownFingerprints = shownFingerprints,
         )
     }
 }
 
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        color = JewelTheme.contentColor.copy(alpha = 0.5f),
-        fontSize = 11.sp,
-        modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
-    )
-}
+private fun List<DepNode>.countDeps(): Int = sumOf { 1 + it.children.countDeps() }
 
 @Composable
 private fun DepTree(
     nodes: List<DepNode>,
     depth: Int,
-    ancestorContinues: List<Boolean>,
     cue: String,
     shownFingerprints: MutableSet<String>,
 ) {
-    nodes.forEachIndexed { index, node ->
-        val isLast = index == nodes.lastIndex
-        DepLeafRow(
+    nodes.forEach { node ->
+        DepRow(
             project = node.project,
             depth = depth,
-            isLast = isLast,
-            ancestorContinues = ancestorContinues,
             alreadyPresent = node.alreadyPresent,
             cue = cue,
-            hasChildren = node.children.isNotEmpty(),
         )
         node.warnings.forEach {
             ContextualWarning(
                 it,
                 shownFingerprints,
-                Modifier.padding(start = GuideCol * (depth + 1) + 10.dp),
+                Modifier.padding(start = DepIndent * depth + DepIconSize + 8.dp),
             )
         }
         if (node.children.isNotEmpty()) {
             DepTree(
                 nodes = node.children,
                 depth = depth + 1,
-                ancestorContinues = ancestorContinues + !isLast,
                 cue = cue,
                 shownFingerprints = shownFingerprints,
             )
@@ -307,155 +298,42 @@ private fun DepTree(
 }
 
 @Composable
-private fun DepLeafRow(
+private fun DepRow(
     project: Project,
     depth: Int,
-    isLast: Boolean,
-    ancestorContinues: List<Boolean>,
     alreadyPresent: Boolean,
     cue: String,
-    hasChildren: Boolean,
 ) {
-    val rowHeight = 24.dp
     Row(
         Modifier
             .fillMaxWidth()
-            .height(rowHeight),
+            .heightIn(min = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TreeGuides(
-            depth = depth,
-            isLast = isLast,
-            ancestorContinues = ancestorContinues,
-            hasChildren = hasChildren,
-            rowHeight = rowHeight,
-            accent = if (alreadyPresent) {
-                JewelTheme.contentColor.copy(alpha = 0.28f)
-            } else {
-                PakkuDesktopConstants.highlightColor.copy(alpha = 0.55f)
-            },
-        )
+        if (depth > 0) Spacer(Modifier.width(DepIndent * depth - 8.dp))
+        DependencyIcon(dimmed = alreadyPresent)
         ProjectRef(project, fontSize = 12.sp, iconSize = 14.dp)
-        StatusChip(
+        PkUiChip(
             text = if (alreadyPresent) "in pack" else cue,
             muted = alreadyPresent,
         )
     }
 }
 
-/**
- * Continuous ancestor stems + elbow/T into the node, with a Pakku cyan joint.
- */
+/** New UI "related" link glyph marking a row as a dependency of the row above. */
 @Composable
-private fun TreeGuides(
-    depth: Int,
-    isLast: Boolean,
-    ancestorContinues: List<Boolean>,
-    hasChildren: Boolean,
-    rowHeight: Dp,
-    accent: Color,
-) {
-    Row(Modifier.height(rowHeight)) {
-        repeat(depth) { level ->
-            val continues = ancestorContinues.getOrNull(level) == true
-            Box(
-                Modifier
-                    .width(GuideCol)
-                    .fillMaxHeight(),
-            ) {
-                if (continues) {
-                    Box(
-                        Modifier
-                            .align(Alignment.Center)
-                            .width(GuideStroke)
-                            .fillMaxHeight()
-                            .background(accent.copy(alpha = 0.35f)),
-                    )
-                }
-            }
-        }
-        TreeElbow(
-            isLast = isLast,
-            hasChildren = hasChildren,
-            accent = accent,
-        )
-    }
-}
-
-@Composable
-private fun TreeElbow(
-    isLast: Boolean,
-    hasChildren: Boolean,
-    accent: Color = PakkuDesktopConstants.highlightColor.copy(alpha = 0.55f),
-) {
-    Box(
-        Modifier
-            .width(GuideCol)
-            .fillMaxHeight(),
-    ) {
-        // Vertical: full for T (more siblings below), half for L (last).
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .width(GuideStroke)
-                .fillMaxHeight(if (isLast) 0.5f else 1f)
-                .background(accent),
-        )
-        // Stem downward into children (keeps parent→child continuous).
-        if (hasChildren) {
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .width(GuideStroke)
-                    .fillMaxHeight(0.5f)
-                    .background(accent),
-            )
-        }
-        // Horizontal arm
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = GuideCol / 2)
-                .width(GuideCol / 2)
-                .height(GuideStroke)
-                .background(accent),
-        )
-        // Joint
-        Box(
-            Modifier
-                .align(Alignment.Center)
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(accent.copy(alpha = 0.95f)),
-        )
-    }
-}
-
-@Composable
-private fun StatusChip(
-    text: String,
-    muted: Boolean,
-    accent: Color = PakkuDesktopConstants.highlightColor,
-) {
-    val bg = if (muted) {
-        JewelTheme.globalColors.borders.normal.copy(alpha = 0.35f)
-    } else {
-        accent.copy(alpha = 0.18f)
-    }
-    val fg = if (muted) {
-        JewelTheme.contentColor.copy(alpha = 0.55f)
-    } else {
-        accent.copy(alpha = 0.95f)
-    }
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(bg)
-            .padding(horizontal = 6.dp, vertical = 1.dp),
-    ) {
-        Text(text, color = fg, fontSize = 10.sp)
-    }
+private fun DependencyIcon(dimmed: Boolean) {
+    Icon(
+        AllIconsKeys.Nodes.Related,
+        contentDescription = "Dependency",
+        tint = if (dimmed) {
+            JewelTheme.contentColor.copy(alpha = 0.4f)
+        } else {
+            PakkuDesktopConstants.highlightColor
+        },
+        modifier = Modifier.size(DepIconSize),
+    )
 }
 
 /**
@@ -480,6 +358,12 @@ fun ContextualWarning(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    AllIconsKeys.Nodes.Related,
+                    contentDescription = null,
+                    tint = muted,
+                    modifier = Modifier.size(12.dp),
+                )
                 Text("Required by", color = muted, fontSize = 11.sp)
                 error.dependants.forEachIndexed { i, dep ->
                     if (i > 0) Text(",", color = muted, fontSize = 11.sp)
@@ -487,30 +371,10 @@ fun ContextualWarning(
                 }
             }
         }
-        is NotFoundOn -> Text(
-            "Not found on ${error.provider.name}",
-            color = color,
-            fontSize = 11.sp,
-            modifier = modifier,
-        )
-        is NoFilesOn -> Text(
-            "No files on ${error.provider.name}",
-            color = color,
-            fontSize = 11.sp,
-            modifier = modifier,
-        )
-        is NoFiles -> Text(
-            "No matching files for this pack",
-            color = color,
-            fontSize = 11.sp,
-            modifier = modifier,
-        )
-        is VersionsDoNotMatch -> Text(
-            "Versions do not match across platforms",
-            color = color,
-            fontSize = 11.sp,
-            modifier = modifier,
-        )
+        is NotFoundOn -> WarningLine("Not found on ${error.provider.name}", color, modifier)
+        is NoFilesOn -> WarningLine("No files on ${error.provider.name}", color, modifier)
+        is NoFiles -> WarningLine("No matching files for this pack", color, modifier)
+        is VersionsDoNotMatch -> WarningLine("Versions do not match across platforms", color, modifier)
         is AlreadyAdded -> Text(
             "Already in pack",
             color = muted,
@@ -522,38 +386,14 @@ fun ContextualWarning(
 }
 
 @Composable
-fun ReviewDialogFooter(
-    primaryLabel: String,
-    primaryEnabled: Boolean,
-    onPrimary: () -> Unit,
-    secondaryLabel: String,
-    onSecondary: () -> Unit,
-) {
-    Column(
-        Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+private fun WarningLine(text: String, color: Color, modifier: Modifier) {
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(JewelTheme.globalColors.borders.normal.copy(alpha = 0.5f)),
-        )
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedButton(onClick = onSecondary) {
-                Text(secondaryLabel)
-            }
-            DefaultButton(
-                onClick = onPrimary,
-                enabled = primaryEnabled,
-            ) {
-                Text(primaryLabel)
-            }
-        }
+        Icon(AllIconsKeys.General.Warning, contentDescription = null, modifier = Modifier.size(12.dp))
+        Text(text, color = color, fontSize = 11.sp)
     }
 }
 

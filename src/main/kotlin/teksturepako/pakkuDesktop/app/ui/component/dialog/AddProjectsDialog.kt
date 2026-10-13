@@ -4,37 +4,37 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.dialog
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.actions.fingerprint
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
-import teksturepako.pakkuDesktop.app.ui.component.text.Header
 import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
-import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogButtons
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogNotice
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSize
 
 @Composable
 fun AddProjectsDialog(
@@ -46,20 +46,6 @@ fun AddProjectsDialog(
 
     val textFieldState = rememberTextFieldState(dialog.query)
     val inputFocus = remember { FocusRequester() }
-    val rootFocus = remember { FocusRequester() }
-
-    LaunchedEffect(dialog.visible, dialog.phase) {
-        when (dialog.phase) {
-            AddDialogPhase.Input -> {
-                kotlinx.coroutines.yield()
-                runCatching { inputFocus.requestFocus() }
-            }
-            else -> {
-                kotlinx.coroutines.yield()
-                runCatching { rootFocus.requestFocus() }
-            }
-        }
-    }
 
     LaunchedEffect(textFieldState) {
         snapshotFlow { textFieldState.text.toString() }
@@ -127,93 +113,97 @@ fun AddProjectsDialog(
         }
     }
 
-    Dialog(onDismissRequest = { publish(ModpackMsg.HideAddDialog) }) {
-        ContentBox(
-            Modifier
-                .focusRequester(rootFocus)
-                .dialogConfirmCancelKeys(
-                    onDismiss = onSecondary,
-                    onConfirm = if (primaryEnabled) onPrimary else null,
+    val isUpdate = dialog.confirmVerb == "Update"
+    val subtitle = when (dialog.phase) {
+        AddDialogPhase.Input -> "Search CurseForge, Modrinth, or GitHub."
+        AddDialogPhase.Resolving -> null
+        AddDialogPhase.Review -> plan?.entries?.size?.takeIf { it > 0 }?.let { count ->
+            "${acceptedEntries.size} of $count selected"
+        }
+    }
+
+    PkUiDialog(
+        onDismiss = onSecondary,
+        title = "${dialog.confirmVerb} projects",
+        icon = if (isUpdate) AllIconsKeys.Actions.CheckOut else AllIconsKeys.General.Add,
+        subtitle = subtitle,
+        size = PkUiDialogSize.Medium,
+        onConfirm = if (primaryEnabled) onPrimary else null,
+        initialFocus = if (dialog.phase == AddDialogPhase.Input) inputFocus else null,
+        focusKey = dialog.phase,
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = primaryLabel,
+                onPrimary = onPrimary,
+                primaryEnabled = primaryEnabled,
+                secondaryLabel = secondaryLabel,
+                onSecondary = onSecondary,
+            )
+        },
+    ) {
+        when (dialog.phase) {
+            AddDialogPhase.Input -> {
+                Text(
+                    "Project names, slugs, or URLs — comma-separated.",
+                    color = JewelTheme.contentColor.copy(alpha = 0.65f),
                 )
-                .widthIn(min = 400.dp, max = 580.dp)
-                .animateContentSize(),
-        ) {
-            Column(
-                Modifier
-                    .padding(PakkuDesktopConstants.commonPaddingSize)
-                    .heightIn(max = 580.dp)
-                    .animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Header("${dialog.confirmVerb} projects")
+                TextField(
+                    state = textFieldState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(inputFocus),
+                    placeholder = { Text("sodium, iris, gh:owner/repo") },
+                )
+            }
 
-                when (dialog.phase) {
-                    AddDialogPhase.Input -> {
-                        Text(
-                            "Project names, slugs, or URLs — comma-separated.",
-                            color = JewelTheme.contentColor.copy(alpha = 0.65f),
-                        )
-                        TextField(
-                            state = textFieldState,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(inputFocus),
-                            placeholder = { Text("sodium, iris, gh:owner/repo") },
-                        )
+            AddDialogPhase.Resolving -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
+                    Text(
+                        dialog.resolveStatus ?: "Resolving…",
+                        color = JewelTheme.contentColor.copy(alpha = 0.75f),
+                    )
+                }
+            }
 
-                    AddDialogPhase.Resolving -> {
-                        Text(
-                            dialog.resolveStatus ?: "Resolving…",
-                            color = JewelTheme.contentColor.copy(alpha = 0.75f),
-                        )
-                    }
+            AddDialogPhase.Review -> {
+                topMessages.forEach { ActionErrorContent(it) }
 
-                    AddDialogPhase.Review -> {
-                        topMessages.forEach { ActionErrorContent(it) }
-
-                        if (!emptyReview) {
-                            VerticallyScrollableContainer(
-                                Modifier.fillMaxWidth().heightIn(max = 380.dp),
-                            ) {
-                                Column(
-                                    Modifier.fillMaxWidth().padding(end = 10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                                ) {
-                                    plan.entries.forEach { entry ->
-                                        val checked = entry.key in dialog.acceptedRootIds
-                                        ReviewRootRow(
-                                            project = entry.project,
-                                            checked = checked,
-                                            onCheckedChange = { on ->
-                                                val next = if (on) {
-                                                    dialog.acceptedRootIds + entry.key
-                                                } else {
-                                                    dialog.acceptedRootIds - entry.key
-                                                }
-                                                publish(ModpackMsg.AddRootSelectionChanged(next))
-                                            },
-                                            replacing = entry.replacing,
-                                            warnings = entry.warnings,
-                                            shownFingerprints = shownFingerprints,
-                                            deps = entry.deps,
-                                            depSectionLabel = "Also adds",
-                                            depCue = "new",
-                                        )
+                if (emptyReview) {
+                    if (topMessages.isEmpty()) PkUiDialogNotice("Nothing to ${dialog.confirmVerb.lowercase()}.")
+                } else {
+                    Column(
+                        Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        plan.entries.forEach { entry ->
+                            val checked = entry.key in dialog.acceptedRootIds
+                            ReviewRootRow(
+                                project = entry.project,
+                                checked = checked,
+                                onCheckedChange = { on ->
+                                    val next = if (on) {
+                                        dialog.acceptedRootIds + entry.key
+                                    } else {
+                                        dialog.acceptedRootIds - entry.key
                                     }
-                                }
-                            }
+                                    publish(ModpackMsg.AddRootSelectionChanged(next))
+                                },
+                                replacing = entry.replacing,
+                                warnings = entry.warnings,
+                                shownFingerprints = shownFingerprints,
+                                deps = entry.deps,
+                                depSectionLabel = "Also adds",
+                                depCue = "new",
+                            )
                         }
                     }
                 }
-
-                ReviewDialogFooter(
-                    primaryLabel = primaryLabel,
-                    primaryEnabled = primaryEnabled,
-                    onPrimary = onPrimary,
-                    secondaryLabel = secondaryLabel,
-                    onSecondary = onSecondary,
-                )
             }
         }
     }

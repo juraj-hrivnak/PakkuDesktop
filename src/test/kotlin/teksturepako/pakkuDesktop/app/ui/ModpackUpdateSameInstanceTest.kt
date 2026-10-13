@@ -24,10 +24,16 @@ import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.GitChange
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitOp
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
+import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class ModpackUpdateSameInstanceTest {
     private val file = GitFile(
@@ -100,9 +106,41 @@ class ModpackUpdateSameInstanceTest {
     fun hiddenDialogsHidden() {
         assertNoOp(ModpackModel(), ModpackMsg.HideAddDialog)
         assertNoOp(ModpackModel(), ModpackMsg.HideRemoveDialog)
-        assertNoOp(ModpackModel(), ModpackMsg.HideGitCommitDialog)
-        assertNoOp(ModpackModel(), ModpackMsg.HideGitPullDialog)
-        assertNoOp(ModpackModel(), ModpackMsg.GitDropdown(GitDropdownMsg.HidePushDialog))
+        assertNoOp(ModpackModel(), ModpackMsg.HideGitDialog)
+    }
+
+    @Test
+    fun gitDialogsAndOpsUnchanged() {
+        val open = ModpackModel(gitDialog = GitDialog.Push)
+        assertNoOp(open, ModpackMsg.ShowGitDialog(GitDialog.Push))
+        val busy = modpackUpdate(ModpackMsg.GitOpRequested(GitOp.Fetch), ModpackModel())
+        assertNoOp(busy, ModpackMsg.GitOpRequested(GitOp.Refresh))
+        assertNoOp(busy, ModpackMsg.ShowGitDialog(GitDialog.Commit))
+        assertNoOp(busy, ModpackMsg.GitOpFinished(GitOp.Refresh, success = true))
+        assertNoOp(ModpackModel(), ModpackMsg.GitGroupUnversionedChanged(grouped = true))
+    }
+
+    @Test
+    fun gitOpLifecycle() {
+        val commit = GitOp.Commit(message = "msg", paths = listOf(file.path))
+        val withSelection = modpackUpdate(
+            ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file), commitMessage = "msg")),
+            ModpackModel(gitDialog = GitDialog.Commit),
+        ).let { modpackUpdate(ModpackMsg.GitSelectAllChangedFiles, it) }
+
+        val running = modpackUpdate(ModpackMsg.GitOpRequested(commit), withSelection)
+        assertEquals(commit, running.pendingGitOp)
+        assertNull(running.gitDialog)
+        assertTrue(running.gitDropdown.busy)
+
+        val failed = modpackUpdate(ModpackMsg.GitOpFinished(commit, success = false), running)
+        assertNull(failed.pendingGitOp)
+        assertFalse(failed.gitDropdown.busy)
+        assertEquals("msg", failed.git.commitMessage)
+
+        val done = modpackUpdate(ModpackMsg.GitOpFinished(commit, success = true), running)
+        assertEquals("", done.git.commitMessage)
+        assertTrue(done.git.selectedFiles.isEmpty())
     }
 
     @Test

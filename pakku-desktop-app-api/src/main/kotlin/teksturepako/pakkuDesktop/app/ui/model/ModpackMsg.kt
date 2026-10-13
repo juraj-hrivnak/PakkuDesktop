@@ -23,8 +23,9 @@ import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.app.git.GitEvent
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
-import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitOp
 
 /** pending project property write for projectEditDriver */
 data class PropertyWrite(
@@ -235,17 +236,15 @@ sealed interface ModpackDropdownMsg {
 
 data class GitDropdownModel(
     val gitState: GitState = GitState(),
-    val pushDialogVisible: Boolean = false,
+    /** [ModpackModel.gitBusy] — menu actions are disabled while an op runs. */
+    val busy: Boolean = false,
 )
 
 sealed interface GitDropdownMsg {
-    data object ShowPushDialog : GitDropdownMsg
-    data object HidePushDialog : GitDropdownMsg
     // parent
-    data object PullRequested : GitDropdownMsg
-    data object PushRequested : GitDropdownMsg
+    data class ShowDialog(val dialog: GitDialog) : GitDropdownMsg
+    data class OpRequested(val op: GitOp) : GitDropdownMsg
     data class TabSelected(val tab: SelectedTab) : GitDropdownMsg
-    data class CheckoutRequested(val branch: GitBranch) : GitDropdownMsg
 }
 
 // -- ModpackMsg --
@@ -358,10 +357,9 @@ sealed interface ModpackMsg {
     data class GitFabRemembered(val action: GitFabAction) : ModpackMsg
     data object ActivateLastGitFab : ModpackMsg
 
-    data object ShowGitCommitDialog : ModpackMsg
-    data object HideGitCommitDialog : ModpackMsg
-    data object ShowGitPullDialog : ModpackMsg
-    data object HideGitPullDialog : ModpackMsg
+    /** Ignored while [ModpackModel.gitBusy]. */
+    data class ShowGitDialog(val dialog: GitDialog) : ModpackMsg
+    data object HideGitDialog : ModpackMsg
 
     /** select all filtered (Ctrl/Cmd+A) */
     data object SelectAllFilteredRequested : ModpackMsg
@@ -452,15 +450,11 @@ sealed interface ModpackMsg {
     data class GitDiffComputed(val diff: DiffContent?) : ModpackMsg
     data class GitEventProgressUpdated(val progress: GitEvent.Progress?) : ModpackMsg
 
-    data object GitPullRequested : ModpackMsg
-    data object GitPullFinished : ModpackMsg
-    data object GitPushRequested : ModpackMsg
-    data object GitPushFinished : ModpackMsg
-    data object GitCommitRequested : ModpackMsg
-    /** gitDriver after commit; success=false if cmd failed */
-    data class GitCommitFinished(val success: Boolean) : ModpackMsg
-    data class GitCheckoutRequested(val branch: GitBranch) : ModpackMsg
-    data object GitCheckoutFinished : ModpackMsg
+    /** Closes [ModpackModel.gitDialog]; ignored while another op runs. */
+    data class GitOpRequested(val op: GitOp) : ModpackMsg
+    /** gitDriver after [op] and the state refresh; success=false if a git command failed */
+    data class GitOpFinished(val op: GitOp, val success: Boolean) : ModpackMsg
+    data class GitGroupUnversionedChanged(val grouped: Boolean) : ModpackMsg
 
     // -- Dropdown children --
 

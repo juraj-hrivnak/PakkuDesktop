@@ -31,8 +31,9 @@ import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.app.git.GitEvent
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
-import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitOp
 
 // -- App model --
 
@@ -281,12 +282,11 @@ data class ModpackModel(
     val gitCurrentDiff: DiffContent? = null,
     val gitDiffPendingFile: GitFile? = null,
     val gitEventProgress: GitEvent.Progress? = null,
-    val wantsGitPull: Boolean = false,
-    val wantsGitPush: Boolean = false,
-    val wantsGitCommit: Boolean = false,
-    val gitCheckoutBranch: GitBranch? = null,
-    val gitCommitDialogVisible: Boolean = false,
-    val gitPullDialogVisible: Boolean = false,
+    /** Cleared by gitDriver via [ModpackMsg.GitOpFinished]. */
+    val pendingGitOp: GitOp? = null,
+    val gitDialog: GitDialog? = null,
+    /** Changelist shows unversioned files in their own group (IntelliJ default) vs mixed in. */
+    val gitGroupUnversioned: Boolean = true,
 
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
@@ -304,6 +304,5 @@ sealed class SortOrder(open val ascending: Boolean) {
     data class LastUpdated(override val ascending: Boolean) : SortOrder(ascending)
 }
 
-fun ModpackModel.gitBusy(): Boolean =
-    wantsGitPull || wantsGitPush || wantsGitCommit || gitCheckoutBranch != null
+fun ModpackModel.gitBusy(): Boolean = pendingGitOp != null
 

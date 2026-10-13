@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -25,6 +26,7 @@ import org.jetbrains.jewel.ui.theme.treeStyle
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarSeparator
+import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarToggleButton
 import teksturepako.pakkuDesktop.app.ui.component.modpack.git.GitFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterRow
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterText
@@ -34,9 +36,15 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
 import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
+import teksturepako.pakkuDesktop.app.git.GitChangeGroup
+import teksturepako.pakkuDesktop.app.git.GitChangelistUiSnapshot
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitOp
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
+import teksturepako.pakkuDesktop.app.git.gitTreePath
+import teksturepako.pakkuDesktop.app.git.toTreeStatus
 import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitChange
@@ -55,7 +63,8 @@ fun GitTab(
     val diffContent = model.gitCurrentDiff
     val files = gitState.gitFiles
     val selectedCount = gitState.selectedFiles.size
-    val changelistSnapshot = remember(files) { gitChangelistUiSnapshot(files) }
+    val grouped = model.groupUnversioned
+    val changelistSnapshot = remember(files, grouped) { gitChangelistUiSnapshot(files, grouped) }
 
     val splitState = remember { SplitLayoutState(0.32f) }
 
@@ -69,10 +78,10 @@ fun GitTab(
                 .padding(top = PakkuDesktopConstants.commonPaddingSize, bottom = 2.dp),
         ) {
             ChangelistToolbar(
-                filesEmpty = files.isEmpty(),
-                selectedCount = selectedCount,
-                totalCount = files.size,
+                gitState = gitState,
+                busy = model.gitBusy,
                 hasFolders = changelistSnapshot.folderIds.isNotEmpty(),
+                grouped = grouped,
                 publish = publish,
             )
         }
@@ -87,6 +96,8 @@ fun GitTab(
                     Box(Modifier.fillMaxSize()) {
                         SourceControlSidePanel(
                             gitState = gitState,
+                            changelistSnapshot = changelistSnapshot,
+                            grouped = grouped,
                             currentDiff = diffContent,
                             diffPendingPath = diffPendingPath,
                             publish = publish,
@@ -113,9 +124,7 @@ fun GitTab(
         GitFooterStatus(
             selectedCount = selectedCount,
             totalCount = files.size,
-            pulling = model.wantsGitPull,
-            pushing = model.wantsGitPush,
-            committing = model.wantsGitCommit,
+            status = model.pendingGitOp?.status,
             publish = publish,
         )
     }
@@ -124,6 +133,8 @@ fun GitTab(
 @Composable
 private fun SourceControlSidePanel(
     gitState: GitState,
+    changelistSnapshot: GitChangelistUiSnapshot,
+    grouped: Boolean,
     currentDiff: DiffContent?,
     diffPendingPath: String?,
     publish: (ModpackMsg) -> Unit,
@@ -131,9 +142,8 @@ private fun SourceControlSidePanel(
 ) {
     val files = gitState.gitFiles
 
-    val changelistSnapshot = remember(files) { gitChangelistUiSnapshot(files) }
-    val selectedPaths = remember(gitState.selectedFiles) {
-        gitState.selectedFiles.map { it.path }.toSet()
+    val selectedPaths = remember(gitState.selectedFiles, grouped) {
+        gitState.selectedFiles.map { gitTreePath(it, grouped) }.toSet()
     }
     val flatRows = remember(changelistSnapshot, gitState.expandedFolderPaths, selectedPaths) {
         changelistSnapshot.flatRows(gitState.expandedFolderPaths, selectedPaths)
@@ -144,10 +154,31 @@ private fun SourceControlSidePanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Changes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            gitState.currentBranch?.let { branch ->
+                Icon(
+                    AllIconsKeys.General.Vcs,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    branch.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                    color = JewelTheme.contentColor.copy(alpha = 0.75f),
+                )
+                if (gitState.incomingCount > 0) {
+                    Text("↓${gitState.incomingCount}", color = JewelTheme.contentColor.copy(alpha = 0.55f))
+                }
+                if (gitState.outgoingCommits.isNotEmpty()) {
+                    Text("↑${gitState.outgoingCommits.size}", color = JewelTheme.contentColor.copy(alpha = 0.55f))
+                }
+            }
         }
 
         Divider(Orientation.Horizontal)
@@ -217,17 +248,51 @@ private fun SourceControlSidePanel(
 
 @Composable
 private fun ChangelistToolbar(
-    filesEmpty: Boolean,
-    selectedCount: Int,
-    totalCount: Int,
+    gitState: GitState,
+    busy: Boolean,
     hasFolders: Boolean,
+    grouped: Boolean,
     publish: (ModpackMsg) -> Unit,
 ) {
+    val filesEmpty = gitState.gitFiles.isEmpty()
+    val selectedCount = gitState.selectedFiles.size
+    val totalCount = gitState.gitFiles.size
+    val hasTracked = gitState.gitFiles.any { it.status !is GitChange.Untracked }
+    val selectedUnversioned = gitState.selectedFiles
+        .filter { it.status is GitChange.Untracked }
+        .map { it.path }
+        .sorted()
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Refresh,
+            label = "Refresh",
+            enabled = !busy,
+            onClick = { publish(ModpackMsg.GitOpRequested(GitOp.Refresh)) },
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Actions.Rollback,
+            label = "Rollback…",
+            enabled = !busy && hasTracked,
+            onClick = { publish(ModpackMsg.ShowGitDialog(GitDialog.Rollback)) },
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Vcs.ShelveSilent,
+            label = "Stash changes…",
+            enabled = !busy && !filesEmpty,
+            onClick = { publish(ModpackMsg.ShowGitDialog(GitDialog.Stash)) },
+        )
+        ToolbarActionButton(
+            key = AllIconsKeys.Vcs.Ignore_file,
+            label = "Add selected unversioned files to .gitignore",
+            enabled = !busy && selectedUnversioned.isNotEmpty(),
+            onClick = { publish(ModpackMsg.GitOpRequested(GitOp.Ignore(selectedUnversioned))) },
+        )
+        ToolbarSeparator()
         ToolbarActionButton(
             key = AllIconsKeys.Actions.Selectall,
             label = "Select all",
@@ -253,6 +318,13 @@ private fun ChangelistToolbar(
             enabled = !filesEmpty && hasFolders,
             onClick = { publish(ModpackMsg.GitChangelistCollapseAllFolders) },
         )
+        ToolbarSeparator()
+        ToolbarToggleButton(
+            key = AllIconsKeys.Vcs.ShowUnversionedFiles,
+            label = if (grouped) "Unversioned files: separate group" else "Unversioned files: mixed with changes",
+            value = grouped,
+            onValueChange = { publish(ModpackMsg.GitGroupUnversionedChanged(it)) },
+        )
     }
 }
 
@@ -260,18 +332,9 @@ private fun ChangelistToolbar(
 private fun GitFooterStatus(
     selectedCount: Int,
     totalCount: Int,
-    pulling: Boolean,
-    pushing: Boolean,
-    committing: Boolean,
+    status: String?,
     publish: (ModpackMsg) -> Unit,
 ) {
-    val status = when {
-        committing -> "Committing…"
-        pulling -> "Pulling…"
-        pushing -> "Pushing…"
-        else -> null
-    }
-
     FooterRow {
         FooterText(if (totalCount == 1) "1 file" else "$totalCount files")
         if (status != null) FooterText(status)
@@ -294,7 +357,8 @@ private fun GitChangesListRow(
     publish: (ModpackMsg) -> Unit,
 ) {
     when (row) {
-        is PathTreeRow.Folder ->
+        is PathTreeRow.Folder -> {
+            val group = GitChangeGroup.ofFolder(row.fullPath)
             TreeFolderRow(
                 row = row,
                 onToggleExpanded = {
@@ -303,7 +367,22 @@ private fun GitChangesListRow(
                 onToggleSelected = {
                     publish(ModpackMsg.GitFolderSelectionToggled(row.fullPath))
                 },
-            )
+                label = group?.label ?: row.displayName,
+                icon = when (group) {
+                    GitChangeGroup.Changes -> AllIconsKeys.Vcs.Changelist
+                    GitChangeGroup.Unversioned -> AllIconsKeys.Vcs.ShowUnversionedFiles
+                    null -> AllIconsKeys.Nodes.Folder
+                },
+            ) {
+                if (group != null) {
+                    Text(
+                        if (row.subtreeItemCount == 1) "1 file" else "${row.subtreeItemCount} files",
+                        color = JewelTheme.contentColor.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+            }
+        }
         is PathTreeRow.Item -> {
             val file = row.item
             val isViewed =
@@ -331,10 +410,3 @@ private fun gitPathKey(repoRelative: String): String =
 
 private fun sameGitPath(a: String, b: String?): Boolean =
     b != null && gitPathKey(a) == gitPathKey(b)
-
-private fun GitChange.toTreeStatus(): TreeStatus = when (this) {
-    is GitChange.Added -> TreeStatus.Added
-    is GitChange.Modified -> TreeStatus.Modified
-    is GitChange.Deleted -> TreeStatus.Deleted
-    is GitChange.Untracked -> TreeStatus.Untracked
-}

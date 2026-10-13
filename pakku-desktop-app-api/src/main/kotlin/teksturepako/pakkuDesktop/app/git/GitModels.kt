@@ -31,6 +31,12 @@ data class GitCommit(
     val message: String,
 )
 
+/** Entry of `git stash list`; [ref] is `stash@{n}`. */
+data class GitStash(
+    val ref: String,
+    val message: String,
+)
+
 data class GitFile(
     val path: String,
     val status: GitChange,

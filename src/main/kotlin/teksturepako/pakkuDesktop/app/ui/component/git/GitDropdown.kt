@@ -6,16 +6,22 @@ package teksturepako.pakkuDesktop.app.ui.component.git
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.MenuScope
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
+import teksturepako.pakkuDesktop.app.git.GitBranch
+import teksturepako.pakkuDesktop.app.git.GitDialog
+import teksturepako.pakkuDesktop.app.git.GitOp
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -25,43 +31,87 @@ import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWid
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
+import teksturepako.pakkuDesktop.pkui.component.pkUiSubmenu
 
 // -- Component --
 
 val gitDropdownComponent = component(
     init = GitDropdownModel(),
-    update = { msg, model ->
-        when (msg) {
-            GitDropdownMsg.ShowPushDialog -> model.copy(pushDialogVisible = true)
-            GitDropdownMsg.HidePushDialog ->
-                if (!model.pushDialogVisible) model else model.copy(pushDialogVisible = false)
-            // parent
-            GitDropdownMsg.PullRequested,
-            GitDropdownMsg.PushRequested,
-            is GitDropdownMsg.TabSelected,
-            is GitDropdownMsg.CheckoutRequested -> model
-        }
-    },
+    // No local state: every message is handled by the parent.
+    update = { _: GitDropdownMsg, model: GitDropdownModel -> model },
     view = { publish, model ->
         val gitState = model.gitState
-        val branchName = gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git"
+        val enabled = !model.busy
+        val current = gitState.currentBranch
+        val branchName = current?.name ?: "Git"
         val labelMaxWidth = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.28f)
         // [PkUiDropdown] menuContent is MenuScope.() -> Unit (not @Composable); read menu colors here.
         val menuItemColors = JewelTheme.menuStyle.colors.itemColors
+        val muted = menuItemColors.keybindingTint
+        val outgoing = gitState.outgoingCommits.size
+        val incoming = gitState.incomingCount
+
+        fun dialog(d: GitDialog) = publish(GitDropdownMsg.ShowDialog(d))
+        fun op(o: GitOp) = publish(GitDropdownMsg.OpRequested(o))
+
+        fun MenuScope.action(label: String, icon: IconKey?, isEnabled: Boolean = enabled, onClick: () -> Unit) {
+            selectableItem(selected = false, iconKey = icon, onClick = onClick, enabled = isEnabled) {
+                Text(label, color = menuItemColors.content)
+            }
+        }
+
+        fun MenuScope.header(label: String) {
+            passiveItem {
+                Text(label, Modifier.padding(start = 10.dp, top = 2.dp), color = muted)
+            }
+        }
+
+        fun MenuScope.branchMenu(branch: GitBranch) {
+            pkUiSubmenu(
+                enabled = enabled,
+                iconKey = if (branch.isCurrent) AllIconsKeys.Actions.Checked else null,
+                submenu = {
+                    action("Checkout", AllIconsKeys.Actions.CheckOut, isEnabled = enabled && !branch.isCurrent) {
+                        op(GitOp.Checkout(branch))
+                    }
+                    action("New Branch from '${branch.name}'…", AllIconsKeys.General.Add) {
+                        dialog(GitDialog.NewBranch(startPoint = branch))
+                    }
+                    if (!branch.isRemote) {
+                        separator()
+                        action("Delete", AllIconsKeys.General.Delete, isEnabled = enabled && !branch.isCurrent) {
+                            dialog(GitDialog.DeleteBranch(branch))
+                        }
+                    }
+                },
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        branch.name,
+                        color = menuItemColors.content,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (branch.isCurrent && gitState.upstream != null) {
+                        Text("→ ${gitState.upstream}", color = muted, maxLines = 1)
+                    }
+                }
+            }
+        }
 
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
-            menuModifier = Modifier.width(300.dp),
+            menuModifier = Modifier.width(320.dp),
             content = {
-                FlowRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         key = AllIconsKeys.General.Vcs,
-                        contentDescription = "Clone Repository Icon",
+                        contentDescription = null,
                         tint = JewelTheme.globalColors.text.normal,
-                        hints = arrayOf(),
                         modifier = Modifier.size(15.dp),
                     )
                     Text(
@@ -71,69 +121,58 @@ val gitDropdownComponent = component(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = labelMaxWidth),
                     )
+                    if (incoming > 0) Text("↓$incoming", color = JewelTheme.contentColor.copy(alpha = 0.6f))
+                    if (outgoing > 0) Text("↑$outgoing", color = JewelTheme.contentColor.copy(alpha = 0.6f))
                 }
             },
             menuContent = {
-                selectableItem(false, onClick = { publish(GitDropdownMsg.PullRequested) }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Actions.CheckOut, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
-                        }
-                        Column { Text("Pull...", Modifier, color = menuItemColors.content) }
-                    }
+                action(
+                    if (incoming > 0) "Update Project… ($incoming incoming)" else "Update Project…",
+                    AllIconsKeys.Actions.CheckOut,
+                ) { dialog(GitDialog.Update) }
+                action("Commit…", AllIconsKeys.Actions.Commit) {
+                    publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
+                    dialog(GitDialog.Commit)
                 }
-
-                selectableItem(false, onClick = { publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT)) }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Actions.Commit, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
-                        }
-                        Column { Text("Source control\u2026", Modifier, color = menuItemColors.content) }
-                    }
+                action(
+                    if (outgoing > 0) "Push… ($outgoing ahead)" else "Push…",
+                    AllIconsKeys.Vcs.Push,
+                    isEnabled = enabled && outgoing > 0,
+                ) { dialog(GitDialog.Push) }
+                action("Fetch", AllIconsKeys.Vcs.Fetch, isEnabled = enabled && gitState.remotes.isNotEmpty()) {
+                    op(GitOp.Fetch)
                 }
-
-                selectableItem(false, onClick = { publish(GitDropdownMsg.ShowPushDialog) }) {
-                    Row(Modifier.padding(2.dp)) {
-                        Column(Modifier.fillMaxWidth(0.2f)) {
-                            Icon(key = AllIconsKeys.Vcs.Push, contentDescription = null, modifier = Modifier.size(15.dp), tint = menuItemColors.iconTint)
-                        }
-                        Column {
-                            val outgoing = gitState.outgoingCommits.size
-                            Text(if (outgoing > 0) "Push\u2026 ($outgoing ahead)" else "Push\u2026", Modifier, color = menuItemColors.content)
-                        }
-                    }
-                }
+                action("Refresh", AllIconsKeys.Actions.Refresh) { op(GitOp.Refresh) }
 
                 separator()
 
-                passiveItem {
-                    Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
-                        Text("Local Branches", color = menuItemColors.keybindingTint)
-                    }
+                action("Source Control", AllIconsKeys.Vcs.Changelist, isEnabled = true) {
+                    publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
                 }
+                action("New Branch…", AllIconsKeys.General.Add) { dialog(GitDialog.NewBranch()) }
+                action(
+                    "Stash Changes…",
+                    AllIconsKeys.Vcs.ShelveSilent,
+                    isEnabled = enabled && gitState.gitFiles.isNotEmpty(),
+                ) { dialog(GitDialog.Stash) }
+                action(
+                    if (gitState.stashes.isEmpty()) "Unstash Changes…" else "Unstash Changes… (${gitState.stashes.size})",
+                    AllIconsKeys.Vcs.Unshelve,
+                    isEnabled = enabled && gitState.stashes.isNotEmpty(),
+                ) { dialog(GitDialog.Unstash) }
 
-                gitState.branches.filterNot { it.isRemote }.forEach { branch ->
-                    selectableItem(false, onClick = { publish(GitDropdownMsg.CheckoutRequested(branch)) }) {
-                        Row {
-                            Column(Modifier.fillMaxWidth(0.2f)) {}
-                            Column { Text(branch.name, Modifier, color = menuItemColors.content) }
-                        }
-                    }
+                val local = gitState.branches.filterNot { it.isRemote }.sortedWith(compareBy({ !it.isCurrent }, { it.name }))
+                val remote = gitState.branches.filter { it.isRemote && !it.name.endsWith("/HEAD") }.sortedBy { it.name }
+
+                if (local.isNotEmpty()) {
+                    separator()
+                    header("Local Branches")
+                    local.forEach { branchMenu(it) }
                 }
-
-                passiveItem {
-                    Row(Modifier.padding(start = 10.dp), horizontalArrangement = Arrangement.Start) {
-                        Text("Remote Branches", color = menuItemColors.keybindingTint)
-                    }
-                }
-
-                gitState.branches.filter { it.isRemote }.forEach { branch ->
-                    selectableItem(false, onClick = { publish(GitDropdownMsg.CheckoutRequested(branch)) }) {
-                        Row {
-                            Column(Modifier.fillMaxWidth(0.2f)) {}
-                            Column { Text(branch.name, Modifier, color = menuItemColors.content) }
-                        }
-                    }
+                if (remote.isNotEmpty()) {
+                    separator()
+                    header("Remote Branches")
+                    remote.forEach { branchMenu(it) }
                 }
             },
         )

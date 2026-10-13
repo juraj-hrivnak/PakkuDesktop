@@ -23,8 +23,6 @@ import teksturepako.pakkuDesktop.app.actions.AppToastContent
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
-import teksturepako.pakkuDesktop.app.ui.component.dialog.GitCommitDialog
-import teksturepako.pakkuDesktop.app.ui.component.dialog.GitPullDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarWidthTier
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
@@ -51,7 +49,7 @@ import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastHost
 import teksturepako.pakkuDesktop.app.ui.component.git.GitDropdown
-import teksturepako.pakkuDesktop.app.ui.component.git.GitPushDialog
+import teksturepako.pakkuDesktop.app.ui.component.git.GitDialogs
 
 @Composable
 fun PakkuApplicationScope.ModpackView(
@@ -161,9 +159,7 @@ fun PakkuApplicationScope.ModpackView(
 
         AddProjectsDialog(publish = publish, model = model)
         RemoveProjectsDialog(publish = publish, model = model)
-        GitCommitDialog(publish = publish, model = model)
-        GitPullDialog(publish = publish, model = model)
-        GitPushDialog(publish = publish, model = model)
+        GitDialogs(publish = publish, model = model)
     }
 }
 

@@ -14,12 +14,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import com.github.michaelbull.result.getError
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.CloseDialogRequest
-import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
@@ -182,6 +182,23 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             publish(AppMsg.RequestCloseDialog(CloseDialogRequest.Quit()))
             true
         }
+        // IntelliJ VCS keys: Ctrl/Cmd+K commit, Ctrl/Cmd+Shift+K push, Ctrl/Cmd+T update project
+        Key.K, Key.T ->
+        {
+            if (model.screen == AppScreen.Modpack && !model.hasModalOverlay())
+            {
+                val dialog = when
+                {
+                    event.key == Key.T -> GitDialog.Update
+                    event.isShiftPressed -> GitDialog.Push
+                    else -> GitDialog.Commit
+                }
+                if (dialog == GitDialog.Commit) publish(AppMsg.Modpack(ModpackMsg.TabSelected(SelectedTab.COMMIT)))
+                publish(AppMsg.Modpack(ModpackMsg.ShowGitDialog(dialog)))
+                true
+            }
+            else false
+        }
         // Ctrl/Cmd+Shift+R — print and reset recomposition counts (-Dpakku.debug.recompose)
         Key.R ->
         {
@@ -232,19 +249,9 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         publish(AppMsg.HideSettings)
         true
     }
-    model.modpack.gitDropdown.pushDialogVisible ->
+    model.modpack.gitDialog != null ->
     {
-        publish(AppMsg.Modpack(ModpackMsg.GitDropdown(GitDropdownMsg.HidePushDialog)))
-        true
-    }
-    model.modpack.gitCommitDialogVisible ->
-    {
-        publish(AppMsg.Modpack(ModpackMsg.HideGitCommitDialog))
-        true
-    }
-    model.modpack.gitPullDialogVisible ->
-    {
-        publish(AppMsg.Modpack(ModpackMsg.HideGitPullDialog))
+        publish(AppMsg.Modpack(ModpackMsg.HideGitDialog))
         true
     }
     model.modpack.removeDialog.visible ->
@@ -279,9 +286,7 @@ private fun AppModel.hasModalOverlay(): Boolean =
         showNewModpack ||
         showCloneDialog ||
         showSettings ||
-        modpack.gitDropdown.pushDialogVisible ||
-        modpack.gitCommitDialogVisible ||
-        modpack.gitPullDialogVisible ||
+        modpack.gitDialog != null ||
         modpack.removeDialog.visible ||
         modpack.addDialog.visible
 

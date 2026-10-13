@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -16,8 +15,8 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.integration.writeClipboardText
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
 /** Fixed hit target; [buttonSize]/[iconSize] are Dp so they scale with density. */
@@ -50,10 +49,8 @@ fun CopyToClipboardButton(
             modifier = modifier.size(buttonSize),
         ) {
             Icon(
-                key = PakkuDesktopIcons.clone,
+                key = AllIconsKeys.General.Copy,
                 contentDescription = "copy",
-                tint = Color.Gray,
-                hints = arrayOf(),
                 modifier = Modifier.size(iconSize),
             )
         }

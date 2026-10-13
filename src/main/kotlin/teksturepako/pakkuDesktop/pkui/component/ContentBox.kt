@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ fun ContentBox(
     modifier: Modifier = Modifier,
     color: Color = JewelTheme.globalColors.borders.disabled,
     shape: Shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
+    contentPadding: PaddingValues = JewelTheme.tooltipStyle.metrics.contentPadding,
     content: @Composable BoxScope.() -> Unit,
 )
 {
@@ -47,7 +49,7 @@ fun ContentBox(
                 color = border,
                 shape = shape,
             )
-            .padding(JewelTheme.tooltipStyle.metrics.contentPadding),
+            .padding(contentPadding),
     ) {
         content(this)
     }

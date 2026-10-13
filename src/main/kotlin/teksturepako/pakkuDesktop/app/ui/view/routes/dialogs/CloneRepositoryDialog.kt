@@ -5,31 +5,34 @@
 package teksturepako.pakkuDesktop.app.ui.view.routes.dialogs
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
-import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.app.ui.component.text.Header
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
-import teksturepako.pakkuDesktop.pkui.component.ContentBox
-import teksturepako.pakkuDesktop.pkui.component.dialogConfirmCancelKeys
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogButtons
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogNotice
+import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSize
+import teksturepako.pakkuDesktop.pkui.component.PkUiNoticeKind
 import java.io.File
 
 @Composable
@@ -41,95 +44,102 @@ fun CloneRepositoryDialog(
     val nameState = rememberTextFieldState()
     val cloning = model.pendingClone != null
     val destParent = model.cloneDestParent
-
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        runCatching { focusRequester.requestFocus() }
-    }
+    val urlFocus = remember { FocusRequester() }
 
     fun suggestedFolderName(url: String): String {
         val trimmed = url.trim().removeSuffix(".git").substringAfterLast('/').substringAfterLast(':')
         return trimmed.ifBlank { "modpack" }
     }
 
+    val canSubmit = !cloning && urlState.text.isNotBlank() && destParent != null
+
     fun dismiss() {
         if (!cloning) publish(AppMsg.HideCloneDialog)
     }
 
     fun submit() {
+        if (!canSubmit) return
         val url = urlState.text.toString().trim()
-        val parent = destParent
         val name = nameState.text.toString().ifBlank { suggestedFolderName(url) }
-        if (url.isBlank() || parent.isNullOrBlank()) {
-            // Local validation feedback: reuse cloneStatus channel via update would need a msg;
-            // keep it as a soft guard — button stays enabled until both are set.
-            return
-        }
-        val dest = File(parent, name).absolutePath
-        publish(AppMsg.CloneRequested(url = url, destPath = dest))
+        publish(AppMsg.CloneRequested(url = url, destPath = File(destParent, name).absolutePath))
     }
 
-    Dialog(onDismissRequest = { dismiss() }) {
-        ContentBox(
-            Modifier
-                .focusRequester(focusRequester)
-                .dialogConfirmCancelKeys(
-                    onDismiss = { dismiss() },
-                    onConfirm = { if (!cloning) submit() },
-                )
-                .widthIn(min = 360.dp, max = 560.dp),
-        ) {
-            Column(
-                Modifier
-                    .padding(PakkuDesktopConstants.commonPaddingSize)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+    PkUiDialog(
+        onDismiss = ::dismiss,
+        title = "Clone repository",
+        icon = AllIconsKeys.General.Vcs,
+        subtitle = "Clone a Git repository containing a Pakku modpack.",
+        size = PkUiDialogSize.Medium,
+        onConfirm = ::submit,
+        dismissible = !cloning,
+        initialFocus = urlFocus,
+        footerStart = if (cloning) {
+            {
+                Box(Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                Text("Cloning…", color = JewelTheme.contentColor.copy(alpha = 0.65f))
+            }
+        } else null,
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = "Clone",
+                onPrimary = ::submit,
+                primaryEnabled = canSubmit,
+                onSecondary = ::dismiss,
+                secondaryEnabled = !cloning,
+            )
+        },
+    ) {
+        LabeledField("Repository URL") {
+            TextField(
+                state = urlState,
+                modifier = Modifier.fillMaxWidth().focusRequester(urlFocus),
+                enabled = !cloning,
+                placeholder = { Text("https://github.com/org/modpack.git") },
+            )
+        }
+
+        LabeledField("Directory") {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Header("Clone repository", Modifier.padding(vertical = 4.dp))
-
-                Text("Repository URL")
-                TextField(
-                    state = urlState,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !cloning,
-                    placeholder = { Text("https://github.com/org/modpack.git") },
+                Icon(AllIconsKeys.Nodes.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text(
+                    destParent ?: "Choose a parent directory…",
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                    color = JewelTheme.contentColor.copy(alpha = if (destParent == null) 0.55f else 1f),
                 )
-
-                Text("Destination folder")
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        destParent ?: "Choose a parent directory…",
-                        modifier = Modifier.weight(1f),
-                        color = JewelTheme.contentColor.copy(alpha = if (destParent == null) 0.55f else 1f),
-                    )
-                    OutlinedButton(
-                        onClick = { publish(AppMsg.CloneParentPickerRequested) },
-                        enabled = !cloning,
-                    ) { Text("Browse…") }
-                }
-
-                Text("Folder name")
-                TextField(
-                    state = nameState,
-                    modifier = Modifier.fillMaxWidth(),
+                OutlinedButton(
+                    onClick = { publish(AppMsg.CloneParentPickerRequested) },
                     enabled = !cloning,
-                    placeholder = { Text(suggestedFolderName(urlState.text.toString())) },
-                )
-
-                model.cloneStatus?.let {
-                    Text(it, color = JewelTheme.contentColor.copy(alpha = 0.85f))
-                }
-
-                DefaultButton(
-                    onClick = { submit() },
-                    enabled = !cloning && !urlState.text.isBlank() && destParent != null,
-                ) {
-                    Text(if (cloning) "Cloning…" else "Clone")
-                }
+                ) { Text("Browse…") }
             }
         }
+
+        LabeledField("Folder name") {
+            TextField(
+                state = nameState,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !cloning,
+                placeholder = { Text(suggestedFolderName(urlState.text.toString())) },
+            )
+        }
+
+        model.cloneStatus?.let {
+            PkUiDialogNotice(it, kind = PkUiNoticeKind.Error)
+        }
+    }
+}
+
+@Composable
+private fun LabeledField(label: String, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, color = JewelTheme.contentColor.copy(alpha = 0.75f))
+        content()
     }
 }
