@@ -11,46 +11,39 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
-import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.Text
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.FilesFilter
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesDiffPane
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesDiffSide
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesFooterStatus
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesLinkList
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesPreviewFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesSelectionControls
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.SyncLinkedLazyLists
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredFilesDiffPairs
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredFilesLinks
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.rememberFilesExpandedFolders
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.rememberFilesLinkListSplitRatio
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
-import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
-@OptIn(FlowPreview::class)
 @Composable
 fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     RecomposeProbe("FilesTab")
     val filterFocusRequester = remember { FocusRequester() }
-    val splitState = remember { SplitLayoutState(model.filesSplitRatio.coerceIn(0.05f, 0.95f)) }
     val scanned = model.filesPreviewMode != FilesPreviewMode.None
-    val pairs = remember(
+    val links = remember(
         model.lockFile,
         model.configFile,
         model.filesPreviewMode,
@@ -67,37 +60,19 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
         model.filesFilterFolders,
         model.filesFilterChangeKinds,
     ) {
-        model.filteredFilesDiffPairs()
+        model.filteredFilesLinks()
     }
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
-    val collapsedFolders = remember { mutableStateOf(emptySet<String>()) }
-    val currentScroll = rememberLazyListState()
-    val proposedScroll = rememberLazyListState()
-    val selectableKeys = remember(pairs) {
-        pairs.filter { it.selectable }.map { it.selectionKey }.distinct()
+    val listState = rememberLazyListState()
+    val (expandedFolders, onToggleFolderExpanded) = rememberFilesExpandedFolders(links)
+    val splitRatio = rememberFilesLinkListSplitRatio(model.filesSplitRatio, publish)
+    val selectableKeys = remember(links) {
+        links.mapNotNull { it.selectionKey }.distinct()
     }
-
-    if (scanned) {
-        SyncLinkedLazyLists(currentScroll, proposedScroll)
+    val linkIndexByPathKey = remember(links) {
+        links.withIndex().associate { (index, link) -> link.pathKey to index }
     }
-
-    LaunchedEffect(splitState) {
-        snapshotFlow { splitState.dividerPosition }
-            .drop(1)
-            .distinctUntilChanged()
-            .debounce(200)
-            .collect { ratio ->
-                if (ratio in 0.05f..0.95f) {
-                    publish(ModpackMsg.FilesSplitRatioChanged(ratio))
-                }
-            }
-    }
-
-    LaunchedEffect(model.filesSplitRatio) {
-        if (kotlin.math.abs(splitState.dividerPosition - model.filesSplitRatio) > 0.01f) {
-            splitState.dividerPosition = model.filesSplitRatio.coerceIn(0.05f, 0.95f)
-        }
-    }
+    val focusedProjectUiKey = model.selectedProject?.uiKey()
 
     Column(Modifier.fillMaxSize()) {
         Column(
@@ -130,63 +105,30 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
 
         Divider(Orientation.Horizontal)
 
-        if (scanned) {
-            HorizontalSplitLayout(
-                state = splitState,
-                dividerStyle = animatedDividerStyle(
-                    color = JewelTheme.globalColors.borders.normal.copy(alpha = 0.22f),
-                ),
-                first = {
-                    FilesDiffPane(
-                        side = FilesDiffSide.Current,
-                        publish = publish,
-                        model = model,
-                        pairs = pairs,
-                        scrollState = currentScroll,
-                        collapsedFolders = collapsedFolders,
-                        lastClickedIndex = lastClickedIndex,
-                        showScrollbar = false,
-                        showSelection = true,
-                        showHeader = true,
-                    )
-                },
-                second = {
-                    FilesDiffPane(
-                        side = FilesDiffSide.Proposed,
-                        publish = publish,
-                        model = model,
-                        pairs = pairs,
-                        scrollState = proposedScroll,
-                        collapsedFolders = collapsedFolders,
-                        lastClickedIndex = lastClickedIndex,
-                        showScrollbar = true,
-                        showSelection = true,
-                        showHeader = true,
-                    )
-                },
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                firstPaneMinWidth = 220.dp,
-                secondPaneMinWidth = 220.dp,
-                draggableWidth = 16.dp,
-            )
-        } else {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                FilesDiffPane(
-                    side = FilesDiffSide.Current,
-                    publish = publish,
-                    model = model,
-                    pairs = pairs,
-                    scrollState = currentScroll,
-                    collapsedFolders = collapsedFolders,
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            if (model.lockFile?.get() != null) {
+                FilesLinkList(
+                    links = links,
+                    listState = listState,
+                    splitRatio = splitRatio,
+                    onSplitRatioChange = { splitRatio.value = it },
+                    selectedProjectKeys = model.selectedProjectKeys,
+                    focusedProjectUiKey = focusedProjectUiKey,
+                    filesPreviewMode = model.filesPreviewMode,
+                    configFile = model.configFile?.get(),
+                    expandedFolders = expandedFolders,
+                    onToggleFolderExpanded = onToggleFolderExpanded,
+                    linkIndexByPathKey = linkIndexByPathKey,
                     lastClickedIndex = lastClickedIndex,
-                    showScrollbar = true,
-                    showSelection = false,
-                    showHeader = false,
+                    publish = publish,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
+            FilesFloatingActions(publish, model)
+            FilesPreviewFloatingActions(publish, model)
         }
 
         Divider(Orientation.Horizontal)
-        FilesFooterStatus(model, fileCount = pairs.size)
+        FilesFooterStatus(model, fileCount = links.size)
     }
 }

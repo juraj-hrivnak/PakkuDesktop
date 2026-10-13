@@ -184,6 +184,8 @@ fun TreeItemRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     interactionKey: String = label,
+    /** When false, focus/selection uses row background only (Files tab split row). */
+    paintHighlightOnStripe: Boolean = true,
     trailing: @Composable RowScope.() -> Unit = {},
 )
 {
@@ -209,7 +211,11 @@ fun TreeItemRow(
         modifier = modifier.fillMaxWidth().heightIn(min = TreeRowMinHeight).background(bg).hoverable(interaction),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TreeSelectionStripe(stripe, selectedForDiff = highlighted)
+        TreeSelectionStripe(
+            stripe,
+            selectedForDiff = highlighted,
+            paintHighlight = paintHighlightOnStripe,
+        )
         Row(
             modifier = Modifier.weight(1f).padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -278,12 +284,19 @@ fun TreeItemRow(
 }
 
 @Composable
-private fun TreeSelectionStripe(color: Color, selectedForDiff: Boolean)
+private fun TreeSelectionStripe(
+    color: Color,
+    selectedForDiff: Boolean,
+    paintHighlight: Boolean = true,
+)
 {
     Spacer(
         Modifier.width(TreeSelectionStripeWidth).fillMaxHeight().background(
-                if (selectedForDiff) PakkuDesktopConstants.highlightColor
-                else Color.Transparent,
+                when {
+                    paintHighlight && selectedForDiff -> PakkuDesktopConstants.highlightColor
+                    paintHighlight && color != Color.Transparent -> color
+                    else -> Color.Transparent
+                },
             ),
     )
 }
