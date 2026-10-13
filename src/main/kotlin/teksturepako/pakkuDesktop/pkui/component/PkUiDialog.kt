@@ -11,6 +11,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -89,6 +92,10 @@ fun PkUiDialog(
         runCatching { (initialFocus ?: rootFocus).requestFocus() }
     }
     val dismiss = { if (dismissible) onDismiss() }
+    // The dialog layer's root re-provides Compose's AWT clipboard (X11-only), shadowing the
+    // window's Wayland-aware one; forward the window's clipboard into the layer.
+    val clipboard = LocalClipboard.current
+    @Suppress("DEPRECATION") val clipboardManager = LocalClipboardManager.current
 
     Dialog(
         onDismissRequest = dismiss,
@@ -98,65 +105,71 @@ fun PkUiDialog(
             usePlatformDefaultWidth = false,
         ),
     ) {
-        BoxWithConstraints(contentAlignment = Alignment.Center) {
-            val width by animateDpAsState(minOf(size.width, (maxWidth - WindowMargin * 2).coerceAtLeast(280.dp)))
-            val maxHeight = (maxHeight - WindowMargin * 2).coerceAtLeast(160.dp)
+        @Suppress("DEPRECATION")
+        CompositionLocalProvider(
+            LocalClipboard provides clipboard,
+            LocalClipboardManager provides clipboardManager,
+        ) {
+            BoxWithConstraints(contentAlignment = Alignment.Center) {
+                val width by animateDpAsState(minOf(size.width, (maxWidth - WindowMargin * 2).coerceAtLeast(280.dp)))
+                val maxHeight = (maxHeight - WindowMargin * 2).coerceAtLeast(160.dp)
 
-            ContentBox(
-                modifier = modifier
-                    .focusRequester(rootFocus)
-                    .focusable()
-                    .dialogConfirmCancelKeys(
-                        onDismiss = dismiss,
-                        onConfirm = onConfirm,
-                        confirmNeedsAccelerator = confirmNeedsAccelerator,
-                    )
-                    .width(width),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                Column(
-                    Modifier
-                        .animateContentSize()
-                        .heightIn(max = maxHeight)
-                        .fillMaxWidth(),
+                ContentBox(
+                    modifier = modifier
+                        .focusRequester(rootFocus)
+                        .focusable()
+                        .dialogConfirmCancelKeys(
+                            onDismiss = dismiss,
+                            onConfirm = onConfirm,
+                            confirmNeedsAccelerator = confirmNeedsAccelerator,
+                        )
+                        .width(width),
+                    contentPadding = PaddingValues(0.dp),
                 ) {
-                    DialogHeader(
-                        title = title,
-                        subtitle = subtitle,
-                        icon = icon,
-                        iconTint = iconTint,
-                        onClose = if (dismissible) onDismiss else null,
-                    )
+                    Column(
+                        Modifier
+                            .animateContentSize()
+                            .heightIn(max = maxHeight)
+                            .fillMaxWidth(),
+                    ) {
+                        DialogHeader(
+                            title = title,
+                            subtitle = subtitle,
+                            icon = icon,
+                            iconTint = iconTint,
+                            onClose = if (dismissible) onDismiss else null,
+                        )
 
-                    if (scrollable) {
-                        VerticallyScrollableContainer(
-                            Modifier
-                                .weight(1f, fill = false)
-                                .fillMaxWidth(),
-                        ) {
+                        if (scrollable) {
+                            VerticallyScrollableContainer(
+                                Modifier
+                                    .weight(1f, fill = false)
+                                    .fillMaxWidth(),
+                            ) {
+                                Column(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = HorizontalPadding, end = HorizontalPadding)
+                                        .padding(top = 4.dp, bottom = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    content = content,
+                                )
+                            }
+                        } else {
                             Column(
                                 Modifier
+                                    .weight(1f, fill = false)
                                     .fillMaxWidth()
-                                    .padding(start = HorizontalPadding, end = HorizontalPadding)
+                                    .padding(horizontal = HorizontalPadding)
                                     .padding(top = 4.dp, bottom = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 content = content,
                             )
                         }
-                    } else {
-                        Column(
-                            Modifier
-                                .weight(1f, fill = false)
-                                .fillMaxWidth()
-                                .padding(horizontal = HorizontalPadding)
-                                .padding(top = 4.dp, bottom = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            content = content,
-                        )
-                    }
 
-                    if (footer != null || footerStart != null) {
-                        DialogFooter(footerStart = footerStart, footer = footer)
+                        if (footer != null || footerStart != null) {
+                            DialogFooter(footerStart = footerStart, footer = footer)
+                        }
                     }
                 }
             }

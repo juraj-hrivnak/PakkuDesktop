@@ -19,18 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakkuDesktop.app.integration.openWithDefaultApplication
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastBody
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
+import kotlin.io.path.Path
 
 /** Toast payloads shown by the app; rendered by [AppToastContent]. */
 sealed interface AppToast : ToastBody {
@@ -188,7 +187,7 @@ private fun ExportedToast(toast: AppToast.Exported) {
             Text(" (${toast.fileSize}) in ${toast.duration}")
             Spacer(Modifier.height(8.dp))
             DefaultButton(onClick = {
-                FileKit.openFileWithDefaultApplication(PlatformFile(toast.directory))
+                openWithDefaultApplication(Path(toast.directory))
             }) {
                 Text("Open")
             }

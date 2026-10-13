@@ -9,6 +9,7 @@ import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ContextMenuState
 import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -30,7 +31,7 @@ fun PkUiContextMenuArea(
             state = state,
             enabled = enabled,
         ) {
-            Box(modifier) { content() }
+            Box(modifier.fillMaxWidth()) { content() }
         }
     }
 }

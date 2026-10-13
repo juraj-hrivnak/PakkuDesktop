@@ -115,7 +115,12 @@ fun TreeFolderRow(
             .wrapContentHeight()
             .heightIn(min = TreeRowMinHeight)
             .background(bg)
-            .hoverable(interaction),
+            .hoverable(interaction)
+            .clickable(
+                indication = null,
+                interactionSource = remember(row.fullPath, "row") { MutableInteractionSource() },
+                onClick = onToggleExpanded,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TreeSelectionStripe(stripe, selectedForDiff = false)
@@ -172,13 +177,7 @@ fun TreeFolderRow(
             ) {
                 Text(
                     text = label,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember(row.fullPath, "label") { MutableInteractionSource() },
-                            onClick = onToggleExpanded,
-                        ),
+                    modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = JewelTheme.contentColor,
@@ -210,7 +209,6 @@ fun TreeItemRow(
 )
 {
     val interaction = remember(interactionKey) { MutableInteractionSource() }
-    val diffClickInteraction = remember(interactionKey, "diffOpen") { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val statusLetter = status?.letter()
     val statusColor = status?.color()
@@ -233,7 +231,12 @@ fun TreeItemRow(
             .wrapContentHeight()
             .heightIn(min = TreeRowMinHeight)
             .background(bg)
-            .hoverable(interaction),
+            .hoverable(interaction)
+            .clickable(
+                indication = null,
+                interactionSource = remember(interactionKey, "rowClick") { MutableInteractionSource() },
+                onClick = onClick,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TreeSelectionStripe(
@@ -242,7 +245,10 @@ fun TreeItemRow(
             paintHighlight = paintHighlightOnStripe,
         )
         Row(
-            modifier = Modifier.weight(1f).padding(vertical = 4.dp),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Spacer(Modifier.width(TreeIndentPerLevel * depth))
@@ -260,49 +266,36 @@ fun TreeItemRow(
                     )
                 }
             }
-            // Transparent overlay: Jewel Text can consume pointer input, so parent Row.clickable
-            // often never fires on short names (e.g. pakku.json) — overlay receives hits first.
-            Box(
+            Row(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier.width(TreeStatusSlot).fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (statusLetter != null && statusColor != null)
-                        {
-                            Text(
-                                text = statusLetter,
-                                color = statusColor,
-                                style = JewelTheme.defaultTextStyle.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                ),
-                            )
-                        }
-                    }
-                    Text(
-                        text = label,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = JewelTheme.contentColor.copy(alpha = nameAlpha),
-                        style = JewelTheme.defaultTextStyle.copy(
-                            fontWeight = if (highlighted) FontWeight.Medium else FontWeight.Normal,
-                        ),
-                    )
-                    trailing()
-                }
                 Box(
-                    Modifier.matchParentSize().clickable(
-                            interactionSource = diffClickInteraction,
-                            indication = null,
-                            onClick = onClick,
-                        ),
+                    modifier = Modifier.width(TreeStatusSlot).fillMaxHeight(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (statusLetter != null && statusColor != null)
+                    {
+                        Text(
+                            text = statusLetter,
+                            color = statusColor,
+                            style = JewelTheme.defaultTextStyle.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = JewelTheme.contentColor.copy(alpha = nameAlpha),
+                    style = JewelTheme.defaultTextStyle.copy(
+                        fontWeight = if (highlighted) FontWeight.Medium else FontWeight.Normal,
+                    ),
                 )
+                trailing()
             }
         }
     }

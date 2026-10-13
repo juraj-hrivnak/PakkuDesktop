@@ -5,7 +5,6 @@
 package teksturepako.pakkuDesktop.app.ui.component.context
 
 import androidx.compose.foundation.ContextMenuItem
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -131,9 +130,9 @@ fun GitFileRowContextMenu(
         scope.launch(Dispatchers.IO) { writeClipboardText(text) }
     }
     PkUiContextMenuArea(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         items = { gitFileContextMenuItems(file, publish, busy, modpackRoot, copy) },
-        content = { Box(Modifier.fillMaxWidth()) { content() } },
+        content = content,
     )
 }
 
@@ -146,8 +145,8 @@ fun GitFolderRowContextMenu(
     content: @Composable () -> Unit,
 ) {
     PkUiContextMenuArea(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         items = { gitFolderContextMenuItems(folderPath, expanded, publish) },
-        content = { Box(Modifier.fillMaxWidth()) { content() } },
+        content = content,
     )
 }

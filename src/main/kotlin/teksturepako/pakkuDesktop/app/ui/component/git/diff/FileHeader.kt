@@ -12,9 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.openFileWithDefaultApplication
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -23,12 +20,12 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.data.workingPath
+import teksturepako.pakkuDesktop.app.integration.openWithDefaultApplication
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.TooltipPosition
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import kotlin.io.path.Path
-import kotlin.io.path.absolutePathString
 
 @Composable
 fun FileHeader(diffContent: DiffContent)
@@ -74,7 +71,7 @@ fun FileHeader(diffContent: DiffContent)
             ) {
                 IconButton(
                     onClick = {
-                        FileKit.openFileWithDefaultApplication(PlatformFile(parentDir.absolutePathString()))
+                        parentDir?.let(::openWithDefaultApplication)
                     },
                     modifier = Modifier.size(26.dp),
                 ) {
@@ -92,9 +89,7 @@ fun FileHeader(diffContent: DiffContent)
                 position = TooltipPosition.BOTTOM,
             ) {
                 IconButton(
-                    onClick = {
-                        FileKit.openFileWithDefaultApplication(PlatformFile(file.absolutePathString()))
-                    },
+                    onClick = { openWithDefaultApplication(file) },
                     modifier = Modifier.size(26.dp),
                 ) {
                     Icon(

@@ -378,8 +378,10 @@ private fun GitChangesListRow(
                 folderPath = row.fullPath,
                 expanded = row.expanded,
                 publish = publish,
+                modifier = Modifier.fillMaxWidth(),
             ) {
             TreeFolderRow(
+                modifier = Modifier.fillMaxWidth(),
                 row = row,
                 onToggleExpanded = {
                     publish(ModpackMsg.GitChangelistFolderExpansionToggled(row.fullPath))
@@ -416,8 +418,10 @@ private fun GitChangesListRow(
                 publish = publish,
                 busy = gitBusy,
                 modpackRoot = modpackRoot,
+                modifier = Modifier.fillMaxWidth(),
             ) {
             TreeItemRow(
+                modifier = Modifier.fillMaxWidth(),
                 depth = row.depth,
                 label = pathLabel,
                 status = file.status.toTreeStatus(),
