@@ -9,19 +9,31 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.GroupHeader
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
@@ -42,7 +54,9 @@ import teksturepako.pakkuDesktop.app.ui.view.plugins.PluginsHost
 import java.nio.file.Path
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
 import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSize
+import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import teksturepako.pakkuDesktop.pkui.component.rememberListComboBoxState
+import java.awt.Cursor
 
 /**
  * Settings as a declarative dialog — same shell as [teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog].
@@ -245,12 +259,44 @@ private fun SettingsLabeledField(
     state: TextFieldState,
     enabled: Boolean,
 ) {
+    var visible by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, color = JewelTheme.contentColor.copy(alpha = 0.75f))
         TextField(
             state = state,
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (visible) KeyboardType.Text else KeyboardType.Password,
+            ),
+            outputTransformation = if (visible) null else maskSecret,
+            trailingIcon = {
+                PkUiTooltip(tooltip = { Text(if (visible) "Hide" else "Show") }) {
+                    IconButton(
+                        onClick = { visible = !visible },
+                        modifier = Modifier
+                            .size(20.dp)
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))),
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.Actions.ToggleVisibility,
+                            contentDescription = if (visible) "Hide $label" else "Show $label",
+                            tint = if (visible) JewelTheme.contentColor else Color.Gray,
+                            hints = arrayOf(),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+            },
         )
+    }
+}
+
+/** Display-only mask. [TextFieldState] still holds the real secret. */
+private val maskSecret = OutputTransformation {
+    // One-for-one so the caret can sit between bullets.
+    repeat(length) { index ->
+        replace(index, index + 1, "\u2022")
     }
 }

@@ -7,7 +7,10 @@ package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -82,16 +85,20 @@ fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
         }
     }
 
+    // The drag handle is centered on the divider and covers this much of the left pane.
+    val draggableWidth = 16.dp
     Column(Modifier.fillMaxSize()) {
         HorizontalSplitLayout(
             state = splitState,
             dividerStyle = animatedDividerStyle(),
             first = {
-                ProjectsList(
-                    publish = publish,
-                    model = model,
-                    filterFocusRequester = filterFocusRequester,
-                )
+                Box(Modifier.fillMaxSize().padding(end = draggableWidth / 2)) {
+                    ProjectsList(
+                        publish = publish,
+                        model = model,
+                        filterFocusRequester = filterFocusRequester,
+                    )
+                }
             },
             second = {
                 ProjectDisplay(publish, model)
@@ -99,7 +106,7 @@ fun ProjectsTab(publish: (ModpackMsg) -> Unit, model: ProjectsTabModel) {
             modifier = Modifier.fillMaxSize(),
             firstPaneMinWidth = 280.dp,
             secondPaneMinWidth = if (inspectorOpen) 260.dp else 0.dp,
-            draggableWidth = 16.dp,
+            draggableWidth = draggableWidth,
         )
     }
 }

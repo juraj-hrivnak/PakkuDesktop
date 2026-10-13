@@ -60,11 +60,13 @@ fun main() {
 
         pakku {
             curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY") ?: credentials?.curseForgeApiKey)
+            gitHub(accessToken = System.getenv("GITHUB_ACCESS_TOKEN") ?: credentials?.gitHubAccessToken)
             withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
         }
     } else {
         pakku {
             curseForge(apiKey = System.getenv("CURSEFORGE_API_KEY"))
+            gitHub(accessToken = System.getenv("GITHUB_ACCESS_TOKEN"))
             withUserAgent("PakkuDesktop (github.com/juraj-hrivnak/PakkuDesktop)")
         }
     }

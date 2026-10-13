@@ -24,6 +24,9 @@ import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
+/** Button plus its bottom inset, so the last list row can scroll clear of the FABs. */
+internal val FilesListFabClearance = 44.dp + 16.dp + 12.dp
+
 @Composable
 fun BoxScope.FilesFloatingActions(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     val busy = model.actionName != null
