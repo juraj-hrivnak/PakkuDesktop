@@ -82,7 +82,6 @@ import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.allowDragAndDrop
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
-import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 import java.awt.Cursor
 import kotlin.io.path.Path
 

@@ -22,7 +22,6 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
-import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
 @Composable
 fun ProjectRowCompact(
@@ -42,39 +41,33 @@ fun ProjectRowCompact(
         ?: project.id.values.firstOrNull()
         ?: "?"
 
-    PkUiTooltip(
-        tooltip = {
-            ProjectCard(project = project, modifier = Modifier)
-        },
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = modifier,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (!continuation) {
-                project.getProviders().forEach { provider ->
-                    ProviderIcon(provider, Modifier.size(16.dp))
-                }
+        if (!continuation) {
+            project.getProviders().forEach { provider ->
+                ProviderIcon(provider, Modifier.size(16.dp))
             }
-            Text(
-                text = displayName,
-                color = JewelTheme.contentColor.copy(alpha = nameAlpha),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            if (!continuation && project.hasProviderVersionMismatch()) {
-                Icon(
-                    key = AllIconsKeys.General.ExclMark,
-                    contentDescription = "Versions differ across providers",
-                    tint = PakkuDesktopConstants.amber,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-            trailing()
         }
+        Text(
+            text = displayName,
+            color = JewelTheme.contentColor.copy(alpha = nameAlpha),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (!continuation && project.hasProviderVersionMismatch()) {
+            Icon(
+                key = AllIconsKeys.General.ExclMark,
+                contentDescription = "Versions differ across providers",
+                tint = PakkuDesktopConstants.amber,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        trailing()
     }
 }
