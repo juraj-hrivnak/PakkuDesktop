@@ -138,11 +138,13 @@ fun PakkuApplicationScope.WelcomeView(
                 .padding(bottom = bottomGap),
             contentAlignment = Alignment.Center
         ) {
-            FadeIn {
-                ContentBox(
+            // Grow outside FadeIn. AnimatedVisibility composites an alpha layer the size of
+            // its layout, which clips this upward overflow for the whole fade.
+            Box(Modifier.fillMaxSize(0.9f).extendTop { extend.extendPx }) {
+                FadeIn {
+                    ContentBox(
                     Modifier
-                        .fillMaxSize(0.9F)
-                        .extendTop { extend.extendPx }
+                        .fillMaxSize()
                         .padding(20.dp)
                         .allowDragAndDrop { paths ->
                             val firstDir = paths.firstOrNull { Files.isDirectory(it) } ?: return@allowDragAndDrop
@@ -237,6 +239,7 @@ fun PakkuApplicationScope.WelcomeView(
                                 scrollState, modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
                             )
                         }
+                    }
                     }
                 }
             }

@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,9 +26,13 @@ fun FadeIn(
 
     var isVisible by remember { mutableStateOf(false) }
 
+    val millis = duration.toInt(DurationUnit.MILLISECONDS)
+    // fadeOut only — the default exit is shrinkOut, and its clip hides anything
+    // drawn outside the layout (the welcome panel grows upward on scroll).
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn(tween(duration.toInt(DurationUnit.MILLISECONDS))),
+        enter = fadeIn(tween(millis)),
+        exit = fadeOut(tween(millis)),
     ) {
         content()
     }
