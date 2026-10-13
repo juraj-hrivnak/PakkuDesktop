@@ -4,10 +4,13 @@
 
 package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +39,9 @@ import teksturepako.pakkuDesktop.app.git.GitChange
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.PinnedTreeFolderStrip
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeStatus
+import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
 
 @Composable
 fun GitTab(
@@ -167,33 +172,60 @@ private fun SourceControlSidePanel(
             )
             Spacer(Modifier.weight(1f))
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-            ) {
-                items(
-                    items = flatRows,
-                    key = { row ->
-                        when (row) {
-                            is PathTreeRow.Folder -> "d:${row.fullPath}"
-                            is PathTreeRow.Item -> "f:${row.path}"
-                        }
-                    },
-                    contentType = { row ->
-                        when (row) {
-                            is PathTreeRow.Folder -> "changelist_folder"
-                            is PathTreeRow.Item -> "changelist_file"
-                        }
-                    },
-                ) { row ->
+            val listState = rememberLazyListState()
+            val folderIndexByPath = remember(flatRows) {
+                flatRows.mapIndexedNotNull { index, row ->
+                    (row as? PathTreeRow.Folder)?.fullPath?.let { it to index }
+                }.toMap()
+            }
+            val folderRowByPath = remember(flatRows) {
+                flatRows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
+            }
+            val pinnedFolderRows by remember(flatRows, folderIndexByPath, folderRowByPath, listState) {
+                derivedStateOf {
+                    pinnedFolderRowsForScroll(
+                        rows = flatRows,
+                        anchorIndex = listState.firstVisibleItemIndex,
+                        anchorScrollOffsetPx = listState.firstVisibleItemScrollOffset,
+                        folderIndexByPath = folderIndexByPath,
+                        folderRowByPath = folderRowByPath,
+                    )
+                }
+            }
+            Column(Modifier.weight(1f).fillMaxWidth()) {
+                PinnedTreeFolderStrip(pinnedFolderRows) { folderRow ->
                     GitChangesListRow(
-                        row = row,
+                        row = folderRow,
                         currentDiff = currentDiff,
                         diffPendingPath = diffPendingPath,
                         publish = publish,
                     )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                    state = listState,
+                ) {
+                    flatRows.forEach { row ->
+                        val key = when (row) {
+                            is PathTreeRow.Folder -> "d:${row.fullPath}"
+                            is PathTreeRow.Item -> "f:${row.path}"
+                        }
+                        val contentType = when (row) {
+                            is PathTreeRow.Folder -> "changelist_folder"
+                            is PathTreeRow.Item -> "changelist_file"
+                        }
+                        item(key = key, contentType = contentType) {
+                            GitChangesListRow(
+                                row = row,
+                                currentDiff = currentDiff,
+                                diffPendingPath = diffPendingPath,
+                                publish = publish,
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,7 +42,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -73,10 +71,11 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRowCompact
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
-import teksturepako.pakkuDesktop.app.ui.component.tree.stickyFolderPathChain
+import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderSelectionScope
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.PinnedTreeFolderStrip
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeRowMinHeight
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
@@ -98,7 +97,6 @@ private val FilesListScrollbarGutter = 14.dp
 
 private const val LockFileDisplayName = "pakku-lock.json"
 
-@OptIn(FlowPreview::class)
 @Composable
 fun FilesLinkList(
     links: List<FilesLink>,
@@ -145,18 +143,17 @@ fun FilesLinkList(
     val folderRowByPath = remember(rows) {
         rows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
     }
-    val pinnedFolderRows by remember(rows, folderIndexByPath, folderRowByPath) {
+    val pinnedFolderRows by remember(rows, folderIndexByPath, folderRowByPath, listState) {
         derivedStateOf {
             pinnedFolderRowsForScroll(
                 rows = rows,
-                firstVisibleIndex = listState.firstVisibleItemIndex,
+                anchorIndex = listState.firstVisibleItemIndex,
+                anchorScrollOffsetPx = listState.firstVisibleItemScrollOffset,
                 folderIndexByPath = folderIndexByPath,
                 folderRowByPath = folderRowByPath,
             )
         }
     }
-    val pinnedFolderStripHeight = TreeRowMinHeight * pinnedFolderRows.size
-
     Column(modifier.fillMaxSize()) {
         FilesLinkListHeader(
             splitRatio = splitRatio,
@@ -166,57 +163,52 @@ fun FilesLinkList(
         )
         Divider(Orientation.Horizontal)
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            LazyColumn(
-                modifier = Modifier
+            Column(
+                Modifier
                     .fillMaxSize()
-                    .padding(vertical = 8.dp)
-                    .padding(end = FilesListScrollbarGutter)
-                    .allowDragAndDrop { paths ->
-                        publish(ModpackMsg.FilesDropped(paths.map { it.toString() }))
-                    },
-                state = listState,
-                contentPadding = PaddingValues(top = pinnedFolderStripHeight),
+                    .padding(end = FilesListScrollbarGutter),
             ) {
-                rows.forEach { row ->
-                    val key = when (row) {
-                        is PathTreeRow.Folder -> "d:${row.fullPath}"
-                        is PathTreeRow.Item -> "l:${row.item.pathKey}"
-                    }
-                    val contentType = if (row is PathTreeRow.Folder) "files_folder" else "files_link"
-                    item(key = key, contentType = contentType) {
-                        FilesLinkRow(
-                            row = row,
-                            splitRatio = { updatedSplit.value.value },
-                            typeLabels = typeLabels,
-                            selectedProjectKeys = selectedProjectKeys,
-                            focusedProjectUiKey = focusedProjectUiKey,
-                            showSelection = showSelection,
-                            shiftPressed = shiftPressed,
-                            linkIndexByPathKey = linkIndexByPathKey,
-                            flatSelectableLinks = flatSelectableLinks,
-                            flatSelectableIndexByPathKey = flatSelectableIndexByPathKey,
-                            allLinks = links,
-                            existingDiskFolders = existingDiskFolders,
-                            lastClickedIndex = lastClickedIndex,
-                            onSplitDrag = onSplitDrag,
-                            publish = publish,
-                        )
-                    }
+                PinnedTreeFolderStrip(
+                    folderRows = pinnedFolderRows,
+                    modifier = Modifier.padding(top = 8.dp),
+                ) { folderRow ->
+                    FilesLinkRow(
+                        row = folderRow,
+                        splitRatio = { updatedSplit.value.value },
+                        typeLabels = typeLabels,
+                        selectedProjectKeys = selectedProjectKeys,
+                        focusedProjectUiKey = focusedProjectUiKey,
+                        showSelection = showSelection,
+                        shiftPressed = shiftPressed,
+                        linkIndexByPathKey = linkIndexByPathKey,
+                        flatSelectableLinks = flatSelectableLinks,
+                        flatSelectableIndexByPathKey = flatSelectableIndexByPathKey,
+                        allLinks = links,
+                        existingDiskFolders = existingDiskFolders,
+                        lastClickedIndex = lastClickedIndex,
+                        onSplitDrag = onSplitDrag,
+                        publish = publish,
+                    )
                 }
-            }
-            if (pinnedFolderRows.isNotEmpty()) {
-                Column(
-                    Modifier
-                        .align(Alignment.TopStart)
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .padding(end = FilesListScrollbarGutter)
-                        .zIndex(1f),
+                        .padding(top = if (pinnedFolderRows.isEmpty()) 8.dp else 0.dp, bottom = 8.dp)
+                        .allowDragAndDrop { paths ->
+                            publish(ModpackMsg.FilesDropped(paths.map { it.toString() }))
+                        },
+                    state = listState,
                 ) {
-                    pinnedFolderRows.forEach { folderRow ->
-                        Box(Modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground)) {
+                    rows.forEach { row ->
+                        val key = when (row) {
+                            is PathTreeRow.Folder -> "d:${row.fullPath}"
+                            is PathTreeRow.Item -> "l:${row.item.pathKey}"
+                        }
+                        val contentType = if (row is PathTreeRow.Folder) "files_folder" else "files_link"
+                        item(key = key, contentType = contentType) {
                             FilesLinkRow(
-                                row = folderRow,
+                                row = row,
                                 splitRatio = { updatedSplit.value.value },
                                 typeLabels = typeLabels,
                                 selectedProjectKeys = selectedProjectKeys,
@@ -836,21 +828,7 @@ internal fun filesRangeSelectionKeys(
 ): Set<String> =
     flatSelectableLinks.slice(start..end).mapNotNull { it.selectionKey }.toSet()
 
-internal fun pinnedFolderRowsForScroll(
-    rows: List<PathTreeRow<FilesLink>>,
-    firstVisibleIndex: Int,
-    folderIndexByPath: Map<String, Int>,
-    folderRowByPath: Map<String, PathTreeRow.Folder>,
-): List<PathTreeRow.Folder> {
-    if (rows.isEmpty()) return emptyList()
-    val index = firstVisibleIndex.coerceIn(0, rows.lastIndex)
-    val chain = stickyFolderPathChain(rows[index])
-    return chain.mapNotNull { path ->
-        val folderIndex = folderIndexByPath[path] ?: return@mapNotNull null
-        if (folderIndex < index) folderRowByPath[path] else null
-    }
-}
-
+@OptIn(FlowPreview::class)
 @Composable
 fun rememberFilesLinkListSplitRatio(
     modelRatio: Float,

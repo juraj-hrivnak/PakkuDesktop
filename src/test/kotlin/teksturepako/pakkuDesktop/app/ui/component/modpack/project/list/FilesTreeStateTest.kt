@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project.list
 import kotlinx.collections.immutable.persistentSetOf
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
+import teksturepako.pakkuDesktop.app.ui.component.tree.pinnedFolderRowsForScroll
 import teksturepako.pakkuDesktop.app.ui.component.tree.stickyFolderPathChain
 import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -107,8 +108,31 @@ class FilesTreeStateTest {
         }.toMap()
         val folderRowByPath = rows.filterIsInstance<PathTreeRow.Folder>().associateBy { it.fullPath }
         val fileIndex = rows.indexOfFirst { it is PathTreeRow.Item && it.path == "mods/fabric/b.jar" }
-        val pinned = pinnedFolderRowsForScroll(rows, fileIndex, folderIndexByPath, folderRowByPath)
+        val pinned = pinnedFolderRowsForScroll(
+            rows,
+            fileIndex,
+            anchorScrollOffsetPx = 0,
+            folderIndexByPath,
+            folderRowByPath,
+        )
         assertEquals(listOf("mods", "mods/fabric"), pinned.map { it.fullPath })
+        val nestedFolderIndex = rows.indexOfFirst { it is PathTreeRow.Folder && it.fullPath == "mods/fabric" }
+        val pinnedAtNestedFolder = pinnedFolderRowsForScroll(
+            rows,
+            nestedFolderIndex,
+            anchorScrollOffsetPx = 0,
+            folderIndexByPath,
+            folderRowByPath,
+        )
+        assertEquals(listOf("mods"), pinnedAtNestedFolder.map { it.fullPath })
+        val pinnedWhileScrollingFolderAway = pinnedFolderRowsForScroll(
+            rows,
+            nestedFolderIndex,
+            anchorScrollOffsetPx = 4,
+            folderIndexByPath,
+            folderRowByPath,
+        )
+        assertEquals(listOf("mods", "mods/fabric"), pinnedWhileScrollingFolderAway.map { it.fullPath })
     }
 
     @Test

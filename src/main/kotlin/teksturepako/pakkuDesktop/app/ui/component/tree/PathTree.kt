@@ -59,6 +59,27 @@ fun stickyFolderPathChain(row: PathTreeRow<*>): List<String> = when (row) {
     is PathTreeRow.Item -> folderPathPrefixList(row.path)
 }
 
+/** Ancestor folder rows that scrolled off but still apply to the visible subtree. */
+fun pinnedFolderRowsForScroll(
+    rows: List<PathTreeRow<*>>,
+    anchorIndex: Int,
+    anchorScrollOffsetPx: Int,
+    folderIndexByPath: Map<String, Int>,
+    folderRowByPath: Map<String, PathTreeRow.Folder>,
+): List<PathTreeRow.Folder> {
+    if (rows.isEmpty()) return emptyList()
+    val index = anchorIndex.coerceIn(0, rows.lastIndex)
+    val anchorRow = rows[index]
+    val chain = stickyFolderPathChain(anchorRow)
+    val pinFolderAtAnchor =
+        anchorRow is PathTreeRow.Folder && anchorScrollOffsetPx > 0
+    return chain.mapNotNull { path ->
+        val folderIndex = folderIndexByPath[path] ?: return@mapNotNull null
+        val pinned = folderIndex < index || (pinFolderAtAnchor && folderIndex == index)
+        if (pinned) folderRowByPath[path] else null
+    }
+}
+
 private fun folderPrefixes(path: String): Sequence<String> = sequence {
     val parts = path.split('/').filter { it.isNotEmpty() }
     if (parts.size <= 1) return@sequence

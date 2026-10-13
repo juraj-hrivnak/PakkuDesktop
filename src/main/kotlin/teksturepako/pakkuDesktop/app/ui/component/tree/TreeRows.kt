@@ -107,7 +107,12 @@ fun TreeFolderRow(
     )
     val treeChevron = JewelTheme.treeStyle.icons.chevron(isExpanded = row.expanded, isSelected = false)
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = TreeRowMinHeight).background(bg).hoverable(interaction),
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .heightIn(min = TreeRowMinHeight)
+            .background(bg)
+            .hoverable(interaction),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TreeSelectionStripe(stripe, selectedForDiff = false)
@@ -135,7 +140,7 @@ fun TreeFolderRow(
             }
             Spacer(Modifier.width(TreeChevronGap))
             Box(
-                modifier = Modifier.width(TreeCheckSlot).fillMaxHeight(),
+                modifier = Modifier.width(TreeCheckSlot),
                 contentAlignment = Alignment.Center,
             ) {
                 if (onToggleSelected != null)
@@ -147,7 +152,7 @@ fun TreeFolderRow(
                 }
             }
             Box(
-                modifier = Modifier.width(TreeStatusSlot).fillMaxHeight(),
+                modifier = Modifier.width(TreeStatusSlot),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Icon(
@@ -220,7 +225,12 @@ fun TreeItemRow(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth().heightIn(min = TreeRowMinHeight).background(bg).hoverable(interaction),
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .heightIn(min = TreeRowMinHeight)
+            .background(bg)
+            .hoverable(interaction),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TreeSelectionStripe(
@@ -333,5 +343,29 @@ private fun treeRowBackground(
         hovered                    -> hoverFill
         folderBand                 -> folderFill
         else                       -> Color.Transparent
+    }
+}
+
+@Composable
+fun PinnedTreeFolderStrip(
+    folderRows: List<PathTreeRow.Folder>,
+    modifier: Modifier = Modifier,
+    rowContent: @Composable (PathTreeRow.Folder) -> Unit,
+) {
+    if (folderRows.isEmpty()) return
+    Column(
+        modifier.fillMaxWidth().wrapContentHeight(),
+    ) {
+        folderRows.forEach { folderRow ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(TreeRowMinHeight)
+                    .background(JewelTheme.globalColors.panelBackground),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                rowContent(folderRow)
+            }
+        }
     }
 }
