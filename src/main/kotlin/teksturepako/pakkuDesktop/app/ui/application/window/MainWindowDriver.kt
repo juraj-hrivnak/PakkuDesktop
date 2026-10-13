@@ -18,6 +18,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import dev.nucleusframework.application.NucleusApplicationScope
+import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 import teksturepako.pakkuDesktop.app.data.WindowData
@@ -80,13 +81,16 @@ fun mainWindowDriver(
         PakkuWindowIcon::class.java,
     ).getPainter()
 
+    // Native Wayland compositors often tile small windows; a client min size fights that.
+    val minimumSize = if (Platform.isWayland) null else DpSize(600.dp, 400.dp)
+
     with(applicationScope) {
         JewelDecoratedWindow(
             state = windowState,
             onCloseRequest = { publish(windowCloseMessage) },
             title = title,
             icon = windowIcon,
-            minimumSize = DpSize(600.dp, 400.dp),
+            minimumSize = minimumSize,
             onPreviewKeyEvent = { event ->
                 if (event.type == KeyEventType.KeyDown || event.type == KeyEventType.KeyUp) {
                     val next = event.isShiftPressed

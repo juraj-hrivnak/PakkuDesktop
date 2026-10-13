@@ -27,6 +27,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -39,8 +40,10 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appName
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
-import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarStartSlotMaxWidth
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWidth
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
@@ -75,18 +78,28 @@ fun PakkuApplicationScope.WelcomeView(
         themeTrailingActions = {
             ThemeButton(appPublish, appModel.profile.data.intUiTheme)
         },
-    ) {
-        AlignedTitleBarContent(alignment = Alignment.Start) {
-            Text(displayName)
-            WelcomeViewDropdown(
-                publish = publish,
-                model = model,
-            )
-        }
-        AlignedTitleBarContent(alignment = Alignment.End) {
+        startContent = {
+            TitleBarStartRow {
+                WelcomeViewDropdown(
+                    publish = publish,
+                    model = model,
+                )
+                Text(
+                    displayName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .widthIn(
+                            max = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.45f),
+                        ),
+                )
+            }
+        },
+        endContent = {
             SettingsButton(onClick = { publish(WelcomeMsg.ShowSettings) })
-        }
-    }
+        },
+    )
 
     val extend = remember { ExtendOnScrollState() }
     val bottomGap = 16.dp

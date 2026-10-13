@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
@@ -16,6 +17,8 @@ import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.application.acceleratorLabel
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarStartSlotMaxWidth
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWidth
 import teksturepako.pakkuDesktop.app.ui.driver.LocalPickDirectory
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
@@ -42,6 +45,8 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
     view = { publish, model ->
         val pickDirectory = LocalPickDirectory.current
         val dark = model.profileData.intUiTheme.isDark()
+        val modpackLabel = model.profileData.currentProfile?.name ?: "Modpack"
+        val labelMaxWidth = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.4f)
 
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
@@ -53,7 +58,12 @@ val modpackDropdownComponent = component<ModpackDropdownModel, ModpackDropdownMs
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    model.profileData.currentProfile?.name?.let { Text(it) } ?: Text("Modpack")
+                    Text(
+                        modpackLabel,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = labelMaxWidth),
+                    )
                 }
             },
             menuContent = {

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
@@ -25,8 +26,10 @@ import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.GitCommitDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.GitPullDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
-import teksturepako.pakkuDesktop.app.ui.application.titlebar.AlignedTitleBarContent
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarWidthTier
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarWidthTier
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackRail
@@ -71,41 +74,51 @@ fun PakkuApplicationScope.ModpackView(
 
     MainTitleBar(
         Modifier.height(titleBarHeight),
-        withGradient = true,
         themeTrailingActions = {
             ThemeButton(appPublish, profileData.intUiTheme)
         },
-    ) {
-        AlignedTitleBarContent(alignment = Alignment.Start) {
-            DropdownHost {
-                ModpackDropdown(publish, model)
-                GitDropdown(publish, model)
-            }
-            McLoaderLabel(model)
-            val actionName = model.actionName
-            if (actionName != null) {
-                Box(Modifier.padding(4.dp)) {
+        startContent = {
+            val widthTier = LocalTitleBarWidthTier.current
+            TitleBarStartRow {
+                DropdownHost {
+                    ModpackDropdown(publish, model)
+                    GitDropdown(publish, model)
+                }
+                if (widthTier == TitleBarWidthTier.Comfortable) {
+                    McLoaderLabel(model)
+                }
+                val actionName = model.actionName
+                if (actionName != null) {
                     Row(
+                        Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(actionName)
+                        Text(
+                            actionName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                        )
                         val total = model.fetchProgressTotal
                         if (model.actionName == "Fetching" && total > 0L) {
                             val progress = (model.fetchProgressCompleted.toFloat() / total.toFloat())
                                 .coerceIn(0f, 1f)
-                            HorizontalProgressBar(progress, Modifier.width(120.dp))
+                            HorizontalProgressBar(
+                                progress,
+                                Modifier.width(if (widthTier == TitleBarWidthTier.Comfortable) 120.dp else 64.dp),
+                            )
                         } else {
                             CircularProgressIndicator()
                         }
                     }
                 }
             }
-        }
-        AlignedTitleBarContent(alignment = Alignment.End) {
+        },
+        endContent = {
             SettingsButton(onClick = { publish(ModpackMsg.ShowSettings) })
-        }
-    }
+        },
+    )
 
     if (hasNonFileNotFoundError) return
 

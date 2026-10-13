@@ -34,11 +34,12 @@ fun PakkuApplicationScope.ActivationView(
         themeTrailingActions = {
             ThemeButton(appPublish, intUiTheme)
         },
-    ) {
-        FadeIn {
-            Text("Welcome to Pakku Pro")
-        }
-    }
+        startContent = {
+            FadeIn {
+                Text("Welcome to Pakku Pro")
+            }
+        },
+    )
 
     Column(
         Modifier

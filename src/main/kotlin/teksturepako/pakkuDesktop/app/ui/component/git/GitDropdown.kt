@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.component.git
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
@@ -19,6 +20,8 @@ import teksturepako.pakkuDesktop.app.ui.model.GitDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarStartSlotMaxWidth
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWidth
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.pkui.component.PkUiDropdown
@@ -41,6 +44,8 @@ val gitDropdownComponent = component(
     },
     view = { publish, model ->
         val gitState = model.gitState
+        val branchName = gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git"
+        val labelMaxWidth = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.28f)
         // [PkUiDropdown] menuContent is MenuScope.() -> Unit (not @Composable); read menu colors here.
         val menuItemColors = JewelTheme.menuStyle.colors.itemColors
 
@@ -59,7 +64,13 @@ val gitDropdownComponent = component(
                         hints = arrayOf(),
                         modifier = Modifier.size(15.dp),
                     )
-                    Text(gitState.branches.firstOrNull { it.isCurrent }?.name ?: "Git", color = JewelTheme.globalColors.text.normal)
+                    Text(
+                        branchName,
+                        color = JewelTheme.globalColors.text.normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = labelMaxWidth),
+                    )
                 }
             },
             menuContent = {
