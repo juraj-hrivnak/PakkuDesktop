@@ -13,6 +13,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import teksturepako.pakkuDesktop.app.actions.actionInfoToast
+import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
@@ -20,12 +21,6 @@ import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.Driver
 import teksturepako.pakkuDesktop.elm.PROGRESS_PUBLISH_INTERVAL_MS
 import teksturepako.pakkuDesktop.elm.conflatedPublisher
-import teksturepako.pakkuDesktop.app.git.GitBranch
-import teksturepako.pakkuDesktop.app.git.GitEvent
-import teksturepako.pakkuDesktop.app.git.GitOp
-import teksturepako.pakkuDesktop.app.git.GitState
-import teksturepako.pakkuDesktop.app.git.NativeGit
-import teksturepako.pakkuDesktop.app.git.awaitOrDestroy
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -70,6 +65,10 @@ private suspend fun refreshGitState(publish: (AppMsg) -> Unit, workDir: File, pr
 
 /** Regex that matches git's progress lines: "Counting objects:  73% (8/11)". */
 private val GIT_PROGRESS_RE = Regex("""(?:remote:\s+)?(.+?):\s+\d+%\s+\((\d+)/(\d+)\)""")
+
+/** Failure text kept for the toast. Progress lines are not stored. */
+private const val MAX_GIT_STDERR_CHARS = 64_000
+private const val MAX_GIT_STDERR_LINE_CHARS = 8_000
 
 /**
  * Runs a git command, streams stderr line-by-line to publish [GitEvent.Progress] events,
@@ -117,10 +116,10 @@ private suspend fun runGitWithProgress(
                                     gitProgressCh.trySend(event)
                                 }
                             } else {
-                                stderrCapture.append(line).append('\n')
+                                appendCappedStderr(stderrCapture, line)
                             }
                         }
-                    } else {
+                    } else if (sb.length < MAX_GIT_STDERR_LINE_CHARS) {
                         sb.append(c)
                     }
                 }
@@ -128,9 +127,12 @@ private suspend fun runGitWithProgress(
         } catch (_: Exception) {}
     }
 
-    // Drain stdout to prevent the process from blocking on a full buffer.
+    // Drain stdout and drop it. readText() kept the whole stream alive until the command finished.
     val stdoutJob = launch(Dispatchers.IO) {
-        proc.inputStream.bufferedReader().use { it.readText() }
+        try {
+            proc.inputStream.discardFully()
+        } catch (_: Exception) {
+        }
     }
 
     val exitCode = proc.awaitOrDestroy()
@@ -142,6 +144,13 @@ private suspend fun runGitWithProgress(
     gitProgressJob.join()
 
     NativeGit.Output(exitCode, stderrCapture.toString())
+}
+
+private fun appendCappedStderr(capture: StringBuilder, line: String) {
+    capture.append(line).append('\n')
+    if (capture.length > MAX_GIT_STDERR_CHARS) {
+        capture.delete(0, capture.length - MAX_GIT_STDERR_CHARS)
+    }
 }
 
 private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: GitState, force: Boolean): NativeGit.Output {

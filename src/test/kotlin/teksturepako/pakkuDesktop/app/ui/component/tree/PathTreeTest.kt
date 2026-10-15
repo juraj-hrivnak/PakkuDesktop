@@ -5,16 +5,9 @@
 package teksturepako.pakkuDesktop.app.ui.component.tree
 
 import kotlinx.datetime.LocalDateTime
+import teksturepako.pakkuDesktop.app.git.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import teksturepako.pakkuDesktop.app.git.GitChange
-import teksturepako.pakkuDesktop.app.git.GitChangeGroup
-import teksturepako.pakkuDesktop.app.git.GitFile
-import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
-import teksturepako.pakkuDesktop.app.git.gitFilesUnderTreeFolder
-import teksturepako.pakkuDesktop.app.git.gitFolderIds
-import teksturepako.pakkuDesktop.app.git.gitTreePath
-import teksturepako.pakkuDesktop.app.git.mergeChangelistExpandedFolders
 
 class PathTreeTest {
     @Test
@@ -47,6 +40,14 @@ class PathTreeTest {
             ),
             kinds,
         )
+    }
+
+    @Test
+    fun flatDirectoryKeepsEveryFileInOrder() {
+        val names = (1..40).map { "mods/file-${it.toString().padStart(2, '0')}.txt" }.reversed()
+        val rows = PathTreeSnapshot.of(names) { it }.flatRows(setOf("mods"), emptySet())
+        val files = rows.filterIsInstance<PathTreeRow.Item<String>>().map { it.path }
+        assertEquals(names.sorted(), files)
     }
 
     @Test

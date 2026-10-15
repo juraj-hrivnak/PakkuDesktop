@@ -234,6 +234,7 @@ private data class RenderedDiff(
 
 
 private const val MAX_RENDERED_LINES = 5_000
+private const val MAX_RENDERED_CHARS = 512_000
 
 private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 {
@@ -255,13 +256,15 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
 
         for (line in hunk.lines)
         {
-            if (lineCount >= MAX_RENDERED_LINES)
+            if (lineCount >= MAX_RENDERED_LINES || sb.length >= MAX_RENDERED_CHARS)
             {
                 truncated = true
                 break@outer
             }
             val lineStart = sb.length
-            sb.append(line.content)
+            val room = MAX_RENDERED_CHARS - sb.length
+            val content = if (line.content.length > room) line.content.substring(0, room) else line.content
+            sb.append(content)
             sb.append('\n')
             lines += RenderedDiffLine(
                 kind = line.type.toKind(),
@@ -272,19 +275,25 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
                 prefix = line.type.toPrefix(),
             )
             lineCount++
+            if (content.length < line.content.length)
+            {
+                truncated = true
+                break@outer
+            }
         }
     }
 
     if (truncated)
     {
         val noticeStart = sb.length
-        sb.append("... diff truncated at $MAX_RENDERED_LINES lines ...")
+        val notice = "... diff truncated ..."
+        sb.append(notice)
         sb.append('\n')
         lines += RenderedDiffLine(
             kind = DiffRenderedLineKind.HUNK_HEADER,
             startOffset = noticeStart,
             endOffsetExclusive = sb.length,
-            hunkHeader = "... diff truncated at $MAX_RENDERED_LINES lines ...",
+            hunkHeader = notice,
         )
     }
 

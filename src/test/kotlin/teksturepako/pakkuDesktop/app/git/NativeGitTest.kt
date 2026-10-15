@@ -7,13 +7,7 @@ package teksturepako.pakkuDesktop.app.git
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class NativeGitTest {
     private lateinit var repo: File
@@ -111,5 +105,41 @@ class NativeGitTest {
         assertEquals(listOf("stash@{0}"), stashed.stashes.map { it.ref })
         assertTrue(stashed.stashes.single().message.endsWith("wip"))
         assertFalse(stashed.gitFiles.any { it.path == "a.txt" })
+    }
+
+    @Test
+    fun computeDiffParsesASmallEdit() = runBlocking {
+        write("a.txt", "a2\n")
+        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "a.txt" }
+        val diff = NativeGit.computeDiff(repo, file)
+        val texts = diff.hunks.flatMap { it.lines.map { line -> line.content } }
+        assertTrue(texts.any { it == "a2" })
+    }
+
+    @Test
+    fun computeDiffDoesNotLoadAnOversizedFile() = runBlocking {
+        val big = "x".repeat(600_000)
+        write("big.txt", big)
+        git("add", "big.txt")
+        git("commit", "-q", "-m", "big")
+        write("big.txt", "y".repeat(600_000))
+        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "big.txt" }
+        val diff = NativeGit.computeDiff(repo, file)
+        val text = diff.hunks.flatMap { it.lines }.joinToString("\n") { it.content }
+        assertTrue(text.contains("too large"), text)
+        assertFalse(text.contains("yyyy"))
+    }
+
+    @Test
+    fun computeDiffDoesNotLoadADeletedOversizedFile() = runBlocking {
+        write("big.txt", "x".repeat(600_000))
+        git("add", "big.txt")
+        git("commit", "-q", "-m", "big")
+        File(repo, "big.txt").delete()
+        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "big.txt" }
+        val diff = NativeGit.computeDiff(repo, file)
+        val text = diff.hunks.flatMap { it.lines }.joinToString("\n") { it.content }
+        assertTrue(text.contains("too large"), text)
+        assertFalse(text.contains("xxxx"))
     }
 }

@@ -142,7 +142,7 @@ fun mergeExpandedFolders(
 {
     val newIds = pathFolderIds(incomingPaths.asSequence())
     if (incomingPaths.isEmpty()) return emptySet()
-    return if (pathsKey(previousPaths) != pathsKey(incomingPaths))
+    return if (!samePaths(previousPaths, incomingPaths))
     {
         newIds
     }
@@ -152,7 +152,20 @@ fun mergeExpandedFolders(
     }
 }
 
-private fun pathsKey(paths: List<String>): String = paths.sorted().joinToString("\u0000")
+/** Order-independent multiset equality. Avoids joining every path into one retained string. */
+private fun samePaths(previous: List<String>, incoming: List<String>): Boolean
+{
+    if (previous.size != incoming.size) return false
+    if (previous == incoming) return true
+    val counts = HashMap<String, Int>(previous.size)
+    for (path in previous) counts[path] = (counts[path] ?: 0) + 1
+    for (path in incoming)
+    {
+        val left = counts[path] ?: return false
+        if (left == 1) counts.remove(path) else counts[path] = left - 1
+    }
+    return counts.isEmpty()
+}
 
 private data class PathDirNode<T>(
     val fullPath: String,
@@ -160,35 +173,44 @@ private data class PathDirNode<T>(
     val items: List<T> = emptyList(),
 )
 
-private fun <T> buildPathDirRoot(items: List<T>, pathOf: (T) -> String): PathDirNode<T> =
-    items.fold(PathDirNode("")) { acc, item -> insertPathItem(acc, item, pathOf) }
-
-private fun <T> insertPathItem(root: PathDirNode<T>, item: T, pathOf: (T) -> String): PathDirNode<T>
+private class MutablePathDir<T>(val fullPath: String)
 {
-    val path = pathOf(item)
-    val parts = path.split('/').filter { it.isNotEmpty() }
-    if (parts.isEmpty()) return root
-    return insertParts(root, parts, 0, item, pathOf)
+    val children = sortedMapOf<String, MutablePathDir<T>>()
+    val items = mutableListOf<T>()
 }
 
-private fun <T> insertParts(
-    node: PathDirNode<T>,
-    parts: List<String>,
-    idx: Int,
-    item: T,
-    pathOf: (T) -> String,
-): PathDirNode<T>
+/**
+ * One pass. Copying an immutable node per inserted file was quadratic in a flat folder
+ * (every mod in `mods/`) and dumped hundreds of MB of garbage on each git refresh.
+ */
+private fun <T> buildPathDirRoot(items: List<T>, pathOf: (T) -> String): PathDirNode<T>
 {
-    if (idx == parts.lastIndex)
+    val root = MutablePathDir<T>("")
+    for (item in items)
     {
-        val merged = (node.items + item).sortedBy(pathOf)
-        return node.copy(items = merged)
+        val parts = pathOf(item).split('/').filter { it.isNotEmpty() }
+        if (parts.isEmpty()) continue
+        var node = root
+        for (i in 0 until parts.lastIndex)
+        {
+            val segment = parts[i]
+            val childPath = if (node.fullPath.isEmpty()) segment else "${node.fullPath}/$segment"
+            node = node.children.getOrPut(segment) { MutablePathDir(childPath) }
+        }
+        node.items += item
     }
-    val segment = parts[idx]
-    val childPath = parts.subList(0, idx + 1).joinToString("/")
-    val child = node.children[segment] ?: PathDirNode(fullPath = childPath)
-    val newChild = insertParts(child, parts, idx + 1, item, pathOf)
-    return node.copy(children = (node.children + (segment to newChild)).toSortedMap())
+    return root.toNode(pathOf)
+}
+
+private fun <T> MutablePathDir<T>.toNode(pathOf: (T) -> String): PathDirNode<T>
+{
+    val frozenChildren = sortedMapOf<String, PathDirNode<T>>()
+    for ((name, child) in children) frozenChildren[name] = child.toNode(pathOf)
+    return PathDirNode(
+        fullPath = fullPath,
+        children = frozenChildren,
+        items = items.sortedBy(pathOf),
+    )
 }
 
 private fun <T> buildSubtreeItemIndex(items: List<T>, pathOf: (T) -> String): Map<String, List<T>> =
