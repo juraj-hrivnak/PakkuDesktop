@@ -1,8 +1,4 @@
-import dev.nucleusframework.desktop.application.dsl.AppImageCategory
-import dev.nucleusframework.desktop.application.dsl.CompressionLevel
-import dev.nucleusframework.desktop.application.dsl.SnapConfinement
-import dev.nucleusframework.desktop.application.dsl.SnapGrade
-import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import dev.nucleusframework.desktop.application.dsl.*
 
 // Kotlin plugins are loaded here once; subprojects apply them by id through build-logic conventions.
 plugins {
@@ -15,9 +11,15 @@ plugins {
     id("pakku.plugin-host")
 }
 
+// Compose metrics/reports are opt-in: `-PcomposeCompilerReports=true`.
+// When always enabled, IntelliJ/Windows builds can fail in saveMetricsTo with "Invalid file path"
+// (metric filenames derive from the Kotlin module name, which may contain ':').
 composeCompiler {
-    reportsDestination = layout.buildDirectory.dir("compose_compiler")
-    metricsDestination = layout.buildDirectory.dir("compose_compiler")
+    if (providers.gradleProperty("composeCompilerReports").getOrElse("false").toBoolean()) {
+        val out = layout.buildDirectory.dir("compose_compiler")
+        reportsDestination.set(out)
+        metricsDestination.set(out)
+    }
 }
 
 // The default package lowercases the project name (teksturepako.pakkudesktop), which shares a class
