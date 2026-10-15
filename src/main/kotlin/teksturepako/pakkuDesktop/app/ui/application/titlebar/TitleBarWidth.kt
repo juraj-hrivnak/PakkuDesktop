@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.application.titlebar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isUnspecified
@@ -16,6 +17,13 @@ import dev.nucleusframework.window.utils.linux.LinuxButtonLayout
 import dev.nucleusframework.window.utils.linux.rememberLinuxButtonLayout
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.application.window.LocalWindowState
+import teksturepako.pakkuDesktop.app.ui.driver.LocalSystemDensity
+
+/** Base title bar height at any UI scale (Nucleus Jewel default; density scales it). */
+const val TITLE_BAR_BASE_HEIGHT_DP = 40f
+
+/** One logical dp below the title bar (border row in [MainTitleBar]). */
+const val TITLE_BAR_BORDER_HEIGHT_DP = 1f
 
 /** Decorative chrome (alpha chip) only at full width; MC line uses the same cutoff. */
 enum class TitleBarWidthTier {
@@ -34,15 +42,28 @@ val LocalTitleBarStartClusterMaxWidth = compositionLocalOf { Dp.Unspecified }
 @Composable
 fun rememberTitleBarLayout(windowWidth: Dp = LocalWindowState.current.size.width): TitleBarLayout {
     val linuxLayout = if (Platform.Current == Platform.Linux) rememberLinuxButtonLayout() else null
-    val tier = titleBarWidthTier(windowWidth)
-    return remember(windowWidth, linuxLayout) {
-        val startClusterMaxWidth = titleBarStartClusterMaxWidth(windowWidth, linuxLayout)
+    // WindowState dp is system density. Above 100% UI scale, LocalDensity is larger, so the
+    // same dp number is wider than the window and Nucleus places the caption buttons past the frame.
+    val systemDensity = LocalSystemDensity.current?.density ?: LocalDensity.current.density
+    val layoutWidth = titleBarLayoutWidth(windowWidth, systemDensity, LocalDensity.current.density)
+    val tier = titleBarWidthTier(layoutWidth)
+    return remember(layoutWidth, linuxLayout) {
+        val startClusterMaxWidth = titleBarStartClusterMaxWidth(layoutWidth, linuxLayout)
         TitleBarLayout(
             tier = tier,
             startClusterMaxWidth = startClusterMaxWidth,
             startSlotMaxWidth = (startClusterMaxWidth - PakkuDesktopConstants.railWidth).coerceAtLeast(0.dp),
         )
     }
+}
+
+/**
+ * [systemWindowWidth] is [androidx.compose.ui.window.WindowState] width (system density).
+ * Returns that width in the density actually used to lay out the title bar.
+ */
+fun titleBarLayoutWidth(systemWindowWidth: Dp, systemDensity: Float, layoutDensity: Float): Dp {
+    if (systemDensity <= 0f || layoutDensity <= 0f || systemDensity == layoutDensity) return systemWindowWidth
+    return systemWindowWidth * (systemDensity / layoutDensity)
 }
 
 data class TitleBarLayout(

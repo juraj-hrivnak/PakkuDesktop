@@ -13,6 +13,8 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -27,7 +29,8 @@ fun PakkuApplicationScope.ActivationView(
     intUiTheme: IntUiThemes,
     license: @Composable () -> Unit,
 ) {
-    val titleBarHeight = 40.dp
+    val titleBarHeight = TITLE_BAR_BASE_HEIGHT_DP.dp
+    val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
 
     MainTitleBar(
         Modifier.height(titleBarHeight),
@@ -44,7 +47,7 @@ fun PakkuApplicationScope.ActivationView(
     Column(
         Modifier
             .fillMaxSize()
-            .subtractTopHeight(titleBarHeight),
+            .subtractTopHeight(titleBarChromeHeight),
     ) {
         Row(
             Modifier

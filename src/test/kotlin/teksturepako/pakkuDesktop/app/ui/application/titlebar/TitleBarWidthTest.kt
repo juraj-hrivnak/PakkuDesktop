@@ -15,6 +15,12 @@ class TitleBarWidthTest {
     }
 
     @Test
+    fun layoutWidthMatchesScaledDensity() {
+        assertEquals(1200.dp, titleBarLayoutWidth(1200.dp, systemDensity = 1.5f, layoutDensity = 1.5f))
+        assertEquals(800.dp, titleBarLayoutWidth(1200.dp, systemDensity = 1f, layoutDensity = 1.5f))
+    }
+
+    @Test
     fun startClusterNeverExceedsWindow() {
         val layout = LinuxButtonLayout(
             buttons = listOf(

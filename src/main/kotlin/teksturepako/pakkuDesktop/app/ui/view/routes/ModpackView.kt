@@ -24,6 +24,8 @@ import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarWidthTier
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
@@ -59,7 +61,8 @@ fun PakkuApplicationScope.ModpackView(
     appPublish: (AppMsg) -> Unit,
 ) {
     val profileData = appModel.profile.data
-    val titleBarHeight = 40.dp
+    val titleBarHeight = TITLE_BAR_BASE_HEIGHT_DP.dp
+    val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
 
     // FileNotFound → ShowNewModpack is handled by modpackDiskDriver, not here.
     val lockFile = model.lockFile
@@ -120,7 +123,7 @@ fun PakkuApplicationScope.ModpackView(
 
     if (hasNonFileNotFoundError) return
 
-    Box(Modifier.fillMaxSize().subtractTopHeight(titleBarHeight)) {
+    Box(Modifier.fillMaxSize().subtractTopHeight(titleBarChromeHeight)) {
         Row(Modifier.matchParentSize()) {
             ModpackRail(publish, model.selectedTab)
 

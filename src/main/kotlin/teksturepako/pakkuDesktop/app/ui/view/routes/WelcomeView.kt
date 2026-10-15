@@ -43,6 +43,8 @@ import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarStartSlotMaxWidth
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
+import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWidth
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
 import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
@@ -69,7 +71,8 @@ fun PakkuApplicationScope.WelcomeView(
     appPublish: (AppMsg) -> Unit,
 ) {
     val profileData = model.profileData
-    val titleBarHeight = 40.dp
+    val titleBarHeight = TITLE_BAR_BASE_HEIGHT_DP.dp
+    val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
     val pickDirectory = LocalPickDirectory.current
     val displayName = appName(appModel.isProActivated)
 
@@ -108,7 +111,7 @@ fun PakkuApplicationScope.WelcomeView(
     Column(
         Modifier
             .fillMaxSize()
-            .subtractTopHeight(titleBarHeight)
+            .subtractTopHeight(titleBarChromeHeight)
             .nestedScroll(extend.nestedScrollConnection)
             .scrollable(rememberScrollableState(extend::consume), Orientation.Vertical)
     ) {
