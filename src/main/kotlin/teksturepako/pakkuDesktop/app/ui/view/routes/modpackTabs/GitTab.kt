@@ -7,7 +7,9 @@ package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +100,7 @@ fun GitTab(
                             diffPendingPath = diffPendingPath,
                             modpackRoot = modpackRoot,
                             gitBusy = model.gitBusy,
+                            filterText = model.gitFilterText,
                             publish = publish,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -138,6 +141,7 @@ private fun SourceControlSidePanel(
     diffPendingPath: String?,
     modpackRoot: Path?,
     gitBusy: Boolean,
+    filterText: String,
     publish: (ModpackMsg) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -146,8 +150,11 @@ private fun SourceControlSidePanel(
     val selectedPaths = remember(gitState.selectedFiles, grouped) {
         gitState.selectedFiles.map { gitTreePath(it, grouped) }.toSet()
     }
-    val flatRows = remember(changelistSnapshot, gitState.expandedFolderPaths, selectedPaths) {
+    val allRows = remember(changelistSnapshot, gitState.expandedFolderPaths, selectedPaths) {
         changelistSnapshot.flatRows(gitState.expandedFolderPaths, selectedPaths)
+    }
+    val flatRows = remember(allRows, filterText) {
+        if (filterText.isBlank()) allRows else filterChangelistRows(allRows, filterText)
     }
 
     Column(modifier.fillMaxSize()) {
@@ -158,7 +165,23 @@ private fun SourceControlSidePanel(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Changes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Changes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            val textFieldState = rememberTextFieldState(filterText)
+            LaunchedEffect(textFieldState.text) {
+                val text = textFieldState.text.toString()
+                if (text != filterText) {
+                    publish(ModpackMsg.GitFilterTextChanged(text))
+                }
+            }
+            TextField(
+                textFieldState,
+                Modifier
+                    .weight(1f)
+                    .height(28.dp),
+                placeholder = {
+                    Text("Search files…", color = JewelTheme.contentColor.copy(alpha = 0.5f))
+                },
+            )
         }
 
         Divider(Orientation.Horizontal)
@@ -194,42 +217,86 @@ private fun SourceControlSidePanel(
                     .padding(bottom = 4.dp)
                     .clipToBounds(),
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    state = listState,
-                ) {
-                    flatRows.forEach { row ->
-                        val key = when (row) {
-                            is PathTreeRow.Folder -> "d:${row.fullPath}"
-                            is PathTreeRow.Item -> "f:${row.path}"
-                        }
-                        val contentType = when (row) {
-                            is PathTreeRow.Folder -> "changelist_folder"
-                            is PathTreeRow.Item -> "changelist_file"
-                        }
-                        item(key = key, contentType = contentType) {
-                            GitChangesListRow(
-                                row = row,
-                                currentDiff = currentDiff,
-                                diffPendingPath = diffPendingPath,
-                                modpackRoot = modpackRoot,
-                                gitBusy = gitBusy,
-                                publish = publish,
-                            )
+                if (flatRows.isEmpty() && filterText.isNotBlank()) {
+                    Text(
+                        text = "No files match \"$filterText\"",
+                        modifier = Modifier
+                            .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp)
+                            .fillMaxWidth(),
+                        style = JewelTheme.defaultTextStyle,
+                        color = JewelTheme.contentColor.copy(alpha = 0.55f),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                    ) {
+                        flatRows.forEach { row ->
+                            val key = when (row) {
+                                is PathTreeRow.Folder -> "d:${row.fullPath}"
+                                is PathTreeRow.Item -> "f:${row.path}"
+                            }
+                            val contentType = when (row) {
+                                is PathTreeRow.Folder -> "changelist_folder"
+                                is PathTreeRow.Item -> "changelist_file"
+                            }
+                            item(key = key, contentType = contentType) {
+                                GitChangesListRow(
+                                    row = row,
+                                    currentDiff = currentDiff,
+                                    diffPendingPath = diffPendingPath,
+                                    modpackRoot = modpackRoot,
+                                    gitBusy = gitBusy,
+                                    publish = publish,
+                                )
+                            }
                         }
                     }
-                }
-                StickyTreeFolderHeaders(listState, flatRows) { folderRow ->
-                    GitChangesListRow(
-                        row = folderRow,
-                        currentDiff = currentDiff,
-                        diffPendingPath = diffPendingPath,
-                        modpackRoot = modpackRoot,
-                        gitBusy = gitBusy,
-                        publish = publish,
-                    )
+                    StickyTreeFolderHeaders(listState, flatRows) { folderRow ->
+                        GitChangesListRow(
+                            row = folderRow,
+                            currentDiff = currentDiff,
+                            diffPendingPath = diffPendingPath,
+                            modpackRoot = modpackRoot,
+                            gitBusy = gitBusy,
+                            publish = publish,
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Filter [rows] so that only items whose path contains [query] (case-insensitive) remain,
+ * along with the folder rows that are ancestors of at least one matching item.
+ */
+private fun filterChangelistRows(rows: List<PathTreeRow<GitFile>>, query: String): List<PathTreeRow<GitFile>> {
+    val q = query.lowercase()
+    // Find all matching file paths
+    val matchingPaths = rows.filterIsInstance<PathTreeRow.Item<GitFile>>()
+        .filter { it.path.lowercase().contains(q) }
+        .mapTo(HashSet()) { it.path }
+
+    if (matchingPaths.isEmpty()) return emptyList()
+
+    // Collect folder paths that are ancestors of at least one matching file
+    val keepFolders = HashSet<String>()
+    for (path in matchingPaths) {
+        val parts = path.split('/').filter { it.isNotEmpty() }
+        var acc = parts[0]
+        keepFolders.add(acc)
+        for (i in 1 until parts.lastIndex) {
+            acc = "$acc/${parts[i]}"
+            keepFolders.add(acc)
+        }
+    }
+
+    return rows.filter { row ->
+        when (row) {
+            is PathTreeRow.Item -> row.path in matchingPaths
+            is PathTreeRow.Folder -> row.fullPath in keepFolders
         }
     }
 }

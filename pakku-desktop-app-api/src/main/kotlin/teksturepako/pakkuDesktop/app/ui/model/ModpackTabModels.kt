@@ -162,6 +162,7 @@ data class GitTabModel(
     val gitBusy: Boolean,
     val lastGitFab: GitFabAction?,
     val groupUnversioned: Boolean,
+    val gitFilterText: String,
 )
 
 fun ModpackModel.gitTab() = GitTabModel(
@@ -172,4 +173,5 @@ fun ModpackModel.gitTab() = GitTabModel(
     gitBusy = gitBusy(),
     lastGitFab = lastGitFab,
     groupUnversioned = gitGroupUnversioned,
+    gitFilterText = gitFilterText,
 )

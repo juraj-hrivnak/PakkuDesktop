@@ -455,6 +455,7 @@ sealed interface ModpackMsg {
     /** gitDriver after [op] and the state refresh; success=false if a git command failed */
     data class GitOpFinished(val op: GitOp, val success: Boolean) : ModpackMsg
     data class GitGroupUnversionedChanged(val grouped: Boolean) : ModpackMsg
+    data class GitFilterTextChanged(val text: String) : ModpackMsg
 
     // -- Dropdown children --
 

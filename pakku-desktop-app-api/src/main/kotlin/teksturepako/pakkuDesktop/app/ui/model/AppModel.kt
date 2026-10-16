@@ -287,6 +287,8 @@ data class ModpackModel(
     val gitDialog: GitDialog? = null,
     /** Changelist shows unversioned files in their own group (IntelliJ default) vs mixed in. */
     val gitGroupUnversioned: Boolean = true,
+    /** Free-text filter for the Git changelist tree (matches against file paths). */
+    val gitFilterText: String = "",
 
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),

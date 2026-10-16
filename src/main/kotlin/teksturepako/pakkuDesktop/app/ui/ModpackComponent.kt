@@ -767,6 +767,8 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
                 expandedFolderPaths = gitFolderIds(model.git.gitFiles, msg.grouped).toPersistentSet(),
             ),
         )
+    is ModpackMsg.GitFilterTextChanged ->
+        if (model.gitFilterText == msg.text) model else model.copy(gitFilterText = msg.text)
 
     is ModpackMsg.ModpackDropdown -> {
         val updatedDropdown = modpackDropdownComponent.update(msg.msg, model.modpackDropdown)

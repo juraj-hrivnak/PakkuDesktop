@@ -148,6 +148,7 @@ class ModpackUpdateSameInstanceTest {
         assertNoOp(busy, ModpackMsg.ShowGitDialog(GitDialog.Commit))
         assertNoOp(busy, ModpackMsg.GitOpFinished(GitOp.Refresh, success = true))
         assertNoOp(ModpackModel(), ModpackMsg.GitGroupUnversionedChanged(grouped = true))
+        assertNoOp(ModpackModel(), ModpackMsg.GitFilterTextChanged(""))
     }
 
     @Test
