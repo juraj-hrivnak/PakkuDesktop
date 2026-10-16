@@ -272,7 +272,7 @@ private fun SourceControlSidePanel(
  * Filter [rows] so that only items whose path contains [query] (case-insensitive) remain,
  * along with the folder rows that are ancestors of at least one matching item.
  */
-private fun filterChangelistRows(rows: List<PathTreeRow<GitFile>>, query: String): List<PathTreeRow<GitFile>> {
+internal fun filterChangelistRows(rows: List<PathTreeRow<GitFile>>, query: String): List<PathTreeRow<GitFile>> {
     val q = query.lowercase()
     // Find all matching file paths
     val matchingPaths = rows.filterIsInstance<PathTreeRow.Item<GitFile>>()
