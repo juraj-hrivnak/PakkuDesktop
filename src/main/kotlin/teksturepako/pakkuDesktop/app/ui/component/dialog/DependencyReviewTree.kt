@@ -397,7 +397,6 @@ private fun DependencyIcon(dimmed: Boolean) {
  * Warning text without re-stating the project already shown on the parent row/leaf.
  * Skips fingerprints already rendered elsewhere in this dialog pass.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ContextualWarning(
     error: ActionError,
