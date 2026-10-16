@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 1.0.0-alpha.6
+## v1.0.0-alpha.6
 
 - Improved git proformance & clean up code
 - Improved git diff hunk display
@@ -15,7 +15,7 @@
 - Fixed memory leak in Git driver
 - Fixed IntelliJ error with compose metrics enabled
 
-## 1.0.0-alpha.5
+## v1.0.0-alpha.5
 
 - Initial alpha release of Pakku Desktop.
 - Previous alpha versions are results of packaging testing.
