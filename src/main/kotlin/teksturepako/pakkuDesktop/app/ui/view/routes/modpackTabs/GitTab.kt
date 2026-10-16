@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -174,27 +173,6 @@ private fun SourceControlSidePanel(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Changes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            gitState.currentBranch?.let { branch ->
-                Icon(
-                    AllIconsKeys.General.Vcs,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                )
-                Text(
-                    branch.name,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                    color = JewelTheme.contentColor.copy(alpha = 0.75f),
-                )
-                if (gitState.incomingCount > 0) {
-                    Text("↓${gitState.incomingCount}", color = JewelTheme.contentColor.copy(alpha = 0.55f))
-                }
-                if (gitState.outgoingCommits.isNotEmpty()) {
-                    Text("↑${gitState.outgoingCommits.size}", color = JewelTheme.contentColor.copy(alpha = 0.55f))
-                }
-            }
         }
 
         Divider(Orientation.Horizontal)
