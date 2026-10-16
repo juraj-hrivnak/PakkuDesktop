@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -106,6 +107,7 @@ internal fun DiffTextArea(
         Canvas(modifier = Modifier.matchParentSize()) {
             val layout = textLayoutResult ?: return@Canvas
             val scrollY = scrollState.value.toFloat()
+            val scrollX = if (softWrap) 0f else horizontalScroll.value.toFloat()
             val textLen = layout.layoutInput.text.length
 
             for (line in rendered.lines)
@@ -161,10 +163,37 @@ internal fun DiffTextArea(
 
                 if (line.kind == DiffRenderedLineKind.HUNK_HEADER)
                 {
-                    val l = textMeasurer.measure(
-                        line.hunkHeader, style = gutterStyle.copy(color = headerFg), maxLines = 1
+                    val marker = textMeasurer.measure(
+                        line.hunkHeader,
+                        style = gutterStyle.copy(color = headerFg),
+                        softWrap = false,
+                        maxLines = 1,
                     )
-                    drawText(l, topLeft = Offset(colPadPx, baselineY - l.getLineBaseline(0)))
+                    val markerTop = baselineY - marker.getLineBaseline(0)
+                    // Snippet tracks the code column. The @@ marker stays put and covers it.
+                    if (line.hunkSnippet.isNotEmpty())
+                    {
+                        val snippet = textMeasurer.measure(
+                            line.hunkSnippet,
+                            style = editorStyle,
+                            softWrap = false,
+                            maxLines = 1,
+                        )
+                        val coverRight = (colPadPx + marker.size.width + colPadPx).coerceAtMost(size.width)
+                        if (coverRight < size.width)
+                        {
+                            clipRect(left = coverRight, top = top, right = size.width, bottom = bottom) {
+                                drawText(
+                                    snippet,
+                                    topLeft = Offset(
+                                        contentIndentPx - scrollX,
+                                        baselineY - snippet.getLineBaseline(0),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    drawText(marker, topLeft = Offset(colPadPx, markerTop))
                 }
                 else
                 {
@@ -276,6 +305,7 @@ private data class RenderedDiffLine(
     val startOffset: Int,
     val endOffsetExclusive: Int,
     val hunkHeader: String = "",
+    val hunkSnippet: String = "",
     val oldNum: Int? = null,
     val newNum: Int? = null,
     val prefix: String = " ",
@@ -301,11 +331,13 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
     {
         val hunkStart = sb.length
         sb.append('\n')
+        val (marker, snippet) = splitHunkHeader(hunk.header)
         lines += RenderedDiffLine(
             kind = DiffRenderedLineKind.HUNK_HEADER,
             startOffset = hunkStart,
             endOffsetExclusive = sb.length,
-            hunkHeader = hunk.header,
+            hunkHeader = marker,
+            hunkSnippet = snippet,
         )
 
         for (line in hunk.lines)
@@ -381,8 +413,25 @@ private fun maxUnwrappedContentWidthPx(
     {
         best = max(best, estimatedLineWidthPx(line, spaceWidth, tabWidth))
     }
+    for (line in rendered.lines)
+    {
+        if (line.hunkSnippet.isNotEmpty())
+        {
+            best = max(best, estimatedLineWidthPx(line.hunkSnippet, spaceWidth, tabWidth))
+        }
+    }
     return best
 }
+
+/** `@@ -1,2 +3,4 @@ fun name()` becomes the marker and the code snippet. */
+private fun splitHunkHeader(header: String): Pair<String, String>
+{
+    val match = hunkLabel.find(header) ?: return header to ""
+    return match.groupValues[1] to match.groupValues[2]
+}
+
+/** One separator space, so the snippet can keep the indent it has in the file. */
+private val hunkLabel = Regex("""^(@@\s.*?@@) (.*)$""")
 
 private fun charWidthPx(textMeasurer: TextMeasurer, text: String, style: TextStyle): Float =
     textMeasurer.measure(text, style = style, softWrap = false, maxLines = 1).size.width.toFloat()

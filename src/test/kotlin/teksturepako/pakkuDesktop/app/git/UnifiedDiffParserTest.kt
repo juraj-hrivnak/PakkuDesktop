@@ -19,7 +19,7 @@ class UnifiedDiffParserTest {
             "}",
         )
         val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -3,2 +3,2 @@"), lines)
-        assertEquals("@@ -3,2 +3,2 @@ fun name() {", enriched.hunks.single().header)
+        assertEquals("@@ -3,2 +3,2 @@ " + "    fun name() {", enriched.hunks.single().header)
     }
 
     @Test
@@ -33,10 +33,14 @@ class UnifiedDiffParserTest {
     }
 
     @Test
-    fun `keeps context git already provided`() {
-        val header = "@@ -3,1 +3,1 @@ fun name() {"
-        val enriched = UnifiedDiffParser.withEnclosingContext(diff(header), listOf("class Pack {"))
-        assertEquals(header, enriched.hunks.single().header)
+    fun `replaces git context with the indented source line`() {
+        val lines = listOf(
+            "class Pack {",
+            "    fun name() {",
+            "        val a = 1",
+        )
+        val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -3,1 +3,1 @@ fun name() {"), lines)
+        assertEquals("@@ -3,1 +3,1 @@ " + "    fun name() {", enriched.hunks.single().header)
     }
 
     @Test

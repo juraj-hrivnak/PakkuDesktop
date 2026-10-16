@@ -114,17 +114,18 @@ object UnifiedDiffParser {
         if (fileLines.isEmpty()) return content
         return content.copy(
             hunks = content.hunks.map { hunk ->
-                if (alreadyHasCodeContext(hunk.header)) return@map hunk
                 val start = hunkStartLine(hunk.header) ?: return@map hunk
                 val snippet = enclosingSnippet(fileLines, start) ?: return@map hunk
-                hunk.copy(header = hunk.header.trimEnd() + " " + snippet)
+                hunk.copy(header = hunkMarker(hunk.header) + " " + snippet)
             },
         )
     }
 
-    private fun alreadyHasCodeContext(header: String): Boolean {
-        val match = hunkHeader.find(header) ?: return true
-        return match.groupValues[5].isNotBlank()
+    /** `@@ -1,2 +3,4 @@` without any trailing context. */
+    private fun hunkMarker(header: String): String {
+        val bare = header.substringBefore('\u001f')
+        val close = bare.indexOf("@@", startIndex = 2)
+        return if (bare.startsWith("@@") && close > 0) bare.substring(0, close + 2) else bare
     }
 
     private fun hunkStartLine(header: String): Int? {
@@ -143,15 +144,15 @@ object UnifiedDiffParser {
         val hunkIndent = indentOf(lines[startIdx])
         var nearest: String? = null
         for (i in startIdx - 1 downTo 0) {
-            val trimmed = lines[i].trim()
-            if (isSkippableContextLine(trimmed)) continue
-            if (nearest == null) nearest = trimmed
-            if (hunkIndent == 0 || indentOf(lines[i]) < hunkIndent) return oneLine(trimmed)
+            val raw = lines[i]
+            if (isSkippableContextLine(raw.trim())) continue
+            if (nearest == null) nearest = raw
+            if (hunkIndent == 0 || indentOf(raw) < hunkIndent) return oneLine(raw)
         }
         if (nearest != null) return oneLine(nearest)
         for (i in startIdx..lines.lastIndex) {
-            val trimmed = lines[i].trim()
-            if (!isSkippableContextLine(trimmed)) return oneLine(trimmed)
+            val raw = lines[i]
+            if (!isSkippableContextLine(raw.trim())) return oneLine(raw)
         }
         return null
     }
@@ -174,8 +175,9 @@ object UnifiedDiffParser {
             trimmed.startsWith("*/")
     }
 
-    private fun oneLine(trimmed: String): String {
-        val collapsed = trimmed.replace(Regex("\\s+"), " ")
-        return if (collapsed.length <= 120) collapsed else collapsed.take(117) + "..."
+    /** Keeps the source line's leading whitespace so the snippet lines up with the code. */
+    private fun oneLine(raw: String): String {
+        val line = raw.trimEnd()
+        return if (line.length <= 120) line else line.take(117) + "..."
     }
 }
