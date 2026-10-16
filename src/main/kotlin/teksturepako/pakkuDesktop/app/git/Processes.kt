@@ -37,13 +37,13 @@ suspend fun ProcessBuilder.runCapturing(): Pair<Int, String> {
     return captured.exitCode to captured.text
 }
 
+/** [ProcessBuilder.start] is a blocking native call. Never run it on the UI dispatcher. */
+suspend fun ProcessBuilder.startOnIo(): Process = runInterruptible(Dispatchers.IO) { start() }
+
 /**
  * Like [runCapturing], but keeps at most [maxChars] characters. Past that, the child is
  * destroyed so the rest of a huge diff never lands on the heap.
  */
-/** [ProcessBuilder.start] is a blocking native call. Never run it on the UI dispatcher. */
-suspend fun ProcessBuilder.startOnIo(): Process = runInterruptible(Dispatchers.IO) { start() }
-
 suspend fun ProcessBuilder.runCapturingCapped(maxChars: Int): CappedCapture = coroutineScope {
     val proc = startOnIo()
     proc.outputStream.close()
@@ -64,18 +64,59 @@ suspend fun ProcessBuilder.runCapturingCapped(maxChars: Int): CappedCapture = co
 }
 
 /**
- * Reads stdout line by line without retaining the whole stream. Cancellation destroys the process.
- * [onLine] runs on the IO dispatcher.
+ * Streams stdout as [separator]-terminated records without retaining the whole stream.
+ * Cancellation destroys the process. [onRecord] runs on the IO dispatcher.
  */
-suspend fun ProcessBuilder.forEachOutputLine(onLine: (String) -> Unit): Int = coroutineScope {
+suspend fun ProcessBuilder.forEachRecord(separator: Char, onRecord: (String) -> Unit): Int = coroutineScope {
     val proc = startOnIo()
     proc.outputStream.close()
     val read = async(Dispatchers.IO) {
-        proc.inputStream.bufferedReader().useLines { lines -> lines.forEach(onLine) }
+        proc.inputStream.bufferedReader().use { reader ->
+            val sb = StringBuilder()
+            val buf = CharArray(8192)
+            while (true) {
+                val n = reader.read(buf)
+                if (n < 0) break
+                for (i in 0 until n) {
+                    val c = buf[i]
+                    if (c == separator) {
+                        onRecord(sb.toString())
+                        sb.setLength(0)
+                    } else {
+                        sb.append(c)
+                    }
+                }
+            }
+            if (sb.isNotEmpty()) onRecord(sb.toString())
+        }
     }
     val exitCode = proc.awaitOrDestroy()
     read.await()
     exitCode
+}
+
+/**
+ * Calls [onLine] for each line, split on `\n` or `\r`, without keeping the whole stream.
+ * Git progress rewrites the same line with `\r`, so a newline-only reader would see nothing
+ * until the command finished. A line longer than [maxChars] is cut; the rest is skipped.
+ */
+fun Reader.forEachLine(maxChars: Int = Int.MAX_VALUE, onLine: (String) -> Unit) {
+    val line = StringBuilder()
+    val buf = CharArray(8192)
+    while (true) {
+        val n = read(buf)
+        if (n < 0) break
+        for (i in 0 until n) {
+            val c = buf[i]
+            if (c == '\n' || c == '\r') {
+                if (line.isNotEmpty()) onLine(line.toString())
+                line.setLength(0)
+            } else if (line.length < maxChars) {
+                line.append(c)
+            }
+        }
+    }
+    if (line.isNotEmpty()) onLine(line.toString())
 }
 
 /** Reads to EOF and drops the bytes so a piped child cannot block on a full stdout pipe. */

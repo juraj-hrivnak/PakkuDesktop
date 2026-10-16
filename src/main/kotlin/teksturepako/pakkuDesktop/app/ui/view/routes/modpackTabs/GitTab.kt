@@ -4,7 +4,6 @@
 
 package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -20,41 +19,27 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.colorPalette
-import org.jetbrains.jewel.ui.theme.treeStyle
+import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarActionButton
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarSeparator
 import teksturepako.pakkuDesktop.app.ui.component.button.ToolbarToggleButton
+import teksturepako.pakkuDesktop.app.ui.component.context.GitFileRowContextMenu
+import teksturepako.pakkuDesktop.app.ui.component.context.GitFolderRowContextMenu
+import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
 import teksturepako.pakkuDesktop.app.ui.component.modpack.git.GitFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterRow
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FooterText
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.SelectionStatus
+import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
+import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
+import teksturepako.pakkuDesktop.app.ui.driver.LocalGitChangelistPrep
 import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
-import teksturepako.pakkuDesktop.elm.animatedColor
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
-import teksturepako.pakkuDesktop.app.git.GitChangeGroup
-import teksturepako.pakkuDesktop.app.git.GitChangelistUiSnapshot
-import teksturepako.pakkuDesktop.app.git.GitDialog
-import teksturepako.pakkuDesktop.app.git.GitFile
-import teksturepako.pakkuDesktop.app.git.GitOp
-import teksturepako.pakkuDesktop.app.git.GitState
-import teksturepako.pakkuDesktop.app.ui.driver.LocalGitChangelistPrep
-import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
-import teksturepako.pakkuDesktop.app.git.gitTreePath
-import teksturepako.pakkuDesktop.app.git.toTreeStatus
-import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
-import teksturepako.pakkuDesktop.app.git.DiffContent
-import teksturepako.pakkuDesktop.app.git.GitChange
-import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeRow
-import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
-import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
-import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
-import teksturepako.pakkuDesktop.app.ui.component.tree.TreeStatus
-import teksturepako.pakkuDesktop.app.ui.component.context.GitFileRowContextMenu
-import teksturepako.pakkuDesktop.app.ui.component.context.GitFolderRowContextMenu
 import java.nio.file.Path
 
 @Composable
@@ -69,8 +54,9 @@ fun GitTab(
     val files = gitState.gitFiles
     val selectedCount = gitState.selectedFiles.size
     val grouped = model.groupUnversioned
+    // Identity first; equal content is just as valid and must never leave the spinner up.
     val changelistPrep = LocalGitChangelistPrep.current
-        ?.takeIf { it.files === files && it.grouped == grouped }
+        ?.takeIf { it.grouped == grouped && (it.files === files || it.files == files) }
     // Empty shell while the driver builds the tree off the UI thread. Do not walk [files] here.
     val changelistSnapshot = changelistPrep?.snapshot
         ?: remember(grouped) { gitChangelistUiSnapshot(emptyList(), grouped) }

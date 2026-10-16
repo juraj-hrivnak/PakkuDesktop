@@ -5,8 +5,15 @@
 package teksturepako.pakkuDesktop.app.git
 
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -31,39 +38,103 @@ object NativeGit
         workDir
     }
 
+    // -- Process --
+
+    /**
+     * Every git invocation goes through here. [readOnly] commands run without optional locks so a
+     * background refresh never rewrites `.git/index` or races a user command for `index.lock`.
+     * Prompts are disabled: a GUI app has no terminal, so git would otherwise wait forever.
+     */
+    internal fun command(root: File, args: List<String>, readOnly: Boolean): ProcessBuilder =
+        ProcessBuilder(listOf("git", "-c", "core.quotepath=false") + args).directory(root).apply {
+            val env = environment()
+            env["GIT_TERMINAL_PROMPT"] = "0"
+            env["GIT_EDITOR"] = "true"
+            env["GIT_MERGE_AUTOEDIT"] = "no"
+            if (readOnly) env["GIT_OPTIONAL_LOCKS"] = "0"
+        }
+
     // -- State --
 
     /**
-     * Builds [GitState] purely from native git commands.
+     * Reads the repository part of [GitState]; UI-only fields stay at their defaults.
+     * Independent reads run in parallel, so the wall time is about two git spawns.
      */
-    suspend fun buildState(workDir: File, preserve: GitState): GitState
-    {
-        val upstream = run(workDir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")?.trim()
-            ?.takeIf { it.isNotEmpty() && !it.startsWith("@") }
-        return preserve.copy(
-            branches = readBranches(workDir),
-            outgoingCommits = readOutgoingCommits(workDir, hasUpstream = upstream != null),
-            gitFiles = parseGitStatus(workDir).toPersistentList(),
-            upstream = upstream,
-            incomingCount = if (upstream == null) 0
-            else run(workDir, "rev-list", "--count", "HEAD..@{u}")?.trim()?.toIntOrNull() ?: 0,
-            remotes = run(workDir, "remote")?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
-                .toPersistentList(),
-            headMessage = run(workDir, "log", "-1", "--format=%B")?.trimEnd().orEmpty(),
-            stashes = readStashes(workDir).toPersistentList(),
+    suspend fun readState(workDir: File): GitState = coroutineScope {
+        val root = workDir.canonicalFile
+        val status = async { readStatus(root) }
+        val refs = async { run(root, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes", "refs/stash") }
+        val remotes = async { run(root, "remote") }
+        val headMessage = async { run(root, "log", "-1", "--format=%B") }
+
+        val st = status.await()
+        val refNames = refs.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList().orEmpty()
+        val outgoing = async { readOutgoingCommits(root, st) }
+        val stashes = async { if ("refs/stash" in refNames) readStashes(root) else emptyList() }
+
+        GitState(
+            gitFiles = st.files.toPersistentList(),
+            branches = branchesFrom(refNames, st.head),
+            outgoingCommits = outgoing.await(),
+            upstream = st.upstream,
+            incomingCount = st.behind,
+            remotes = remotes.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList()
+                .orEmpty().toPersistentList(),
+            headMessage = headMessage.await()?.trimEnd().orEmpty(),
+            stashes = stashes.await().toPersistentList(),
         )
     }
 
-    private suspend fun parseGitStatus(workDir: File): List<GitFile>
+    private class StatusSnapshot(
+        val files: List<GitFile>,
+        /** null when detached */
+        val head: String?,
+        val unborn: Boolean,
+        /** null without an upstream, or when the upstream ref is gone */
+        val upstream: String?,
+        val ahead: Int,
+        val behind: Int,
+    )
+
+    /** One `git status --porcelain=v2 --branch -z` call: changes plus branch, upstream and ahead/behind. */
+    private suspend fun readStatus(root: File): StatusSnapshot
     {
-        val root = workDir.canonicalFile
-        val pathToChange = linkedMapOf<String, GitChange>()
+        val changes = HashMap<String, GitChange>()
+        var head: String? = null
+        var unborn = false
+        var upstream: String? = null
+        var ab: Pair<Int, Int>? = null
+        var skipOrigPath = false
         try
         {
-            ProcessBuilder("git", "status", "--porcelain", "-uall").directory(root)
-                .redirectError(ProcessBuilder.Redirect.DISCARD).forEachOutputLine { raw ->
-                    val change = porcelainChange(raw) ?: return@forEachOutputLine
-                    pathToChange[change.path] = change
+            command(root, listOf("status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"), readOnly = true)
+                .redirectError(ProcessBuilder.Redirect.DISCARD)
+                .forEachRecord('\u0000') { rec ->
+                    if (skipOrigPath)
+                    {
+                        skipOrigPath = false
+                        return@forEachRecord
+                    }
+                    when
+                    {
+                        rec.startsWith("# branch.oid ")      -> unborn = rec.endsWith("(initial)")
+                        rec.startsWith("# branch.head ")     ->
+                            head = rec.removePrefix("# branch.head ").takeIf { it != "(detached)" }
+                        rec.startsWith("# branch.upstream ") -> upstream = rec.removePrefix("# branch.upstream ")
+                        rec.startsWith("# branch.ab ")       -> ab = parseAheadBehind(rec.removePrefix("# branch.ab "))
+                        rec.startsWith("1 ")                 -> rec.split(' ', limit = 9).let { f ->
+                            if (f.size == 9) changes[f[8]] = trackedChange(f[1], f[8])
+                        }
+                        rec.startsWith("2 ")                 -> {
+                            // Rename/copy: the original path follows as its own NUL record.
+                            skipOrigPath = true
+                            rec.split(' ', limit = 10).let { f -> if (f.size == 10) changes[f[9]] = GitChange.Modified(f[9]) }
+                        }
+                        rec.startsWith("u ")                 -> rec.split(' ', limit = 11).let { f ->
+                            if (f.size == 11) changes[f[10]] = GitChange.Modified(f[10])
+                        }
+                        rec.startsWith("? ")                 -> rec.substring(2).let { changes[it] = GitChange.Untracked(it) }
+                    }
                 }
         }
         catch (e: CancellationException)
@@ -72,36 +143,52 @@ object NativeGit
         }
         catch (_: Exception)
         {
-            return emptyList()
+            return StatusSnapshot(emptyList(), null, unborn = false, upstream = null, ahead = 0, behind = 0)
         }
 
-        return pathToChange.entries.sortedBy { it.key }.mapNotNull { (path, change) ->
+        val files = changes.entries.sortedBy { it.key }.mapNotNull { (path, change) ->
             val file = root.childOrNull(path) ?: return@mapNotNull null
+            val attrs = try
+            {
+                Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            }
+            catch (_: Exception)
+            {
+                null // deleted in the working tree
+            }
             GitFile.fromFileInfo(
-                path = path.replace(File.separatorChar, '/'),
+                path = path,
                 status = change,
-                modifiedEpochMillis = file.lastModified(),
-                size = file.length(),
+                modifiedEpochMillis = attrs?.lastModifiedTime()?.toMillis() ?: 0L,
+                size = attrs?.size() ?: 0L,
             )
         }
+        // Without branch.ab the upstream ref is gone; `@{u}` would fail, so treat it as untracked.
+        val counts = ab
+        return StatusSnapshot(
+            files = files,
+            head = head,
+            unborn = unborn,
+            upstream = if (counts != null) upstream else null,
+            ahead = counts?.first ?: 0,
+            behind = counts?.second ?: 0,
+        )
     }
 
-    private fun porcelainChange(raw: String): GitChange?
+    private fun parseAheadBehind(value: String): Pair<Int, Int>?
     {
-        if (raw.length < 4) return null
-        val xy = raw.substring(0, 2)
-        // Renames are shown as "old -> new"; take the destination path.
-        var path = raw.substring(3)
-        if (" -> " in path) path = path.substringAfterLast(" -> ")
-        path = path.trim().removeSurrounding("\"")
-        if (path.isEmpty()) return null
-        return when
-        {
-            xy == "??"                   -> GitChange.Untracked(path)
-            xy[0] == 'A'                 -> GitChange.Added(path)
-            xy[0] == 'D' || xy[1] == 'D' -> GitChange.Deleted(path)
-            else                         -> GitChange.Modified(path)
-        }
+        val parts = value.split(' ')
+        val ahead = parts.getOrNull(0)?.removePrefix("+")?.toIntOrNull() ?: return null
+        val behind = parts.getOrNull(1)?.removePrefix("-")?.toIntOrNull() ?: return null
+        return ahead to behind
+    }
+
+    /** Porcelain v2 XY: index then worktree, `.` = unchanged. */
+    private fun trackedChange(xy: String, path: String): GitChange = when
+    {
+        xy.getOrNull(0) == 'A'                               -> GitChange.Added(path)
+        xy.getOrNull(0) == 'D' || xy.getOrNull(1) == 'D' -> GitChange.Deleted(path)
+        else                                                 -> GitChange.Modified(path)
     }
 
     /** Repo-relative [rel] that stays inside this directory. Does not touch the filesystem. */
@@ -117,34 +204,32 @@ object NativeGit
         return file
     }
 
-    private suspend fun readBranches(workDir: File): Set<GitBranch>
-    {
-        val currentBranch = run(workDir, "branch", "--show-current")?.trim().orEmpty()
-        val output =
-            run(workDir, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes") ?: return emptySet()
-
-        return output.lineSequence().filter { it.isNotBlank() }.map { refname ->
-                val isRemote = refname.startsWith("refs/remotes/")
-                val name = when
-                {
-                    refname.startsWith("refs/heads/")   -> refname.removePrefix("refs/heads/")
-                    refname.startsWith("refs/remotes/") -> refname.removePrefix("refs/remotes/")
-                    else                                -> refname
+    private fun branchesFrom(refNames: List<String>, currentBranch: String?): Set<GitBranch> =
+        refNames.mapNotNullTo(LinkedHashSet()) { refname ->
+            when
+            {
+                refname.startsWith("refs/heads/")   -> refname.removePrefix("refs/heads/").let { name ->
+                    GitBranch(name = name, isRemote = false, isCurrent = name == currentBranch)
                 }
-                GitBranch(name = name, isRemote = isRemote, isCurrent = !isRemote && name == currentBranch)
-            }.toSet()
-    }
+                // `origin/HEAD` is a symref to the default branch, not a branch of its own.
+                refname.startsWith("refs/remotes/") && !refname.endsWith("/HEAD") ->
+                    GitBranch(name = refname.removePrefix("refs/remotes/"), isRemote = true, isCurrent = false)
+                else                                -> null
+            }
+        }
 
-    private suspend fun readOutgoingCommits(workDir: File, hasUpstream: Boolean): Set<GitCommit>
+    private suspend fun readOutgoingCommits(root: File, status: StatusSnapshot): Set<GitCommit>
     {
+        if (status.unborn) return emptySet()
         // Without an upstream, everything not on any remote is outgoing (first push of a branch).
-        val output = if (hasUpstream)
+        val output = if (status.upstream != null)
         {
-            run(workDir, "log", "-n", "100", "@{u}..HEAD", "--format=%h %s")
+            if (status.ahead == 0) return emptySet()
+            run(root, "log", "-n", "100", "@{u}..HEAD", "--format=%h %s")
         }
         else
         {
-            run(workDir, "log", "-n", "100", "HEAD", "--not", "--remotes", "--format=%h %s")
+            run(root, "log", "-n", "100", "HEAD", "--not", "--remotes", "--format=%h %s")
         } ?: return emptySet()
         return output.lineSequence().filter { it.isNotBlank() }.take(100).mapTo(LinkedHashSet()) { line ->
                 val space = line.indexOf(' ')
@@ -184,7 +269,7 @@ object NativeGit
         val root = workDir.canonicalFile
         files.forEach { rel -> requireInside(root, rel) }
         val allArgs = if (files.isEmpty()) args.toList() else args.toList() + "--" + files
-        val (code, text) = ProcessBuilder("git", *allArgs.toTypedArray()).directory(root).redirectErrorStream(true)
+        val (code, text) = command(root, allArgs, readOnly = false).redirectErrorStream(true)
             .apply { environment().putAll(env) }.runCapturing()
         return Output(code, text)
     }
@@ -196,7 +281,10 @@ object NativeGit
      */
     suspend fun commitPaths(workDir: File, message: String, paths: List<String>, amend: Boolean): Output
     {
-        val tempIndex = File.createTempFile("pakku-commit", ".index").apply { delete() }
+        val tempIndex = withContext(Dispatchers.IO) {
+            File.createTempFile("pakku-commit", ".index")
+        }.apply { delete() }
+
         try
         {
             val env = mapOf("GIT_INDEX_FILE" to tempIndex.absolutePath)
@@ -287,7 +375,7 @@ object NativeGit
         val captured = try
         {
             requireInside(root, path)
-            ProcessBuilder("git", "diff", "HEAD", "--", path).directory(root)
+            command(root, listOf("diff", "HEAD", "--", path), readOnly = true)
                 .redirectError(ProcessBuilder.Redirect.DISCARD).runCapturingCapped(MAX_FILE_BYTES.toInt())
         }
         catch (e: CancellationException)
@@ -391,19 +479,21 @@ object NativeGit
         require(!destDir.exists() || destDir.list().isNullOrEmpty()) {
             "Destination already exists and is not empty: $destDir"
         }
-        val (code, output) = ProcessBuilder("git", "clone", url, destDir.name).directory(parent)
+        val (code, output) = command(parent, listOf("clone", url, destDir.name), readOnly = false)
             .redirectErrorStream(true).runCapturing()
         check(code == 0) { output.ifBlank { "git clone failed with exit code $code" } }
         destDir
     }.onFailure { if (it is CancellationException) throw it }
 
+    /** Read-only command; stdout on exit code 0, else null. */
     suspend fun run(workDir: File, vararg args: String, files: Array<out String> = emptyArray()): String? = try
     {
         val root = workDir.canonicalFile
         files.forEach { rel -> requireInside(root, rel) }
         val allArgs = if (files.isEmpty()) args.toList() else args.toList() + "--" + files
-        ProcessBuilder("git", *allArgs.toTypedArray()).directory(root).redirectError(ProcessBuilder.Redirect.DISCARD)
-            .runCapturing().second
+        val (code, text) = command(root, allArgs, readOnly = true).redirectError(ProcessBuilder.Redirect.DISCARD)
+            .runCapturing()
+        text.takeIf { code == 0 }
     }
     catch (e: CancellationException)
     {

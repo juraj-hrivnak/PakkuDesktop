@@ -11,29 +11,9 @@ import kotlinx.datetime.LocalDateTime
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.api.projects.ProjectType
-import teksturepako.pakkuDesktop.app.ui.model.DiskSnapshot
-import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
-import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
-import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
-import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.app.ui.model.ProjectFileChange
-import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
-import teksturepako.pakkuDesktop.app.ui.model.pathKey
-import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
-import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
-import teksturepako.pakkuDesktop.app.git.GitState
-import teksturepako.pakkuDesktop.app.git.GitChange
-import teksturepako.pakkuDesktop.app.git.GitDialog
-import teksturepako.pakkuDesktop.app.git.GitFile
-import teksturepako.pakkuDesktop.app.git.GitOp
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotSame
-import kotlin.test.assertNull
-import kotlin.test.assertSame
-import kotlin.test.assertTrue
+import teksturepako.pakkuDesktop.app.git.*
+import teksturepako.pakkuDesktop.app.ui.model.*
+import kotlin.test.*
 
 class ModpackUpdateSameInstanceTest {
     private val file = GitFile(
@@ -86,6 +66,56 @@ class ModpackUpdateSameInstanceTest {
     }
 
     @Test
+    fun gitRefreshKeepsFileListInstanceWhenOnlyBranchChanges() {
+        val first = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
+        val switched = modpackUpdate(
+            ModpackMsg.GitStateUpdated(
+                GitState(
+                    gitFiles = persistentListOf(file.copy()),
+                    branches = setOf(GitBranch("feature", isRemote = false, isCurrent = true)),
+                )
+            ),
+            first,
+        )
+        assertNotSame(first, switched)
+        // The changelist tree is cached against this list by identity.
+        assertSame(first.git.gitFiles, switched.git.gitFiles)
+        assertEquals("feature", switched.git.currentBranch?.name)
+        assertSame(first.gitDropdown.gitState.gitFiles, switched.gitDropdown.gitState.gitFiles)
+    }
+
+    @Test
+    fun gitRefreshKeepsTypedCommitMessageAndSelection() {
+        val typed = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
+            .let { modpackUpdate(ModpackMsg.GitCommitMessageChanged("wip"), it) }
+            .let { modpackUpdate(ModpackMsg.GitSelectAllChangedFiles, it) }
+        val other = file.copy(path = "c.txt", status = GitChange.Untracked("c.txt"))
+        val refreshed = modpackUpdate(
+            ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file.copy(), other))),
+            typed,
+        )
+        assertEquals("wip", refreshed.git.commitMessage)
+        assertEquals(setOf(file.path), refreshed.git.selectedFiles.map { it.path }.toSet())
+    }
+
+    @Test
+    fun gitRefreshFollowsTheOpenDiff() {
+        val diff = DiffContent(oldPath = file.path, newPath = file.path, hunks = emptyList())
+        val viewing = modpackUpdate(ModpackMsg.GitDiffComputed(diff),
+            modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
+        )
+        assertEquals(diff, viewing.gitCurrentDiff)
+
+        val edited = file.copy(size = 2L)
+        val changed = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(edited))), viewing)
+        assertEquals(edited, changed.gitDiffPendingFile)
+
+        val committed = modpackUpdate(ModpackMsg.GitStateUpdated(GitState()), viewing)
+        assertNull(committed.gitCurrentDiff)
+        assertNull(committed.gitDiffPendingFile)
+    }
+
+    @Test
     fun gitBulkTogglesAlreadyApplied() {
         val model = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
         assertNoOp(model, ModpackMsg.GitChangelistExpandAllFolders)
@@ -124,9 +154,10 @@ class ModpackUpdateSameInstanceTest {
     fun gitOpLifecycle() {
         val commit = GitOp.Commit(message = "msg", paths = listOf(file.path))
         val withSelection = modpackUpdate(
-            ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file), commitMessage = "msg")),
+            ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))),
             ModpackModel(gitDialog = GitDialog.Commit),
-        ).let { modpackUpdate(ModpackMsg.GitSelectAllChangedFiles, it) }
+        ).let { modpackUpdate(ModpackMsg.GitCommitMessageChanged("msg"), it) }
+            .let { modpackUpdate(ModpackMsg.GitSelectAllChangedFiles, it) }
 
         val running = modpackUpdate(ModpackMsg.GitOpRequested(commit), withSelection)
         assertEquals(commit, running.pendingGitOp)

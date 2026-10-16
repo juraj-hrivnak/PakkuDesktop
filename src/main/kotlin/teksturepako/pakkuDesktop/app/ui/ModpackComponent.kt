@@ -16,41 +16,36 @@ import kotlinx.collections.immutable.toPersistentSet
 import teksturepako.pakkuDesktop.app.actions.AdditionPlan
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
 import teksturepako.pakkuDesktop.app.actions.uiKey
+import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
+import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackMetaField
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.canApplyFetch
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.canApplySync
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.clearFilesPreview
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredAndSortedProjects
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredFilesDiffPairs
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.selectionKeys
-import teksturepako.pakkuDesktop.app.ui.model.AddDialogModel
-import teksturepako.pakkuDesktop.app.ui.model.AddDialogPhase
-import teksturepako.pakkuDesktop.app.ui.model.FilesChangeKind
-import teksturepako.pakkuDesktop.app.ui.model.FilesFabAction
-import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
-import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
-import teksturepako.pakkuDesktop.app.ui.model.GitFabAction
-import teksturepako.pakkuDesktop.app.ui.model.MAX_TOASTS
-import teksturepako.pakkuDesktop.app.ui.model.filesTab
-import teksturepako.pakkuDesktop.app.ui.model.gitBusy
-import teksturepako.pakkuDesktop.app.ui.model.projectsTab
-import teksturepako.pakkuDesktop.app.ui.model.ModpackDropdownMsg
-import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
-import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
-import teksturepako.pakkuDesktop.app.ui.model.ProjectsFabAction
-import teksturepako.pakkuDesktop.app.ui.model.RemoveDialogModel
-import teksturepako.pakkuDesktop.app.ui.model.RemoveDialogPhase
-import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
-import teksturepako.pakkuDesktop.app.ui.model.SyncKind
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.*
+import teksturepako.pakkuDesktop.app.ui.model.*
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
-import teksturepako.pakkuDesktop.app.git.GitDialog
-import teksturepako.pakkuDesktop.app.git.GitOp
-import teksturepako.pakkuDesktop.app.git.gitFilesUnderTreeFolder
-import teksturepako.pakkuDesktop.app.git.gitFolderIds
-import teksturepako.pakkuDesktop.app.git.mergeChangelistExpandedFolders
-import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
+import kotlin.collections.HashSet
+import kotlin.collections.all
+import kotlin.collections.any
+import kotlin.collections.associateBy
+import kotlin.collections.buildSet
+import kotlin.collections.filter
+import kotlin.collections.find
+import kotlin.collections.firstOrNull
+import kotlin.collections.flatMap
+import kotlin.collections.indexOfFirst
+import kotlin.collections.indices
+import kotlin.collections.intersect
+import kotlin.collections.isNotEmpty
+import kotlin.collections.map
+import kotlin.collections.mapTo
+import kotlin.collections.minus
+import kotlin.collections.none
+import kotlin.collections.orEmpty
+import kotlin.collections.plus
+import kotlin.collections.removeAll
+import kotlin.collections.set
+import kotlin.collections.toSet
 
 // -- modpackUpdate --
 
@@ -676,24 +671,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (index < 0) model else model.copy(toasts = model.toasts.removeAt(index))
     }
 
-    is ModpackMsg.GitStateUpdated          -> {
-        val incoming = msg.state
-        val selectedPaths = model.git.selectedFiles.map { it.path }.toSet()
-        val remapped = incoming.gitFiles.filter { it.path in selectedPaths }.toPersistentSet()
-        val expanded = mergeChangelistExpandedFolders(
-            model.git.expandedFolderPaths,
-            model.git.gitFiles,
-            incoming.gitFiles,
-            model.gitGroupUnversioned,
-        ).toPersistentSet()
-        val next = incoming.copy(selectedFiles = remapped, expandedFolderPaths = expanded)
-        val git = if (next == model.git) model.git else next
-        val gitDropdown =
-            if (incoming == model.gitDropdown.gitState) model.gitDropdown
-            else model.gitDropdown.copy(gitState = incoming)
-        if (git === model.git && gitDropdown === model.gitDropdown) model
-        else model.copy(git = git, gitDropdown = gitDropdown)
-    }
+    is ModpackMsg.GitStateUpdated          -> gitStateUpdated(msg.state, model)
     is ModpackMsg.GitFileSelectionToggled  -> {
         val g = model.git
         val path = msg.file.path
@@ -821,6 +799,86 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             is GitDropdownMsg.TabSelected ->
                 if (base.selectedTab == child.tab) base else base.copy(selectedTab = child.tab)
         }
+    }
+}
+
+/** [value] when it differs from [old], else [old] itself, so identity-keyed caches stay valid. */
+private fun <T> reuse(old: T, value: T): T = if (old == value) old else value
+
+/** Repository fields of [incoming] on top of [this]; UI fields (message, selection, expansion) are kept. */
+private fun GitState.withRepoFrom(incoming: GitState): GitState {
+    val next = copy(
+        gitFiles = reuse(gitFiles, incoming.gitFiles),
+        branches = reuse(branches, incoming.branches),
+        outgoingCommits = reuse(outgoingCommits, incoming.outgoingCommits),
+        upstream = incoming.upstream,
+        incomingCount = incoming.incomingCount,
+        remotes = reuse(remotes, incoming.remotes),
+        headMessage = incoming.headMessage,
+        stashes = reuse(stashes, incoming.stashes),
+    )
+    return if (next == this) this else next
+}
+
+/**
+ * A refresh rebuilds every list. Equal content must keep the old instances: the changelist tree
+ * is cached against [GitState.gitFiles] by identity, and a fresh-but-equal list left the Commit
+ * tab spinning forever after a branch switch.
+ */
+private fun gitStateUpdated(incoming: GitState, model: ModpackModel): ModpackModel {
+    val prev = model.git
+    val repo = prev.withRepoFrom(incoming)
+    val filesChanged = repo.gitFiles !== prev.gitFiles
+
+    val git = if (!filesChanged) repo else {
+        val selectedPaths = prev.selectedFiles.mapTo(HashSet()) { it.path }
+        val selected = repo.gitFiles.filter { it.path in selectedPaths }.toPersistentSet()
+        val expanded = mergeChangelistExpandedFolders(
+            prev.expandedFolderPaths,
+            prev.gitFiles,
+            repo.gitFiles,
+            model.gitGroupUnversioned,
+        ).toPersistentSet()
+        repo.copy(
+            selectedFiles = reuse(prev.selectedFiles, selected),
+            expandedFolderPaths = reuse(prev.expandedFolderPaths, expanded),
+        ).let { if (it == repo) repo else it }
+    }
+
+    // Keep the diff pane in step with the working tree.
+    var currentDiff = model.gitCurrentDiff
+    var pendingDiff = model.gitDiffPendingFile
+    if (filesChanged) {
+        val byPath = git.gitFiles.associateBy { it.path }
+        pendingDiff?.let { pending -> pendingDiff = byPath[pending.path]?.let { reuse(pending, it) } }
+        val diffPath = currentDiff?.newPath
+        if (diffPath != null && pendingDiff == null) {
+            val now = byPath[diffPath]
+            val before = prev.gitFiles.firstOrNull { it.path == diffPath }
+            when {
+                now == null -> currentDiff = null
+                now != before -> pendingDiff = now
+            }
+        }
+    }
+
+    val dropdownState = model.gitDropdown.gitState.withRepoFrom(incoming)
+    val gitDropdown =
+        if (dropdownState === model.gitDropdown.gitState) model.gitDropdown
+        else model.gitDropdown.copy(gitState = dropdownState)
+
+    return if (
+        git === prev && gitDropdown === model.gitDropdown &&
+        currentDiff === model.gitCurrentDiff && pendingDiff === model.gitDiffPendingFile
+    ) {
+        model
+    } else {
+        model.copy(
+            git = git,
+            gitDropdown = gitDropdown,
+            gitCurrentDiff = currentDiff,
+            gitDiffPendingFile = pendingDiff,
+        )
     }
 }
 

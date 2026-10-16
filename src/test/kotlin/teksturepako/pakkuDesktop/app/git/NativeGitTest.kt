@@ -90,8 +90,8 @@ class NativeGitTest {
     }
 
     @Test
-    fun buildStateWithoutUpstreamListsUnpushedCommits() = runBlocking {
-        val state = NativeGit.buildState(repo, GitState())
+    fun readStateWithoutUpstreamListsUnpushedCommits() = runBlocking {
+        val state = NativeGit.readState(repo)
         assertNull(state.upstream)
         assertEquals(0, state.incomingCount)
         assertEquals(1, state.outgoingCommits.size)
@@ -101,16 +101,77 @@ class NativeGitTest {
 
         write("a.txt", "stash me\n")
         git("stash", "push", "-m", "wip")
-        val stashed = NativeGit.buildState(repo, state)
+        val stashed = NativeGit.readState(repo)
         assertEquals(listOf("stash@{0}"), stashed.stashes.map { it.ref })
         assertTrue(stashed.stashes.single().message.endsWith("wip"))
         assertFalse(stashed.gitFiles.any { it.path == "a.txt" })
     }
 
     @Test
+    fun readStateTracksUpstreamAheadAndBehind() = runBlocking {
+        val clone = Files.createTempDirectory("pakku-native-git-clone").toFile()
+        try {
+            git("clone", "-q", repo.absolutePath, clone.absolutePath)
+            fun cloneGit(vararg args: String) = runBlocking {
+                val out = NativeGit.exec(clone, *args)
+                check(out.ok) { "git ${args.joinToString(" ")} failed: ${out.text}" }
+            }
+            cloneGit("config", "user.email", "test@example.com")
+            cloneGit("config", "user.name", "Test")
+            cloneGit("config", "commit.gpgsign", "false")
+
+            File(clone, "local.txt").writeText("l\n")
+            cloneGit("add", "local.txt")
+            cloneGit("commit", "-q", "-m", "local")
+            write("remote.txt", "r\n")
+            git("add", "remote.txt")
+            git("commit", "-q", "-m", "remote")
+            cloneGit("fetch", "-q")
+
+            val state = NativeGit.readState(clone)
+            assertEquals("origin/main", state.upstream)
+            assertEquals(1, state.incomingCount)
+            assertEquals(listOf("local"), state.outgoingCommits.map { it.message })
+            assertTrue(state.branches.any { it.isRemote && it.name == "origin/main" })
+            assertFalse(state.branches.any { it.name == "origin/HEAD" })
+            assertEquals(listOf("origin"), state.remotes)
+        } finally {
+            clone.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun readStateKeepsUnusualPathsAndRenames() = runBlocking {
+        write("my mods/Šťastný mod.jar", "x\n")
+        git("mv", "b.txt", "renamed b.txt")
+        val paths = NativeGit.readState(repo).gitFiles.associate { it.path to it.status }
+        assertTrue(paths["my mods/Šťastný mod.jar"] is GitChange.Untracked, paths.toString())
+        assertTrue(paths["renamed b.txt"] is GitChange.Modified, paths.toString())
+        assertFalse("b.txt" in paths, paths.toString())
+    }
+
+    @Test
+    fun readStateDetachedHeadHasNoCurrentBranch() = runBlocking {
+        git("checkout", "-q", "--detach")
+        val state = NativeGit.readState(repo)
+        assertNull(state.currentBranch)
+        assertTrue(state.branches.any { it.name == "main" && !it.isCurrent })
+    }
+
+    @Test
+    fun readStateDoesNotRewriteTheIndex() = runBlocking {
+        val index = File(repo, ".git/index")
+        // Touch a tracked file without changing it, so a locking status would refresh the index.
+        File(repo, "a.txt").setLastModified(System.currentTimeMillis() + 10_000)
+        val before = index.lastModified()
+        NativeGit.readState(repo)
+        assertEquals(before, index.lastModified())
+    }
+
+    @Test
     fun computeDiffParsesASmallEdit() = runBlocking {
         write("a.txt", "a2\n")
-        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "a.txt" }
+        val file = NativeGit.readState(repo).gitFiles.single { it.path == "a.txt" }
         val diff = NativeGit.computeDiff(repo, file)
         val texts = diff.hunks.flatMap { it.lines.map { line -> line.content } }
         assertTrue(texts.any { it == "a2" })
@@ -123,7 +184,7 @@ class NativeGitTest {
         git("add", "big.txt")
         git("commit", "-q", "-m", "big")
         write("big.txt", "y".repeat(600_000))
-        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "big.txt" }
+        val file = NativeGit.readState(repo).gitFiles.single { it.path == "big.txt" }
         val diff = NativeGit.computeDiff(repo, file)
         val text = diff.hunks.flatMap { it.lines }.joinToString("\n") { it.content }
         assertTrue(text.contains("too large"), text)
@@ -136,7 +197,7 @@ class NativeGitTest {
         git("add", "big.txt")
         git("commit", "-q", "-m", "big")
         File(repo, "big.txt").delete()
-        val file = NativeGit.buildState(repo, GitState()).gitFiles.single { it.path == "big.txt" }
+        val file = NativeGit.readState(repo).gitFiles.single { it.path == "big.txt" }
         val diff = NativeGit.computeDiff(repo, file)
         val text = diff.hunks.flatMap { it.lines }.joinToString("\n") { it.content }
         assertTrue(text.contains("too large"), text)
