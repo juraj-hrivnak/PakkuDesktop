@@ -34,11 +34,14 @@ fun ListActions(
     publish: (ModpackMsg) -> Unit,
     model: ProjectsTabModel,
     lastClickedIndex: MutableState<Int?>,
+    preparedAll: List<teksturepako.pakku.api.projects.Project>? = null,
+    preparedVisibleKeys: List<String>? = null,
 ) {
-    val allProjects = model.lockFile?.get()?.getAllProjects().snapshotList()
+    val allProjects = preparedAll ?: model.lockFile?.get()?.getAllProjects().snapshotList()
     val totalCount = allProjects.size
     val selectedCount = model.selectedProjectKeys.size
-    val visibleKeys = model.filteredAndSortedProjects(allProjects).map { it.uiKey() }
+    val visibleKeys = preparedVisibleKeys
+        ?: model.filteredAndSortedProjects(allProjects).map { it.uiKey() }
     val pendingUpdateCount = model.updatePreviews?.count { !it.value.applied }
     val syncCount = model.syncPendingCount()
     val busy = model.actionName != null

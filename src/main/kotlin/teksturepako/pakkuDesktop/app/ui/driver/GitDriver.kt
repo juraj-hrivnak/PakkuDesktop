@@ -4,14 +4,18 @@
 
 package teksturepako.pakkuDesktop.app.ui.driver
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import teksturepako.pakkuDesktop.app.actions.actionInfoToast
 import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
@@ -27,23 +31,30 @@ import kotlin.coroutines.cancellation.CancellationException
 // -- Repository handle --
 
 private class GitRepoHolder {
-    var path: String? = null
-    var workDir: File? = null
+    private var path: String? = null
+    private var workDir: File? = null
 
     fun open(workingPathStr: String) {
-        if (path == workingPathStr && workDir != null) return
-        close()
-        val dir = File(workingPathStr)
-        if (dir.resolve(".git").exists()) {
-            workDir = dir
-            path = workingPathStr
+        synchronized(this) {
+            if (path == workingPathStr && workDir != null) return
+            workDir = null
+            path = null
+            val dir = File(workingPathStr)
+            if (dir.resolve(".git").exists()) {
+                workDir = dir
+                path = workingPathStr
+            }
         }
     }
 
     fun close() {
-        workDir = null
-        path = null
+        synchronized(this) {
+            workDir = null
+            path = null
+        }
     }
+
+    fun current(): File? = synchronized(this) { workDir }
 }
 
 // -- Helpers --
@@ -56,9 +67,9 @@ private suspend fun gitToast(publish: (AppMsg) -> Unit, message: String) {
 
 private suspend fun refreshGitState(publish: (AppMsg) -> Unit, workDir: File, preserve: GitState) {
     val newState = NativeGit.buildState(workDir, preserve)
-    withContext(Dispatchers.Main) {
-        publish(AppMsg.Modpack(ModpackMsg.GitStateUpdated(newState)))
-    }
+    // Apply on this dispatcher (IO). GitStateUpdated walks the file list; doing that on Main
+    // freezes the window at the end of every git action.
+    publish(AppMsg.Modpack(ModpackMsg.GitStateUpdated(newState)))
 }
 
 // -- Native-git ops --
@@ -81,14 +92,12 @@ private suspend fun runGitWithProgress(
 ): NativeGit.Output = coroutineScope {
     val proc = ProcessBuilder("git", *args)
         .directory(workDir)
-        .start()
+        .startOnIo()
     proc.outputStream.close()
 
     val stderrCapture = StringBuilder()
     val (gitProgressCh, gitProgressJob) = conflatedPublisher<GitEvent.Progress?>(PROGRESS_PUBLISH_INTERVAL_MS) { event ->
-        withContext(Dispatchers.Main) {
-            publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
-        }
+        publish(AppMsg.Modpack(ModpackMsg.GitEventProgressUpdated(event)))
     }
 
     // Read stderr char-by-char so we catch both \n and \r progress updates.
@@ -240,12 +249,15 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             return@LaunchedEffect
         }
         try {
-            holder.open(path)
-            val dir = holder.workDir ?: return@LaunchedEffect
+            yield()
             val preserve = latestModel.modpack.git
             withContext(Dispatchers.IO) {
+                holder.open(path)
+                val dir = holder.current() ?: return@withContext
                 refreshGitState(publish, dir, preserve)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Failed to open repository")
         }
@@ -256,13 +268,17 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
         val path = modpackPath ?: return@LaunchedEffect
         try {
-            holder.open(path)
-            val dir = holder.workDir ?: run {
+            val dir = withContext(Dispatchers.IO) {
+                holder.open(path)
+                holder.current()
+            } ?: run {
                 publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
                 return@LaunchedEffect
             }
             val diff = withContext(Dispatchers.IO) { NativeGit.computeDiff(dir, file) }
             publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(diff)))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             gitToast(publish, e.message ?: "Failed to compute diff")
             publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
@@ -272,10 +288,11 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     LaunchedEffect(model.modpack.pendingGitOp, model.screen, model.modpack.loaded) {
         val op = model.modpack.pendingGitOp ?: return@LaunchedEffect
         if (model.screen != AppScreen.Modpack || !model.modpack.loaded) return@LaunchedEffect
-        val dir = holder.workDir ?: run {
+        val dir = holder.current() ?: run {
             publish(AppMsg.Modpack(ModpackMsg.GitOpFinished(op, success = false)))
             return@LaunchedEffect
         }
+        yield()
         val failure = try {
             withContext(Dispatchers.IO) { runGitOp(publish, dir, op, latestModel.modpack.git) }
         } catch (e: CancellationException) {
@@ -294,5 +311,22 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         publish(AppMsg.Modpack(ModpackMsg.GitOpFinished(op, success = failure == null)))
     }
 
-    content()
+    var changelistPrep by remember { mutableStateOf<GitChangelistPrep?>(null) }
+    LaunchedEffect(model.screen, model.modpack.git.gitFiles, model.modpack.gitGroupUnversioned) {
+        if (model.screen != AppScreen.Modpack) {
+            changelistPrep = null
+            return@LaunchedEffect
+        }
+        val files = model.modpack.git.gitFiles
+        val grouped = model.modpack.gitGroupUnversioned
+        val snapshot = withContext(Dispatchers.Default) { gitChangelistUiSnapshot(files, grouped) }
+        if (latestModel.modpack.git.gitFiles !== files || latestModel.modpack.gitGroupUnversioned != grouped) {
+            return@LaunchedEffect
+        }
+        changelistPrep = GitChangelistPrep(files, grouped, snapshot)
+    }
+
+    CompositionLocalProvider(LocalGitChangelistPrep provides changelistPrep) {
+        content()
+    }
 }

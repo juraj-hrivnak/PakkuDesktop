@@ -36,13 +36,15 @@ fun ListImpl(
     publish: (ModpackMsg) -> Unit,
     model: ProjectsTabModel,
     lastClickedIndex: MutableState<Int?>,
+    preparedProjects: List<teksturepako.pakku.api.projects.Project>? = null,
 )
 {
     val lockFile = model.lockFile?.get() ?: return
     val shiftPressed = LocalShiftKeyState.current.pressed
 
     val scrollState = remember { LazyListState(0, 0) }
-    val filteredProjects = model.filteredAndSortedProjects(lockFile.getAllProjects().snapshotList())
+    val filteredProjects = preparedProjects
+        ?: model.filteredAndSortedProjects(lockFile.getAllProjects().snapshotList())
     val busy = model.actionName != null
 
     Row(Modifier.fillMaxSize().padding(vertical = 8.dp)) {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
@@ -27,9 +29,10 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesFoot
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesLinkList
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesPreviewFloatingActions
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesSelectionControls
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.filteredFilesLinks
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FilesLink
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.rememberFilesLinkListSplitRatio
 import teksturepako.pakkuDesktop.app.ui.component.tree.PathTreeSnapshot
+import teksturepako.pakkuDesktop.app.ui.driver.LocalFilesPanePrep
 import teksturepako.pakkuDesktop.app.ui.model.FilesPreviewMode
 import teksturepako.pakkuDesktop.app.ui.model.FilesTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
@@ -40,38 +43,18 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
     RecomposeProbe("FilesTab")
     val filterFocusRequester = remember { FocusRequester() }
     val scanned = model.filesPreviewMode != FilesPreviewMode.None
-    val links = remember(
-        model.lockFile,
-        model.configFile,
-        model.filesPreviewMode,
-        model.fetchDownloads,
-        model.fetchOverrides,
-        model.fetchCleanup,
-        model.filesHashMismatchKeys,
-        model.syncAdded,
-        model.syncRemoved,
-        model.syncUpdated,
-        model.manualOverrides,
-        model.diskSnapshot,
-        model.filesFilterText,
-        model.filesFilterFolders,
-        model.filesFilterChangeKinds,
-    ) {
-        model.filteredFilesLinks()
-    }
+    val prep = LocalFilesPanePrep.current
+    val links = prep?.links ?: emptyList()
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
-    val tree = remember(links) { PathTreeSnapshot.of(links) { it.path } }
+    val emptyTree = remember { PathTreeSnapshot.of(emptyList<FilesLink>()) { it.path } }
+    val tree = prep?.tree ?: emptyTree
     val expandedFolders = remember(tree.folderIds, model.filesCollapsedFolders) {
         tree.folderIds - model.filesCollapsedFolders
     }
     val splitRatio = rememberFilesLinkListSplitRatio(model.filesSplitRatio, publish)
-    val selectableKeys = remember(links) {
-        links.mapNotNull { it.selectionKey }.distinct()
-    }
-    val linkIndexByPathKey = remember(links) {
-        links.withIndex().associate { (index, link) -> link.pathKey to index }
-    }
+    val selectableKeys = prep?.selectableKeys ?: emptyList()
+    val linkIndexByPathKey = prep?.linkIndexByPathKey ?: emptyMap()
     val focusedProjectUiKey = model.selectedProject?.uiKey()
 
     Column(Modifier.fillMaxSize()) {
@@ -104,6 +87,7 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
             if (model.lockFile?.get() != null) {
                 FilesLinkList(
                     links = links,
+                    preparedTree = tree,
                     listState = listState,
                     splitRatio = splitRatio,
                     onSplitRatioChange = { splitRatio.value = it },
@@ -118,6 +102,11 @@ fun FilesTab(publish: (ModpackMsg) -> Unit, model: FilesTabModel) {
                     publish = publish,
                     modifier = Modifier.fillMaxSize(),
                 )
+            }
+            if (model.lockFile?.get() != null && prep == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
             FilesFloatingActions(publish, model)
             FilesPreviewFloatingActions(publish, model)

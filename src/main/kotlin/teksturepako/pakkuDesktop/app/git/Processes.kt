@@ -41,8 +41,11 @@ suspend fun ProcessBuilder.runCapturing(): Pair<Int, String> {
  * Like [runCapturing], but keeps at most [maxChars] characters. Past that, the child is
  * destroyed so the rest of a huge diff never lands on the heap.
  */
+/** [ProcessBuilder.start] is a blocking native call. Never run it on the UI dispatcher. */
+suspend fun ProcessBuilder.startOnIo(): Process = runInterruptible(Dispatchers.IO) { start() }
+
 suspend fun ProcessBuilder.runCapturingCapped(maxChars: Int): CappedCapture = coroutineScope {
-    val proc = start()
+    val proc = startOnIo()
     proc.outputStream.close()
     val output = async(Dispatchers.IO) {
         val reader = proc.inputStream.bufferedReader()
@@ -65,7 +68,7 @@ suspend fun ProcessBuilder.runCapturingCapped(maxChars: Int): CappedCapture = co
  * [onLine] runs on the IO dispatcher.
  */
 suspend fun ProcessBuilder.forEachOutputLine(onLine: (String) -> Unit): Int = coroutineScope {
-    val proc = start()
+    val proc = startOnIo()
     proc.outputStream.close()
     val read = async(Dispatchers.IO) {
         proc.inputStream.bufferedReader().useLines { lines -> lines.forEach(onLine) }

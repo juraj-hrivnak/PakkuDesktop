@@ -112,11 +112,9 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                     latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                 }
             }
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.FetchDetectCompleted(result)))
-                if (result.isEmpty) {
-                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to fetch."))))
-                }
+            latestPublish(AppMsg.Modpack(ModpackMsg.FetchDetectCompleted(result)))
+            if (result.isEmpty) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to fetch."))))
             }
         }
     }
@@ -154,9 +152,7 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                             latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                         }
                     }
-                    withContext(Dispatchers.Main) {
-                        latestPublish(AppMsg.Modpack(ModpackMsg.FilesPreviewCleared))
-                    }
+                    latestPublish(AppMsg.Modpack(ModpackMsg.FilesPreviewCleared))
                 } finally {
                     fetchProgressCh.close()
                     fetchProgressJob.join()
@@ -186,11 +182,9 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             // Reload after update writes the lock file; keep status previews and mark applied.
             val newLockFile = LockFile.readToResult()
             val newConfigFile = ConfigFile.readToResult()
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = true)))
-                if (updatedKeys.isNotEmpty()) {
-                    latestPublish(AppMsg.Modpack(ModpackMsg.UpdatesApplied(updatedKeys)))
-                }
+            latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = true)))
+            if (updatedKeys.isNotEmpty()) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.UpdatesApplied(updatedKeys)))
             }
         }
     }
@@ -206,9 +200,7 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                     latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                 }
             }
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.StatusCheckCompleted(previews)))
-            }
+            latestPublish(AppMsg.Modpack(ModpackMsg.StatusCheckCompleted(previews)))
         }
     }
 
@@ -223,19 +215,17 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                     latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(toast)))
                 }
             }
-            withContext(Dispatchers.Main) {
-                latestPublish(
-                    AppMsg.Modpack(
-                        ModpackMsg.SyncDetectCompleted(
-                            added = result.added.toList(),
-                            removed = result.removed.toList(),
-                            updated = result.updated.toList(),
-                        ),
+            latestPublish(
+                AppMsg.Modpack(
+                    ModpackMsg.SyncDetectCompleted(
+                        added = result.added.toList(),
+                        removed = result.removed.toList(),
+                        updated = result.updated.toList(),
                     ),
-                )
-                if (result.added.isEmpty() && result.removed.isEmpty() && result.updated.isEmpty()) {
-                    latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to sync."))))
-                }
+                ),
+            )
+            if (result.added.isEmpty() && result.removed.isEmpty() && result.updated.isEmpty()) {
+                latestPublish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast("Nothing to sync."))))
             }
         }
     }
@@ -264,10 +254,8 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             }
             val newLockFile = LockFile.readToResult()
             val newConfigFile = ConfigFile.readToResult()
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
-                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
-            }
+            latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+            latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
         }
     }
 
@@ -281,7 +269,7 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (query == null && projects == null) return@LaunchedEffect
         val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
         try {
-            val plan = withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 coroutineScope {
                     val (resolveProgressCh, resolveProgressJob) = conflatedPublisher<String>(PROGRESS_PUBLISH_INTERVAL_MS) { status ->
                         withContext(Dispatchers.Main) {
@@ -316,10 +304,9 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
                         resolveProgressCh.close()
                         resolveProgressJob.join()
                     }
+                }.also { built ->
+                    latestPublish(AppMsg.Modpack(ModpackMsg.AddPlanBuilt(built)))
                 }
-            }
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.AddPlanBuilt(plan)))
             }
         } catch (e: CancellationException) {
             throw e
@@ -348,10 +335,8 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             }
             val newLockFile = LockFile.readToResult()
             val newConfigFile = ConfigFile.readToResult()
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
-                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
-            }
+            latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+            latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
         }
     }
 
@@ -368,10 +353,8 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
             }
             val newLockFile = LockFile.readToResult()
             val newConfigFile = ConfigFile.readToResult()
-            withContext(Dispatchers.Main) {
-                latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
-                latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
-            }
+            latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+            latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
         }
     }
 

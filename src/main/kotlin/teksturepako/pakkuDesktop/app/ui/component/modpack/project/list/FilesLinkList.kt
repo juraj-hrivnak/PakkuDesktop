@@ -100,6 +100,7 @@ private const val LockFileDisplayName = "pakku-lock.json"
 @Composable
 fun FilesLinkList(
     links: List<FilesLink>,
+    preparedTree: PathTreeSnapshot<FilesLink>? = null,
     listState: LazyListState,
     splitRatio: State<Float>,
     onSplitRatioChange: (Float) -> Unit,
@@ -115,7 +116,7 @@ fun FilesLinkList(
     modifier: Modifier = Modifier,
 ) {
     val showSelection = filesPreviewMode != FilesPreviewMode.None
-    val tree = remember(links) { PathTreeSnapshot.of(links) { it.path } }
+    val tree = preparedTree ?: remember(links) { PathTreeSnapshot.of(links) { it.path } }
     val selectedPaths = remember(links, selectedProjectKeys) {
         links.filter { it.selectionKey in selectedProjectKeys }.map { it.path }.toSet()
     }

@@ -20,6 +20,7 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilter
+import teksturepako.pakkuDesktop.app.ui.driver.projectsListData
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
@@ -30,6 +31,7 @@ fun ProjectsList(
     filterFocusRequester: FocusRequester,
 ) {
     val lastClickedIndex = remember { mutableStateOf<Int?>(null) }
+    val listed = projectsListData(model)
 
     Column(Modifier.fillMaxSize()) {
         // Toolbar: search / filters + selection / sort
@@ -45,18 +47,24 @@ fun ProjectsList(
                 model = model,
                 focusRequester = filterFocusRequester,
             )
-            ListControls(publish, model, lastClickedIndex)
+            ListControls(publish, model, lastClickedIndex, selectableKeys = listed.visibleKeys)
         }
 
         Divider(Orientation.Horizontal)
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            ListImpl(publish, model, lastClickedIndex)
+            ListImpl(publish, model, lastClickedIndex, preparedProjects = listed.filtered)
             ListFloatingActions(publish, model)
         }
 
         Divider(Orientation.Horizontal)
 
-        ListActions(publish, model, lastClickedIndex)
+        ListActions(
+            publish,
+            model,
+            lastClickedIndex,
+            preparedAll = listed.all,
+            preparedVisibleKeys = listed.visibleKeys,
+        )
     }
 }

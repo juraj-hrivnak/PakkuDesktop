@@ -42,6 +42,7 @@ import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitOp
 import teksturepako.pakkuDesktop.app.git.GitState
+import teksturepako.pakkuDesktop.app.ui.driver.LocalGitChangelistPrep
 import teksturepako.pakkuDesktop.app.git.gitChangelistUiSnapshot
 import teksturepako.pakkuDesktop.app.git.gitTreePath
 import teksturepako.pakkuDesktop.app.git.toTreeStatus
@@ -69,7 +70,11 @@ fun GitTab(
     val files = gitState.gitFiles
     val selectedCount = gitState.selectedFiles.size
     val grouped = model.groupUnversioned
-    val changelistSnapshot = remember(files, grouped) { gitChangelistUiSnapshot(files, grouped) }
+    val changelistPrep = LocalGitChangelistPrep.current
+        ?.takeIf { it.files === files && it.grouped == grouped }
+    // Empty shell while the driver builds the tree off the UI thread. Do not walk [files] here.
+    val changelistSnapshot = changelistPrep?.snapshot
+        ?: remember(grouped) { gitChangelistUiSnapshot(emptyList(), grouped) }
 
     val splitState = remember { SplitLayoutState(0.32f) }
 
@@ -102,6 +107,7 @@ fun GitTab(
                         SourceControlSidePanel(
                             gitState = gitState,
                             changelistSnapshot = changelistSnapshot,
+                            treeReady = changelistPrep != null || files.isEmpty(),
                             grouped = grouped,
                             currentDiff = diffContent,
                             diffPendingPath = diffPendingPath,
@@ -141,6 +147,7 @@ fun GitTab(
 private fun SourceControlSidePanel(
     gitState: GitState,
     changelistSnapshot: GitChangelistUiSnapshot,
+    treeReady: Boolean,
     grouped: Boolean,
     currentDiff: DiffContent?,
     diffPendingPath: String?,
@@ -192,7 +199,11 @@ private fun SourceControlSidePanel(
 
         Divider(Orientation.Horizontal)
 
-        if (files.isEmpty()) {
+        if (!treeReady) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (files.isEmpty()) {
             Text(
                 text = "No local changes",
                 modifier = Modifier

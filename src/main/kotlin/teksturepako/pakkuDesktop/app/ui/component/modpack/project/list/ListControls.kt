@@ -136,11 +136,13 @@ fun ListControls(
     selectableKeys: Collection<String>? = null,
     showSelection: Boolean = true,
 ) {
-    // Live lock-file list; update mutates it off the UI thread.
-    val projects = (sourceProjects ?: model.lockFile?.get()?.getAllProjects()).snapshotList()
-    val filteredProjects = projects.filter { it.matchesProjectsListFilters(model, ignoreUpdatesOnly) }
     val sortOrder = model.sortOrder
-    val keys = selectableKeys?.toList() ?: filteredProjects.map { it.uiKey() }
+    // Caller passes keys from the off-thread list. Fall back to a live copy so a worker
+    // mutating the lock file cannot crash composition.
+    val keys = selectableKeys?.toList() ?: run {
+        val projects = (sourceProjects ?: model.lockFile?.get()?.getAllProjects()).snapshotList()
+        projects.filter { it.matchesProjectsListFilters(model, ignoreUpdatesOnly) }.map { it.uiKey() }
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),

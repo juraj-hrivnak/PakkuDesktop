@@ -40,6 +40,20 @@ fun Project.matchesProjectsListFilters(
     return textOk && updatesOk && typeOk && sideOk && providerOk && redistributableOk
 }
 
+/** Identity of every input [filteredAndSortedProjects] reads. Used to reuse a list built off the UI thread. */
+fun ProjectsTabModel.projectsListPrepKey(): Any = listOf(
+    lockFile,
+    sortOrder,
+    projectsFilterText,
+    filterTypes,
+    filterSides,
+    filterMissingSide,
+    filterProviders,
+    filterRedistributable,
+    filterUpdatesOnly,
+    updatePreviews,
+)
+
 fun ProjectsTabModel.filteredAndSortedProjects(
     projects: List<Project>,
     ignoreUpdatesOnly: Boolean = false,

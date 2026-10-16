@@ -32,10 +32,12 @@ val projectMutationDriver: Driver<AppModel, AppMsg> = { publish, model, content 
     val latestModel by rememberUpdatedState(model)
 
     suspend fun reload() {
-        val newLockFile = withContext(Dispatchers.IO) { LockFile.readToResult() }
-        val newConfigFile = withContext(Dispatchers.IO) { ConfigFile.readToResult() }
-        latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
-        latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
+        withContext(Dispatchers.IO) {
+            val newLockFile = LockFile.readToResult()
+            val newConfigFile = ConfigFile.readToResult()
+            latestPublish(AppMsg.Modpack(ModpackMsg.Loaded(newLockFile, newConfigFile, retainUpdatePreviews = false)))
+            latestPublish(AppMsg.Modpack(ModpackMsg.MutationCompleted))
+        }
     }
 
     suspend fun toast(toast: teksturepako.pakkuDesktop.pkui.component.toast.ToastData) {
