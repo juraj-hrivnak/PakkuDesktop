@@ -5,10 +5,14 @@
 package teksturepako.pakkuDesktop.app.ui.component.git.diff
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -24,27 +28,36 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.HorizontalScrollbar
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.DiffType
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.max
+
+private val UnwrappedEndPadding = 24.dp
 
 @Composable
 internal fun DiffTextArea(
     diff: DiffContent,
+    softWrap: Boolean,
     modifier: Modifier = Modifier,
 )
 {
     val rendered = remember(diff) { buildRenderedDiff(diff) }
     val state = remember(rendered.sourceText) { TextFieldState(rendered.sourceText) }
     val scrollState = rememberScrollState()
+    val horizontalScroll = rememberScrollState()
+    LaunchedEffect(rendered.sourceText) { horizontalScroll.scrollTo(0) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val textMeasurer = rememberTextMeasurer()
 
@@ -77,9 +90,19 @@ internal fun DiffTextArea(
     val lineNumColWidthPx = colPadPx + lineNumTextWidthPx + colPadPx
     val prefixColWidthPx = colPadPx + prefixTextWidthPx + colPadPx
     val contentIndentPx = 2f * lineNumColWidthPx + prefixColWidthPx
-    val contentIndent = with(density) { contentIndentPx.toDp().toSp() }
+    val contentIndentDp = with(density) { contentIndentPx.toDp() }
+    val contentIndent = with(density) { contentIndentDp.toSp() }
+    val endPadPx = with(density) { UnwrappedEndPadding.toPx() }
+    val maxLineWidthPx = remember(rendered, editorStyle) {
+        maxUnwrappedContentWidthPx(rendered, textMeasurer, editorStyle)
+    }
 
-    Box(modifier = Modifier.clipToBounds().fillMaxHeight()) {
+    BoxWithConstraints(modifier.clipToBounds().fillMaxSize()) {
+        val minTextPx = (constraints.maxWidth - contentIndentPx).coerceAtLeast(0f)
+        val unwrappedTextWidth = with(density) {
+            max(minTextPx, maxLineWidthPx + endPadPx).toDp()
+        }
+
         Canvas(modifier = Modifier.matchParentSize()) {
             val layout = textLayoutResult ?: return@Canvas
             val scrollY = scrollState.value.toFloat()
@@ -192,22 +215,53 @@ internal fun DiffTextArea(
             drawRect(color = borderColor, size = size, style = Stroke(width = 1f))
         }
 
-        BasicTextField(
-            state = state,
-            readOnly = true,
-            lineLimits = TextFieldLineLimits.MultiLine(),
-            scrollState = scrollState,
-            cursorBrush = SolidColor(Color.Transparent),
-            onTextLayout = { getResult -> textLayoutResult = getResult() },
-            textStyle = editorStyle.copy(
-                textIndent = TextIndent(firstLine = contentIndent, restLine = contentIndent),
-            ),
-            modifier = Modifier.fillMaxSize(),
-        )
+        // Multiline text fields always wrap. Unwrapped mode gives the field the width of the
+        // longest line and scrolls that strip sideways, leaving the gutter pinned.
+        Box(
+            modifier = if (softWrap) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .padding(start = contentIndentDp)
+                    .fillMaxSize()
+                    .horizontalScroll(horizontalScroll)
+            },
+        ) {
+            BasicTextField(
+                state = state,
+                readOnly = true,
+                lineLimits = TextFieldLineLimits.MultiLine(),
+                scrollState = scrollState,
+                cursorBrush = SolidColor(Color.Transparent),
+                onTextLayout = { getResult -> textLayoutResult = getResult() },
+                textStyle = if (softWrap) {
+                    editorStyle.copy(
+                        textIndent = TextIndent(firstLine = contentIndent, restLine = contentIndent),
+                    )
+                } else {
+                    editorStyle
+                },
+                modifier = if (softWrap) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.width(unwrappedTextWidth).fillMaxHeight()
+                },
+            )
+        }
 
         VerticalScrollbar(
-            scrollState, modifier = Modifier.align(Alignment.TopEnd).fillMaxHeight().padding(8.dp)
+            scrollState,
+            modifier = Modifier.align(Alignment.TopEnd).fillMaxHeight().padding(8.dp),
         )
+        if (!softWrap) {
+            HorizontalScrollbar(
+                horizontalScroll,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(start = contentIndentDp, end = 14.dp, bottom = 2.dp),
+            )
+        }
     }
 }
 
@@ -312,5 +366,43 @@ private fun DiffType.toPrefix(): String = when (this)
     DiffType.ADDED     -> "+"
     DiffType.DELETED   -> "-"
     DiffType.UNCHANGED -> " "
+}
+
+private fun maxUnwrappedContentWidthPx(
+    rendered: RenderedDiff,
+    textMeasurer: TextMeasurer,
+    contentStyle: TextStyle,
+): Float
+{
+    val spaceWidth = charWidthPx(textMeasurer, " ", contentStyle)
+    val tabWidth = charWidthPx(textMeasurer, "\t", contentStyle).coerceAtLeast(spaceWidth)
+    var best = 0f
+    for (line in rendered.sourceText.lineSequence())
+    {
+        best = max(best, estimatedLineWidthPx(line, spaceWidth, tabWidth))
+    }
+    return best
+}
+
+private fun charWidthPx(textMeasurer: TextMeasurer, text: String, style: TextStyle): Float =
+    textMeasurer.measure(text, style = style, softWrap = false, maxLines = 1).size.width.toFloat()
+
+/**
+ * Monospace advance for one source line. Non-ASCII glyphs count as two columns so a wide
+ * character cannot wrap past the measured width.
+ */
+private fun estimatedLineWidthPx(line: String, spaceWidth: Float, tabWidth: Float): Float
+{
+    var width = 0f
+    for (ch in line)
+    {
+        width += when
+        {
+            ch == '\t' -> tabWidth
+            ch.code in 32..126 -> spaceWidth
+            else -> spaceWidth * 2f
+        }
+    }
+    return width
 }
 

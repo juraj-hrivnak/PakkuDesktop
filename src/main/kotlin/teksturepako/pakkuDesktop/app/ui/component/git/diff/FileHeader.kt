@@ -18,6 +18,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.ToggleableIconButton
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.integration.openWithDefaultApplication
@@ -28,7 +29,11 @@ import teksturepako.pakkuDesktop.app.git.DiffContent
 import kotlin.io.path.Path
 
 @Composable
-fun FileHeader(diffContent: DiffContent)
+fun FileHeader(
+    diffContent: DiffContent,
+    softWrap: Boolean,
+    onSoftWrapChange: (Boolean) -> Unit,
+)
 {
     val file = Path(workingPath).resolve(diffContent.newPath)
     val parentDir = file.parent
@@ -62,6 +67,24 @@ fun FileHeader(diffContent: DiffContent)
                             )
                         }
                     }
+                }
+            }
+
+            PkUiTooltip(
+                tooltip = { Text("Soft Wrap") },
+                position = TooltipPosition.BOTTOM,
+            ) {
+                ToggleableIconButton(
+                    value = softWrap,
+                    onValueChange = onSoftWrapChange,
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Icon(
+                        key = AllIconsKeys.Actions.ToggleSoftWrap,
+                        contentDescription = "Soft wrap",
+                        tint = JewelTheme.contentColor,
+                        hints = arrayOf(),
+                    )
                 }
             }
 
