@@ -40,12 +40,18 @@ fun Project.identityKey(): String {
 fun Project.listItemKey(fallbackIndex: Int): String =
     pakkuId ?: "${uiKey()}#$fallbackIndex"
 
-/** Dependency preview node (from Pakku [requestDependencies] + optional [createAdditionRequest]). */
+/**
+ * Dependency preview node (from Pakku [requestDependencies] + optional [createAdditionRequest]).
+ *
+ * [cycle] is a back-edge to a project already on the path from the root. It is a leaf:
+ * expanding it again would recurse forever and shove the row off the right of the dialog.
+ */
 data class DepNode(
     val project: Project,
     val children: List<DepNode> = emptyList(),
     val alreadyPresent: Boolean = false,
     val warnings: List<ActionError> = emptyList(),
+    val cycle: Boolean = false,
 )
 
 /** One root project offered by [createAdditionRequest] (deps previewed; auto-added on apply). */

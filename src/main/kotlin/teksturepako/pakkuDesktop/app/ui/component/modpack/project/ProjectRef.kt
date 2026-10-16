@@ -7,10 +7,12 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.project
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -61,23 +63,30 @@ fun ProjectRef(
     iconSize: Dp = 16.dp,
     fontSize: TextUnit = 13.sp,
     showType: Boolean = true,
+    /** Shrink the slug instead of forcing the parent row wider than the dialog. */
+    ellipsis: Boolean = false,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Fresh parent-data each time; one shared weight element must not sit on two children.
+        fun shrink() = Modifier.weight(1f, fill = false).widthIn(min = 0.dp)
         if (showType) {
             Text(
                 text = project.type.prettyName,
                 color = Color.Gray,
                 fontSize = fontSize,
+                maxLines = if (ellipsis) 1 else Int.MAX_VALUE,
+                softWrap = !ellipsis,
             )
         }
         project.getProviders().groupBy { provider ->
             project.slug[provider.serialName]
         }.forEach { (slug, providers) ->
             Row(
+                modifier = if (ellipsis) shrink() else Modifier,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -85,7 +94,14 @@ fun ProjectRef(
                     ProviderIcon(provider, Modifier.size(iconSize))
                 }
                 slug?.let {
-                    Text(text = it, fontSize = fontSize)
+                    Text(
+                        text = it,
+                        fontSize = fontSize,
+                        maxLines = if (ellipsis) 1 else Int.MAX_VALUE,
+                        overflow = if (ellipsis) TextOverflow.Ellipsis else TextOverflow.Clip,
+                        softWrap = !ellipsis,
+                        modifier = if (ellipsis) shrink() else Modifier,
+                    )
                 }
             }
         }
@@ -94,7 +110,14 @@ fun ProjectRef(
                 ?: project.slug.values.firstOrNull()
                 ?: project.id.values.firstOrNull()
                 ?: "?"
-            Text(text = fallback, fontSize = fontSize)
+            Text(
+                text = fallback,
+                fontSize = fontSize,
+                maxLines = if (ellipsis) 1 else Int.MAX_VALUE,
+                overflow = if (ellipsis) TextOverflow.Ellipsis else TextOverflow.Clip,
+                softWrap = !ellipsis,
+                modifier = if (ellipsis) shrink() else Modifier,
+            )
         }
     }
 }

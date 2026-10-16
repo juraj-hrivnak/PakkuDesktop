@@ -91,8 +91,20 @@ fun ActionError.toUiMessage(arg: String = ""): String = when (this) {
     is VersionsDoNotMatch ->
         "${project.displayLabel()} versions do not match across platforms."
     is ProjRequiredBy -> {
-        val deps = dependants.joinToString(", ") { it.displayLabel() }
-        "${project.displayLabel()} is required by $deps."
+        "${project.displayLabel()} is required by ${dependants.toListMsg { it.displayLabel() }}."
     }
     else -> rawMessage
+}
+
+/** Same join as Pakku [teksturepako.pakku.cli.ui.toMsg]: `a, b & c`, with the comma on the previous item. */
+private fun <T> List<T>.toListMsg(label: (T) -> String): String = when (size) {
+    0 -> ""
+    1 -> label(first())
+    else -> foldIndexed("") { i, acc, value ->
+        when {
+            acc.isEmpty() -> label(value)
+            i == lastIndex -> "$acc & ${label(value)}"
+            else -> "$acc, ${label(value)}"
+        }
+    }
 }

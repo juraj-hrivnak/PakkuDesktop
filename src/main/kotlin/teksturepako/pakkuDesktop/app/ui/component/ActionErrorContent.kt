@@ -120,7 +120,9 @@ fun ActionErrorContent(
                 Ref(error.project, fontSize, iconSize)
                 T(" is required by ", color, fontSize)
                 error.dependants.forEachIndexed { i, dep ->
-                    if (i > 0) T(", ", color, fontSize)
+                    if (i > 0) {
+                        T(if (i == error.dependants.lastIndex) " & " else ", ", color, fontSize)
+                    }
                     Ref(dep, fontSize, iconSize)
                 }
                 T(".", color, fontSize)

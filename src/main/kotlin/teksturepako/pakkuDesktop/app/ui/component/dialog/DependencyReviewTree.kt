@@ -7,17 +7,21 @@ package teksturepako.pakkuDesktop.app.ui.component.dialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -36,6 +40,7 @@ import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.actions.DepNode
 import teksturepako.pakkuDesktop.app.actions.RemovalEntry
 import teksturepako.pakkuDesktop.app.actions.fingerprint
+import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
@@ -46,7 +51,13 @@ import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSectionLabel
 private val CheckboxCol = 28.dp
 
 /** Indent per nested dependency level. */
-private val DepIndent = 18.dp
+private val DepIndent = 16.dp
+
+/**
+ * Deep and cyclic trees used to keep indenting until the name and chip were crushed
+ * against the right edge. Past this depth, rows stay put and a cycle is a leaf.
+ */
+private const val MaxVisualDepth = 8
 
 private val DepIconSize = 14.dp
 
@@ -71,16 +82,28 @@ fun ReviewRootRow(
             onCheckedChange = onCheckedChange,
         ) {
             if (replacing != null) {
-                ProjectRef(replacing)
+                ProjectRef(
+                    replacing,
+                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                    ellipsis = true,
+                )
                 Icon(
                     AllIconsKeys.Vcs.Arrow_right,
                     contentDescription = "replaced by",
                     tint = JewelTheme.contentColor.copy(alpha = 0.55f),
                     modifier = Modifier.size(DepIconSize),
                 )
-                ProjectRef(project)
+                ProjectRef(
+                    project,
+                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                    ellipsis = true,
+                )
             } else {
-                ProjectRef(project)
+                ProjectRef(
+                    project,
+                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                    ellipsis = true,
+                )
             }
         }
 
@@ -125,7 +148,11 @@ fun ReviewRootRowSimple(
             checked = checked,
             onCheckedChange = onCheckedChange,
         ) {
-            ProjectRef(project)
+            ProjectRef(
+                project,
+                modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                ellipsis = true,
+            )
         }
 
         ContentUnderRoot {
@@ -176,7 +203,13 @@ private fun RemovableDepRow(
                 )
             }
             DependencyIcon(dimmed = !checked)
-            ProjectRef(entry.project, fontSize = 12.sp, iconSize = 14.dp)
+            ProjectRef(
+                entry.project,
+                fontSize = 12.sp,
+                iconSize = 14.dp,
+                ellipsis = true,
+                modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+            )
             PkUiChip(
                 text = if (entry.isRecommended) "unused" else "still required",
                 muted = !entry.isRecommended,
@@ -201,7 +234,7 @@ private fun RemovableDepRow(
 private fun RootCheckRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    content: @Composable () -> Unit,
+    content: @Composable RowScope.() -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth(),
@@ -265,34 +298,46 @@ private fun DepSection(
 
 private fun List<DepNode>.countDeps(): Int = sumOf { 1 + it.children.countDeps() }
 
+/** Indent grows with depth, then stops so the name still has a column to live in. */
+private fun depPad(depth: Int): Dp = DepIndent * depth.coerceIn(0, MaxVisualDepth)
+
 @Composable
 private fun DepTree(
     nodes: List<DepNode>,
     depth: Int,
     cue: String,
     shownFingerprints: MutableSet<String>,
+    ancestors: Set<String> = emptySet(),
 ) {
     nodes.forEach { node ->
+        val key = node.project.uiKey()
+        // Data marks a back-edge; the set catches a loop the preview did not.
+        val cycle = node.cycle || key in ancestors
+        val indent = depPad(depth)
         DepRow(
             project = node.project,
-            depth = depth,
+            indent = indent,
             alreadyPresent = node.alreadyPresent,
+            cycle = cycle,
             cue = cue,
         )
-        node.warnings.forEach {
-            ContextualWarning(
-                it,
-                shownFingerprints,
-                Modifier.padding(start = DepIndent * depth + DepIconSize + 8.dp),
-            )
-        }
-        if (node.children.isNotEmpty()) {
-            DepTree(
-                nodes = node.children,
-                depth = depth + 1,
-                cue = cue,
-                shownFingerprints = shownFingerprints,
-            )
+        if (!cycle) {
+            node.warnings.forEach {
+                ContextualWarning(
+                    it,
+                    shownFingerprints,
+                    Modifier.padding(start = indent + DepIconSize + 8.dp),
+                )
+            }
+            if (node.children.isNotEmpty()) {
+                DepTree(
+                    nodes = node.children,
+                    depth = depth + 1,
+                    cue = cue,
+                    shownFingerprints = shownFingerprints,
+                    ancestors = ancestors + key,
+                )
+            }
         }
     }
 }
@@ -300,23 +345,35 @@ private fun DepTree(
 @Composable
 private fun DepRow(
     project: Project,
-    depth: Int,
+    indent: Dp,
     alreadyPresent: Boolean,
+    cycle: Boolean,
     cue: String,
 ) {
+    val dimmed = alreadyPresent || cycle
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 24.dp),
+            .heightIn(min = 24.dp)
+            .padding(start = indent),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (depth > 0) Spacer(Modifier.width(DepIndent * depth - 8.dp))
-        DependencyIcon(dimmed = alreadyPresent)
-        ProjectRef(project, fontSize = 12.sp, iconSize = 14.dp)
+        DependencyIcon(dimmed = dimmed)
+        ProjectRef(
+            project,
+            fontSize = 12.sp,
+            iconSize = 14.dp,
+            ellipsis = true,
+            modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+        )
         PkUiChip(
-            text = if (alreadyPresent) "in pack" else cue,
-            muted = alreadyPresent,
+            text = when {
+                cycle -> "cycle"
+                alreadyPresent -> "in pack"
+                else -> cue
+            },
+            muted = dimmed,
         )
     }
 }
@@ -340,6 +397,7 @@ private fun DependencyIcon(dimmed: Boolean) {
  * Warning text without re-stating the project already shown on the parent row/leaf.
  * Skips fingerprints already rendered elsewhere in this dialog pass.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ContextualWarning(
     error: ActionError,
@@ -353,10 +411,11 @@ fun ContextualWarning(
     val muted = JewelTheme.contentColor.copy(alpha = 0.7f)
     when (error) {
         is ProjRequiredBy -> {
-            Row(
-                modifier,
+            FlowRow(
+                modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     AllIconsKeys.Nodes.Related,
@@ -365,9 +424,18 @@ fun ContextualWarning(
                     modifier = Modifier.size(12.dp),
                 )
                 Text("Required by", color = muted, fontSize = 11.sp)
-                error.dependants.forEachIndexed { i, dep ->
-                    if (i > 0) Text(",", color = muted, fontSize = 11.sp)
-                    ProjectRef(dep, fontSize = 11.sp, iconSize = 12.dp)
+                val dependants = error.dependants
+                dependants.forEachIndexed { i, dep ->
+                    // Comma stays on the previous mod. Flow spacing must not open a gap before it.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProjectRef(dep, fontSize = 11.sp, iconSize = 12.dp, ellipsis = true)
+                        if (i < dependants.lastIndex - 1) {
+                            Text(",", color = muted, fontSize = 11.sp)
+                        }
+                    }
+                    if (i == dependants.lastIndex - 1) {
+                        Text("&", color = muted, fontSize = 11.sp)
+                    }
                 }
             }
         }
