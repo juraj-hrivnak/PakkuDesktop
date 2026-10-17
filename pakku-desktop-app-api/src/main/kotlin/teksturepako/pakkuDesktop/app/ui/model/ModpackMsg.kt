@@ -241,6 +241,8 @@ data class GitDropdownModel(
     val gitState: GitState = GitState(),
     /** [ModpackModel.gitBusy] — menu actions are disabled while an op runs. */
     val busy: Boolean = false,
+    /** Tags section expanded in the dropdown menu. */
+    val tagsExpanded: Boolean = true,
 )
 
 sealed interface GitDropdownMsg {
@@ -248,6 +250,7 @@ sealed interface GitDropdownMsg {
     data class ShowDialog(val dialog: GitDialog) : GitDropdownMsg
     data class OpRequested(val op: GitOp) : GitDropdownMsg
     data class TabSelected(val tab: SelectedTab) : GitDropdownMsg
+    data class TagsToggled(val expanded: Boolean) : GitDropdownMsg
 }
 
 // -- ModpackMsg --

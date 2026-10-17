@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.git
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -206,8 +207,26 @@ val gitDropdownComponent = component(
                 }
                 if (tags.isNotEmpty()) {
                     separator()
-                    header("Tags")
-                    tags.forEach { tagMenu(it) }
+                    passiveItem {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
+                            },
+                        ) {
+                            Icon(
+                                key = if (model.tagsExpanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
+                                contentDescription = null,
+                                tint = muted,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text("Tags", color = muted)
+                        }
+                    }
+                    if (model.tagsExpanded) {
+                        tags.forEach { tagMenu(it) }
+                    }
                 }
             },
         )

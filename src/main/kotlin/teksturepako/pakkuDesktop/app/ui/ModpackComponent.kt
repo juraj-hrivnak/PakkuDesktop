@@ -845,6 +845,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             is GitDropdownMsg.OpRequested -> modpackUpdate(ModpackMsg.GitOpRequested(child.op), base)
             is GitDropdownMsg.TabSelected ->
                 if (base.selectedTab == child.tab) base else base.copy(selectedTab = child.tab)
+            is GitDropdownMsg.TagsToggled -> {
+                val dd = base.gitDropdown
+                if (dd.tagsExpanded == child.expanded) base
+                else base.withChild(dd, dd.copy(tagsExpanded = child.expanded)) { copy(gitDropdown = it) }
+            }
         }
     }
 }
