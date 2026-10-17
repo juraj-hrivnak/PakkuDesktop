@@ -81,16 +81,20 @@ fun animatedDp(
  * Prefer this over [androidx.compose.animation.AnimatedContent] when content reads
  * live model state: exit frames would otherwise show the *new* model under the old key.
  * Purely local visual animation — no [publish], no driver.
+ *
+ * [modifier] defaults to filling the parent. Pass a wrap-content modifier for a slot
+ * inside chrome that must stay put (the title bar icon and window buttons).
  */
 @Composable
 fun animatedRoute(
     routeKey: Any?,
+    modifier: Modifier = Modifier.fillMaxSize(),
     animationSpec: AnimationSpec<Float> = tween(durationMillis = 280),
     content: @Composable () -> Unit,
 ) {
     key(routeKey) {
         val alpha = animatedFloat(target = 1f, animationSpec = animationSpec, initial = 0f)
-        Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }) {
+        Box(modifier.graphicsLayer { this.alpha = alpha }) {
             content()
         }
     }

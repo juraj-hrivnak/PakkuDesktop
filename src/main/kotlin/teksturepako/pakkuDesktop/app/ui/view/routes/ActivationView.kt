@@ -12,12 +12,9 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
-import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
-import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
@@ -26,23 +23,10 @@ import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 @Composable
 fun PakkuApplicationScope.ActivationView(
     appPublish: (AppMsg) -> Unit,
-    intUiTheme: IntUiThemes,
     license: @Composable () -> Unit,
 ) {
     val titleBarHeight = TITLE_BAR_BASE_HEIGHT_DP.dp
     val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
-
-    MainTitleBar(
-        Modifier.height(titleBarHeight),
-        themeTrailingActions = {
-            ThemeButton(appPublish, intUiTheme)
-        },
-        startContent = {
-            FadeIn {
-                Text("Welcome to Pakku Pro")
-            }
-        },
-    )
 
     Column(
         Modifier

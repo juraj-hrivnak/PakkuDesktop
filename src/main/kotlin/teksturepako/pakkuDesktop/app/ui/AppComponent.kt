@@ -15,18 +15,15 @@ import teksturepako.pakkuDesktop.app.data.withHistoryFrom
 import teksturepako.pakkuDesktop.app.data.withProjectsUi
 import teksturepako.pakkuDesktop.app.ui.component.dialog.CloseDialog
 import teksturepako.pakkuDesktop.app.ui.model.*
-import teksturepako.pakkuDesktop.app.ui.model.WelcomeMsg.WelcomeDropdown
 import teksturepako.pakkuDesktop.app.ui.view.plugins.PakkuProSlot
 import teksturepako.pakkuDesktop.app.ui.view.routes.ActivationView
-import teksturepako.pakkuDesktop.app.ui.view.routes.ModpackView
-import teksturepako.pakkuDesktop.app.ui.view.routes.WelcomeView
+import teksturepako.pakkuDesktop.app.ui.view.routes.AppFrame
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.CloneRepositoryDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.ErrorDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.NewModpackDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.SettingsDialog
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import com.github.michaelbull.result.getError
-import teksturepako.pakkuDesktop.elm.animatedRoute
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
 import java.nio.file.Path
@@ -494,34 +491,12 @@ fun appComponent(
         }
 
         val scope = LocalPakkuApplicationScope.current
-        val routeKey = when (model.screen) {
-            AppScreen.Modpack -> "modpack:${model.profile.data.currentProfile?.path}"
-            AppScreen.Welcome -> "welcome"
-            AppScreen.Activation -> "activation"
-        }
-        animatedRoute(routeKey) {
-            when (model.screen) {
-                AppScreen.Welcome -> with(scope) {
-                    WelcomeView(
-                        publish = { publish(AppMsg.Welcome(it)) },
-                        model = model.welcome,
-                        appModel = model,
-                        appPublish = publish,
-                    )
-                }
-                AppScreen.Modpack -> with(scope) {
-                    ModpackView(
-                        publish = { publish(AppMsg.Modpack(it)) },
-                        model = model.modpack,
-                        appModel = model,
-                        appPublish = publish,
-                    )
-                }
-                AppScreen.Activation -> with(scope) {
-                    ActivationView(
-                        appPublish = publish,
-                        intUiTheme = model.profile.data.intUiTheme,
-                    ) {
+        with(scope) {
+            AppFrame(
+                model = model,
+                publish = publish,
+                activation = {
+                    ActivationView(appPublish = publish) {
                         PakkuProSlot(
                             plugins = plugins,
                             states = model.pluginStates,
@@ -529,8 +504,8 @@ fun appComponent(
                             publish = publish,
                         )
                     }
-                }
-            }
+                },
+            )
         }
     }
 )

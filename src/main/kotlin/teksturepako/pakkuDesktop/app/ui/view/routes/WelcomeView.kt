@@ -37,17 +37,13 @@ import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
-import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appName
-import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarStartSlotMaxWidth
-import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.titleBarLabelMaxWidth
 import teksturepako.pakkuDesktop.app.ui.component.FadeIn
-import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.WelcomeViewDropdown
 import teksturepako.pakkuDesktop.app.ui.component.text.GradientHeader
 import teksturepako.pakkuDesktop.app.ui.component.text.Header
@@ -64,7 +60,31 @@ import java.nio.file.Files
 import kotlin.math.roundToInt
 
 @Composable
-fun PakkuApplicationScope.WelcomeView(
+fun WelcomeTitleBarStart(
+    publish: (WelcomeMsg) -> Unit,
+    model: WelcomeModel,
+    displayName: String,
+) {
+    TitleBarStartRow {
+        Text(
+            displayName,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .widthIn(
+                    max = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.45f),
+                ),
+        )
+        WelcomeViewDropdown(
+            publish = publish,
+            model = model,
+        )
+    }
+}
+
+@Composable
+fun WelcomeView(
     publish: (WelcomeMsg) -> Unit,
     model: WelcomeModel,
     appModel: AppModel,
@@ -75,34 +95,6 @@ fun PakkuApplicationScope.WelcomeView(
     val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
     val pickDirectory = LocalPickDirectory.current
     val displayName = appName(appModel.isProActivated)
-
-    MainTitleBar(
-        Modifier.height(titleBarHeight),
-        themeTrailingActions = {
-            ThemeButton(appPublish, appModel.profile.data.intUiTheme)
-        },
-        startContent = {
-            TitleBarStartRow {
-                WelcomeViewDropdown(
-                    publish = publish,
-                    model = model,
-                )
-                Text(
-                    displayName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .widthIn(
-                            max = titleBarLabelMaxWidth(LocalTitleBarStartSlotMaxWidth.current, fraction = 0.45f),
-                        ),
-                )
-            }
-        },
-        endContent = {
-            SettingsButton(onClick = { publish(WelcomeMsg.ShowSettings) })
-        },
-    )
 
     val extend = remember { ExtendOnScrollState() }
     val bottomGap = 16.dp

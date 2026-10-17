@@ -21,20 +21,16 @@ import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.actions.AppToastContent
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
-import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
 import teksturepako.pakkuDesktop.app.ui.component.dialog.AddProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.component.dialog.RemoveProjectsDialog
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BORDER_HEIGHT_DP
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.LocalTitleBarWidthTier
-import teksturepako.pakkuDesktop.app.ui.application.titlebar.MainTitleBar
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarStartRow
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TitleBarWidthTier
-import teksturepako.pakkuDesktop.app.ui.component.button.SettingsButton
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.ModpackDropdown
 import teksturepako.pakkuDesktop.app.ui.component.modpack.ModpackRail
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
-import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
@@ -60,9 +56,7 @@ fun PakkuApplicationScope.ModpackView(
     publish: (ModpackMsg) -> Unit,
     model: ModpackModel,
     appModel: AppModel,
-    appPublish: (AppMsg) -> Unit,
 ) {
-    val profileData = appModel.profile.data
     val titleBarHeight = TITLE_BAR_BASE_HEIGHT_DP.dp
     val titleBarChromeHeight = titleBarHeight + TITLE_BAR_BORDER_HEIGHT_DP.dp
 
@@ -74,54 +68,6 @@ fun PakkuApplicationScope.ModpackView(
             (configFile?.isErr == true && configFile.getError() !is FileNotFound)
 
     val actionSplitState = remember { org.jetbrains.jewel.ui.component.SplitLayoutState(1f) }
-
-    MainTitleBar(
-        Modifier.height(titleBarHeight),
-        themeTrailingActions = {
-            ThemeButton(appPublish, profileData.intUiTheme)
-        },
-        startContent = {
-            val widthTier = LocalTitleBarWidthTier.current
-            TitleBarStartRow {
-                DropdownHost {
-                    ModpackDropdown(publish, model)
-                    GitDropdown(publish, model)
-                }
-                if (widthTier == TitleBarWidthTier.Comfortable) {
-                    McLoaderLabel(model)
-                }
-                val actionName = model.actionName
-                if (actionName != null) {
-                    Row(
-                        Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            actionName,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
-                        )
-                        val total = model.fetchProgressTotal
-                        if (model.actionName == "Fetching" && total > 0L) {
-                            val progress = (model.fetchProgressCompleted.toFloat() / total.toFloat())
-                                .coerceIn(0f, 1f)
-                            HorizontalProgressBar(
-                                progress,
-                                Modifier.width(if (widthTier == TitleBarWidthTier.Comfortable) 120.dp else 64.dp),
-                            )
-                        } else {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
-            }
-        },
-        endContent = {
-            SettingsButton(onClick = { publish(ModpackMsg.ShowSettings) })
-        },
-    )
 
     if (hasNonFileNotFoundError) return
 
@@ -178,6 +124,49 @@ fun PakkuApplicationScope.ModpackView(
             model = model,
             directory = appModel.profile.data.currentProfile?.path,
         )
+    }
+}
+
+@Composable
+fun ModpackTitleBarStart(
+    publish: (ModpackMsg) -> Unit,
+    model: ModpackModel,
+) {
+    val widthTier = LocalTitleBarWidthTier.current
+    TitleBarStartRow {
+        DropdownHost {
+            ModpackDropdown(publish, model)
+            GitDropdown(publish, model)
+        }
+        if (widthTier == TitleBarWidthTier.Comfortable) {
+            McLoaderLabel(model)
+        }
+        val actionName = model.actionName
+        if (actionName != null) {
+            Row(
+                Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    actionName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false).widthIn(min = 0.dp),
+                )
+                val total = model.fetchProgressTotal
+                if (model.actionName == "Fetching" && total > 0L) {
+                    val progress = (model.fetchProgressCompleted.toFloat() / total.toFloat())
+                        .coerceIn(0f, 1f)
+                    HorizontalProgressBar(
+                        progress,
+                        Modifier.width(if (widthTier == TitleBarWidthTier.Comfortable) 120.dp else 64.dp),
+                    )
+                } else {
+                    CircularProgressIndicator()
+                }
+            }
+        }
     }
 }
 
