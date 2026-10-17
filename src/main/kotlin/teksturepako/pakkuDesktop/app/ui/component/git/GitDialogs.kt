@@ -50,6 +50,7 @@ import teksturepako.pakkuDesktop.app.git.GitCommit
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.GitRefType
 import teksturepako.pakkuDesktop.app.git.GitResetMode
 import teksturepako.pakkuDesktop.app.git.GitState
@@ -88,6 +89,7 @@ fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         GitDialog.Unstash -> GitUnstashDialog(git, busy, hide, run)
         is GitDialog.Reset -> GitResetDialog(dialog, hide, run)
         is GitDialog.NewTag -> GitNewTagDialog(git, dialog, hide, run)
+        is GitDialog.DeleteTag -> GitDeleteTagDialog(dialog, hide, run)
     }
 }
 
@@ -236,12 +238,14 @@ private fun GitUpdateDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Uni
 @Composable
 private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit) {
     var force by remember { mutableStateOf(false) }
+    var pushTags by remember { mutableStateOf(false) }
     val commits = git.outgoingCommits.toList()
     val branch = git.currentBranch?.name ?: "HEAD"
     val remote = git.defaultRemote
     val target = git.upstream ?: remote?.let { "$it/$branch" }
-    val canPush = commits.isNotEmpty() && remote != null
-    val push = { if (canPush) run(GitOp.Push(force)) }
+    val canPush = remote != null
+    val push = { if (canPush) run(GitOp.Push(force, pushTags)) }
+    val localTags = git.refs.filter { it.type == GitRefType.Tag }.sortedBy { it.name }
 
     PkUiDialog(
         onDismiss = hide,
@@ -255,7 +259,10 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
         size = PkUiDialogSize.Large,
         onConfirm = push,
         footerStart = {
-            CheckboxRow("Force push (with lease)", checked = force, onCheckedChange = { force = it })
+            Column {
+                CheckboxRow("Force push (with lease)", checked = force, onCheckedChange = { force = it })
+                CheckboxRow("Push tags", checked = pushTags, onCheckedChange = { pushTags = it })
+            }
         },
         footer = {
             PkUiDialogButtons(
@@ -276,13 +283,39 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
                 kind = PkUiNoticeKind.Warning,
             )
         }
-        if (commits.isEmpty()) {
-            Text("Nothing to push — the branch matches the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
-        } else {
+        if (commits.isNotEmpty()) {
             PkUiDialogSectionLabel("Commits", icon = AllIconsKeys.Actions.Commit, trailing = commits.size.toString())
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 commits.forEach { GitCommitRow(it) }
             }
+        }
+        if (localTags.isNotEmpty()) {
+            PkUiDialogSectionLabel("Tags", icon = AllIconsKeys.Nodes.Tag, trailing = localTags.size.toString())
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                localTags.forEach { ref ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            AllIconsKeys.Nodes.Tag,
+                            contentDescription = null,
+                            tint = JewelTheme.contentColor.copy(alpha = 0.55f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(ref.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Text(
+                "Tags will be pushed when \"Push tags\" is checked.",
+                color = JewelTheme.contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (commits.isEmpty() && localTags.isEmpty()) {
+            Text("Nothing to push — the branch matches the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
         }
     }
 }
@@ -602,6 +635,24 @@ private fun GitNewTagDialog(git: GitState, dialog: GitDialog.NewTag, hide: () ->
             placeholder = { Text("v1.0") },
         )
         if (error != null) PkUiDialogNotice(error, kind = PkUiNoticeKind.Error)
+    }
+}
+
+@Composable
+private fun GitDeleteTagDialog(dialog: GitDialog.DeleteTag, hide: () -> Unit, run: (GitOp) -> Unit) {
+    val confirm = { run(GitOp.DeleteTag(dialog.name)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Delete tag",
+        icon = AllIconsKeys.General.Delete,
+        subtitle = dialog.name,
+        size = PkUiDialogSize.Small,
+        onConfirm = confirm,
+        footer = {
+            PkUiDialogButtons(primaryLabel = "Delete", onPrimary = confirm, onSecondary = hide)
+        },
+    ) {
+        PkUiDialogNotice("This will delete the tag '${dialog.name}'.", kind = PkUiNoticeKind.Warning)
     }
 }
 

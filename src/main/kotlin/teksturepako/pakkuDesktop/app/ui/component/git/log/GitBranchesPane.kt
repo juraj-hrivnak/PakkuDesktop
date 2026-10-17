@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,11 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalScrollbar
+import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.git.GitBranch
 import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.GitRefType
+import teksturepako.pakkuDesktop.app.ui.component.git.log.gitLogTagMenu
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.pkui.component.PkUiContextMenuArea
 
@@ -41,6 +46,7 @@ fun GitBranchesPane(
 ) {
     val local = refs.filter { it.type == GitRefType.LocalBranch }.sortedBy { it.name }
     val remote = refs.filter { it.type == GitRefType.RemoteBranch }.groupBy { it.name.substringBefore('/') }
+    val tags = refs.filter { it.type == GitRefType.Tag }.sortedBy { it.name }
     val scrollState = rememberLazyListState()
     Row(modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = scrollState) {
@@ -85,6 +91,19 @@ fun GitBranchesPane(
                     )
                 }
             }
+            if (tags.isNotEmpty()) {
+                item(key = "tags-header") { BranchHeader("Tags") }
+                items(tags, key = { "tag-${it.name}" }) { ref ->
+                    BranchRow(
+                        label = ref.name,
+                        current = false,
+                        onClick = { onJump(ref.hash) },
+                        onDoubleClick = {},
+                        menu = { gitLogTagMenu(ref, busy, publish) },
+                        iconKey = AllIconsKeys.Nodes.Tag,
+                    )
+                }
+            }
         }
         VerticalScrollbar(
             scrollState = scrollState,
@@ -111,6 +130,7 @@ private fun BranchRow(
     onClick: () -> Unit,
     onDoubleClick: () -> Unit,
     menu: () -> List<androidx.compose.foundation.ContextMenuItem>,
+    iconKey: IconKey? = null,
 ) {
     PkUiContextMenuArea(items = menu) {
         Row(
@@ -119,6 +139,14 @@ private fun BranchRow(
                 .padding(horizontal = 16.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (iconKey != null) {
+                Icon(
+                    key = iconKey,
+                    contentDescription = null,
+                    tint = JewelTheme.contentColor.copy(alpha = 0.85f),
+                    modifier = Modifier.size(16.dp).padding(end = 6.dp),
+                )
+            }
             Text(
                 label,
                 maxLines = 1,

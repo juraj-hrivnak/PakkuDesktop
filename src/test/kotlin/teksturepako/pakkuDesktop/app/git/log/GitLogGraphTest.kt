@@ -128,6 +128,44 @@ class GitLogGraphTest {
         assertTrue(label.colors.contains(REF_LOCAL))
         assertTrue(label.colors.contains(REF_REMOTE))
     }
+
+    @Test
+    fun tagOnlyLabelShowsTagName() {
+        val graph = graph(
+            hashes = listOf("a"),
+            parents = listOf(""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "a"),
+                GitRef("v1.0", GitRefType.Tag, "a"),
+            ),
+            head = "a",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        assertEquals("main", label.text)
+        assertTrue(label.colors.contains(REF_HEAD))
+        assertTrue(label.colors.contains(REF_LOCAL))
+        assertTrue(label.colors.contains(REF_TAG))
+    }
+
+    @Test
+    fun tagOnlyLabelWithNoBranchShowsTagName() {
+        val graph = graph(
+            hashes = listOf("a", "b"),
+            parents = listOf("b", ""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "b"),
+                GitRef("v1.0", GitRefType.Tag, "a"),
+            ),
+            head = "b",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        assertEquals("v1.0", label.text)
+        assertTrue(label.colors.contains(REF_TAG))
+    }
 }
 
 private fun graph(

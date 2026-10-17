@@ -169,7 +169,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.ActivateLastGitFab -> {
         val busy = model.gitBusy()
         val selected = model.git.selectedFiles.isNotEmpty()
-        val canPush = model.git.outgoingCommits.isNotEmpty()
+        val canPush = model.git.defaultRemote != null
         when (model.lastGitFab) {
             GitFabAction.Pull if !busy ->
                 modpackUpdate(ModpackMsg.ShowGitDialog(GitDialog.Update), model)

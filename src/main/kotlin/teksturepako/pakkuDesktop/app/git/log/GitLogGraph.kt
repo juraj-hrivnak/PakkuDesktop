@@ -160,7 +160,6 @@ class GitLogGraph internal constructor(
         val text = when {
             detached -> "HEAD"
             groups.isEmpty() -> ""
-            groups.all { it.tagsOnly } -> ""
             else -> shortenRef(groups.first().name)
         }
         val colors = ArrayList<Int>(4)

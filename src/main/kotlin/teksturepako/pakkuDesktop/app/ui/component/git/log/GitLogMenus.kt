@@ -11,6 +11,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.git.GitBranch
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.log.GitLogGraph
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
@@ -106,5 +107,30 @@ fun gitLogBranchMenu(
         icon = AllIconsKeys.General.Delete,
         enabled = !busy && !branch.isRemote && !branch.isCurrent,
         action = { publish(ModpackMsg.ShowGitDialog(GitDialog.DeleteBranch(branch))) },
+    ),
+)
+
+fun gitLogTagMenu(
+    ref: GitRef,
+    busy: Boolean,
+    publish: (ModpackMsg) -> Unit,
+): List<ContextMenuItem> = listOf(
+    ContextMenuItemOption(
+        label = "Checkout Tag",
+        icon = AllIconsKeys.Actions.CheckOut,
+        enabled = !busy,
+        action = { publish(ModpackMsg.GitOpRequested(GitOp.CheckoutRevision(ref.hash))) },
+    ),
+    ContextMenuItemOption(
+        label = "New Branch from '${ref.name}'…",
+        icon = AllIconsKeys.General.Add,
+        enabled = !busy,
+        action = { publish(ModpackMsg.ShowGitDialog(GitDialog.NewBranch(startRevision = ref.hash))) },
+    ),
+    ContextMenuItemOption(
+        label = "Delete",
+        icon = AllIconsKeys.General.Delete,
+        enabled = !busy,
+        action = { publish(ModpackMsg.ShowGitDialog(GitDialog.DeleteTag(ref.name))) },
     ),
 )

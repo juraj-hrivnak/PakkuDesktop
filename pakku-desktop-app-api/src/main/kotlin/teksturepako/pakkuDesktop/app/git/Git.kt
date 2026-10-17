@@ -87,6 +87,7 @@ sealed interface GitDialog {
     data object Unstash : GitDialog
     data class Reset(val hash: String) : GitDialog
     data class NewTag(val hash: String) : GitDialog
+    data class DeleteTag(val name: String) : GitDialog
 }
 
 /** One native git operation; set as `pendingGitOp` and run by the git driver. */
@@ -106,7 +107,7 @@ sealed interface GitOp {
         override val status get() = "Updating…"
     }
 
-    data class Push(val force: Boolean = false) : GitOp {
+    data class Push(val force: Boolean = false, val tags: Boolean = false) : GitOp {
         override val status get() = "Pushing…"
     }
 
@@ -177,5 +178,9 @@ sealed interface GitOp {
 
     data class CreateTag(val name: String, val hash: String) : GitOp {
         override val status get() = "Creating tag $name…"
+    }
+
+    data class DeleteTag(val name: String) : GitOp {
+        override val status get() = "Deleting tag $name…"
     }
 }
