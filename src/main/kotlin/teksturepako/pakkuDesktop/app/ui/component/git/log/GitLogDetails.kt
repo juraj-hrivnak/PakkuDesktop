@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,12 +31,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticalSplitLayout
 import org.jetbrains.jewel.ui.theme.dropdownStyle
-import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.git.GitCommitChange
 import teksturepako.pakkuDesktop.app.git.GitCommitDetails
@@ -69,58 +69,48 @@ fun GitLogDetails(
         var expanded by remember(details.hash) { mutableStateOf(details.changes.mapNotNull { parentFolders(it.path) }.flatten().toSet()) }
         val tree = remember(details.changes) { PathTreeSnapshot.of(details.changes) { it.path } }
         val rows = tree.flatRows(expanded, setOfNotNull(selectedChange?.path))
-        val summarySplit = remember { SplitLayoutState(0.72f) }
-        VerticalSplitLayout(
-            state = summarySplit,
-            dividerStyle = animatedDividerStyle(),
-            first = {
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(rows, key = { row ->
-                        when (row) {
-                            is PathTreeRow.Folder -> "f:${row.fullPath}"
-                            is PathTreeRow.Item -> "i:${row.path}"
-                        }
-                    }) { row ->
-                        when (row) {
-                            is PathTreeRow.Folder -> TreeFolderRow(
-                                row = row,
-                                onToggleExpanded = {
-                                    expanded = if (row.fullPath in expanded) expanded - row.fullPath else expanded + row.fullPath
-                                },
-                                onToggleSelected = null,
-                            )
-                            is PathTreeRow.Item -> TreeItemRow(
-                                depth = row.depth,
-                                label = row.item.status.displayName,
-                                status = row.item.status.toTreeStatus(),
-                                checked = null,
-                                onCheckedChange = {},
-                                highlighted = row.item == selectedChange,
-                                onClick = { publish(ModpackMsg.GitLogChangeSelected(row.item)) },
-                                interactionKey = row.path,
-                            )
-                        }
-                    }
+        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+            items(rows, key = { row ->
+                when (row) {
+                    is PathTreeRow.Folder -> "f:${row.fullPath}"
+                    is PathTreeRow.Item -> "i:${row.path}"
                 }
-            },
-            second = { CommitSummary(details, containing, Modifier.fillMaxSize()) },
-            modifier = Modifier.fillMaxSize(),
-            firstPaneMinWidth = 80.dp,
-            secondPaneMinWidth = 36.dp,
-            draggableWidth = 16.dp,
-        )
+            }) { row ->
+                when (row) {
+                    is PathTreeRow.Folder -> TreeFolderRow(
+                        row = row,
+                        onToggleExpanded = {
+                            expanded = if (row.fullPath in expanded) expanded - row.fullPath else expanded + row.fullPath
+                        },
+                        onToggleSelected = null,
+                    )
+                    is PathTreeRow.Item -> TreeItemRow(
+                        depth = row.depth,
+                        label = row.item.status.displayName,
+                        status = row.item.status.toTreeStatus(),
+                        checked = null,
+                        onCheckedChange = {},
+                        highlighted = row.item == selectedChange,
+                        onClick = { publish(ModpackMsg.GitLogChangeSelected(row.item)) },
+                        interactionKey = row.path,
+                    )
+                }
+            }
+        }
+        Divider(Orientation.Horizontal)
+        CommitSummary(details, containing)
     }
 }
 
 @Composable
-private fun CommitSummary(details: GitCommitDetails, containing: List<String>?, modifier: Modifier = Modifier) {
+private fun CommitSummary(details: GitCommitDetails, containing: List<String>?) {
     val subject = details.message.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
     val body = details.message.lineSequence().dropWhile { it.isBlank() }.drop(1).joinToString("\n").trim()
     var open by remember(details.hash) { mutableStateOf(false) }
     val bodyStyle = JewelTheme.defaultTextStyle.copy(color = JewelTheme.contentColor)
     val muted = bodyStyle.copy(color = JewelTheme.contentColor.copy(alpha = 0.75f))
 
-    Column(modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SelectableText(
                 subject,
@@ -142,8 +132,8 @@ private fun CommitSummary(details: GitCommitDetails, containing: List<String>?, 
         }
         if (open) {
             val scroll = rememberScrollState()
-            Box(Modifier.weight(1f).fillMaxWidth().padding(top = 4.dp, end = 4.dp)) {
-                SelectionContainer(Modifier.fillMaxSize().verticalScroll(scroll).padding(end = 8.dp, bottom = 4.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(top = 4.dp, end = 4.dp)) {
+                SelectionContainer(Modifier.fillMaxWidth().verticalScroll(scroll).padding(end = 8.dp, bottom = 4.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (body.isNotEmpty()) BasicText(body, style = bodyStyle)
                         BasicText(commitLine(details), style = muted)
