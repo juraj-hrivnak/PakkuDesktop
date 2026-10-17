@@ -316,7 +316,7 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
             )
         }
         if (commits.isEmpty() && localTags.isEmpty()) {
-            Text("Nothing to push — the branch and tags match the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
+            Text("Nothing to push, the branch and tags match the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
         }
     }
 }
@@ -594,10 +594,10 @@ private fun GitResetDialog(dialog: GitDialog.Reset, hide: () -> Unit, run: (GitO
             PkUiDialogButtons(primaryLabel = "Reset", onPrimary = confirm, onSecondary = hide)
         },
     ) {
-        RadioButtonRow("Soft — keep all changes staged", selected = mode == GitResetMode.Soft, onClick = { mode = GitResetMode.Soft })
-        RadioButtonRow("Mixed — keep changes, unstage them", selected = mode == GitResetMode.Mixed, onClick = { mode = GitResetMode.Mixed })
-        RadioButtonRow("Hard — discard all local changes", selected = mode == GitResetMode.Hard, onClick = { mode = GitResetMode.Hard })
-        RadioButtonRow("Keep — discard only changes to tracked files that differ", selected = mode == GitResetMode.Keep, onClick = { mode = GitResetMode.Keep })
+        RadioButtonRow("Soft, keep all changes staged", selected = mode == GitResetMode.Soft, onClick = { mode = GitResetMode.Soft })
+        RadioButtonRow("Mixed, keep changes, unstage them", selected = mode == GitResetMode.Mixed, onClick = { mode = GitResetMode.Mixed })
+        RadioButtonRow("Hard, discard all local changes", selected = mode == GitResetMode.Hard, onClick = { mode = GitResetMode.Hard })
+        RadioButtonRow("Keep, discard only changes to tracked files that differ", selected = mode == GitResetMode.Keep, onClick = { mode = GitResetMode.Keep })
         if (mode == GitResetMode.Hard) {
             PkUiDialogNotice("Hard reset deletes uncommitted work in this branch.", kind = PkUiNoticeKind.Warning)
         }
