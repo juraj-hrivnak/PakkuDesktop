@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -40,7 +39,7 @@ fun GitBranchesPane(
 ) {
     val local = refs.filter { it.type == GitRefType.LocalBranch }.sortedBy { it.name }
     val remote = refs.filter { it.type == GitRefType.RemoteBranch }.groupBy { it.name.substringBefore('/') }
-    Column(modifier.width(220.dp).fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize()) {
             if (headHash != null) {
                 item(key = "head") {
