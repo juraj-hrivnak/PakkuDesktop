@@ -5,6 +5,7 @@
 package teksturepako.pakkuDesktop.app.ui.driver
 
 import androidx.compose.runtime.*
+import io.klogging.noCoLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.Mutex
@@ -22,6 +23,8 @@ import teksturepako.pakkuDesktop.elm.conflatedPublisher
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
+
+private val logger = noCoLogger("GitDriver")
 
 // -- Repository worker --
 
@@ -51,6 +54,7 @@ private class GitRepositoryWorker(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                logger.error(e, "git refresh failed")
                 gitToast(publish, e.message ?: "Failed to refresh repository")
             }
         }
@@ -82,9 +86,11 @@ private class GitRepositoryWorker(
                 // Init is the one op that runs before a repository exists.
                 val dir = root ?: if (op is GitOp.Init) modpackDirectory() else null
                 if (dir == null) {
+                    logger.error("git ${op.status.removeSuffix("…")}: not a git repository")
                     gitToast(publish, "Not a git repository")
                     return@launch
                 }
+                logger.info("git ${op.status.removeSuffix("…")}")
                 lock.withLock {
                     // Already initialized (or initialized while this op was queued): attach and refresh.
                     if (op is GitOp.Init && dir.resolve(".git").exists()) {
@@ -99,6 +105,7 @@ private class GitRepositoryWorker(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        logger.error(e, "git ${op.status.removeSuffix("…")} failed")
                         e.message ?: "${op.status.removeSuffix("…")} failed"
                     }
                     if (failure != null) gitToast(publish, failure) else success = true
@@ -124,6 +131,7 @@ private class GitRepositoryWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            logger.error(e, "git refresh failed")
             gitToast(publish, e.message ?: "Failed to refresh repository")
         }
     }
@@ -153,6 +161,17 @@ private class GitRepositoryWorker(
 private fun gitToast(publish: (AppMsg) -> Unit, message: String) {
     publish(AppMsg.Modpack(ModpackMsg.ToastAdded(actionInfoToast(message))))
 }
+
+/** Info for a command that succeeded, error with its output when it did not. */
+private fun logGit(args: List<String>, result: NativeGit.Output): NativeGit.Output {
+    val command = args.joinToString(" ")
+    if (result.ok) logger.info("git $command")
+    else logger.error("git $command exited ${result.exitCode}: ${result.text.trim().ifEmpty { "(no output)" }}")
+    return result
+}
+
+private suspend fun git(workDir: File, vararg args: String): NativeGit.Output =
+    logGit(args.toList(), NativeGit.exec(workDir, *args))
 
 // -- Native-git ops --
 
@@ -215,7 +234,7 @@ private suspend fun runGitWithProgress(
     progress.close()
     progressJob.join()
 
-    NativeGit.Output(exitCode, stderr.toString())
+    logGit(args.toList(), NativeGit.Output(exitCode, stderr.toString()))
 }
 
 /** A pipe broken because the process was destroyed is not a failure of the command. */
@@ -253,23 +272,40 @@ private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: Git
             }
         }
     }
-    return runGitWithProgress(workDir, publish, *args.toTypedArray())
+    val pushResult = runGitWithProgress(workDir, publish, *args.toTypedArray())
+    // Push tag deletions: tags on the remote but no longer present locally.
+    if (tags) {
+        val localTagNames = state.refs.filter { it.type == GitRefType.Tag }.mapTo(HashSet()) { it.name }
+        val deletedTags = state.remoteTagNames - localTagNames
+        if (deletedTags.isNotEmpty()) {
+            val deleteArgs = buildList {
+                add("push")
+                add(remote)
+                for (tagName in deletedTags) {
+                    add(":refs/tags/$tagName")
+                }
+            }
+            val deleteResult = runGitWithProgress(workDir, publish, *deleteArgs.toTypedArray())
+            if (!deleteResult.ok) return deleteResult
+        }
+    }
+    return pushResult
 }
 
 private suspend fun runCheckout(workDir: File, branch: GitBranch): NativeGit.Output {
-    if (!branch.isRemote) return NativeGit.exec(workDir, "checkout", branch.name)
+    if (!branch.isRemote) return git(workDir, "checkout", branch.name)
     val localName = branch.name.substringAfter('/', missingDelimiterValue = branch.name)
     // Try a plain checkout first in case the local branch already exists.
-    val existing = NativeGit.exec(workDir, "checkout", localName)
+    val existing = git(workDir, "checkout", localName)
     return if (existing.ok) existing
-    else NativeGit.exec(workDir, "checkout", "-b", localName, "--track", branch.name)
+    else git(workDir, "checkout", "-b", localName, "--track", branch.name)
 }
 
 /** Runs [op]; returns null on success or the message to toast on failure. */
 private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp, state: GitState): String? {
     val result: NativeGit.Output = when (op) {
         GitOp.Refresh -> NativeGit.Output(0, "")
-        is GitOp.Init -> NativeGit.initRepository(workDir, op.branch)
+        is GitOp.Init -> logGit(listOf("init", "-b", op.branch), NativeGit.initRepository(workDir, op.branch))
         GitOp.Fetch -> runGitWithProgress(workDir, publish, "fetch", "--all", "--prune", "--progress")
         is GitOp.Pull -> runGitWithProgress(
             workDir, publish,
@@ -277,7 +313,10 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
         )
         is GitOp.Push -> runPush(publish, workDir, state, op.force, op.tags)
         is GitOp.Commit -> {
-            val commit = NativeGit.commitPaths(workDir, op.message, op.paths, op.amend)
+            val commit = logGit(
+                listOf("commit") + (if (op.amend) listOf("--amend") else emptyList()) + op.paths,
+                NativeGit.commitPaths(workDir, op.message, op.paths, op.amend),
+            )
             if (commit.ok && op.pushAfter) {
                 // Upstream may have changed meaning after the commit; re-read before pushing.
                 runPush(publish, workDir, NativeGit.readState(workDir), force = op.amend, tags = false)
@@ -290,26 +329,29 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
                 add(op.name)
                 op.startPoint?.let(::add)
             }
-            NativeGit.exec(workDir, *args.toTypedArray())
+            git(workDir, *args.toTypedArray())
         }
-        is GitOp.DeleteBranch -> NativeGit.exec(workDir, "branch", if (op.force) "-D" else "-d", op.branch.name)
-        is GitOp.Rollback -> NativeGit.rollback(workDir, op.trackedPaths, op.addedPaths, op.deleteAdded)
+        is GitOp.DeleteBranch -> git(workDir, "branch", if (op.force) "-D" else "-d", op.branch.name)
+        is GitOp.Rollback -> logGit(
+            listOf("restore") + op.trackedPaths + op.addedPaths,
+            NativeGit.rollback(workDir, op.trackedPaths, op.addedPaths, op.deleteAdded),
+        )
         is GitOp.Stash -> {
             val args = buildList {
                 addAll(listOf("stash", "push"))
                 if (op.includeUntracked) add("--include-untracked")
                 if (op.message.isNotBlank()) addAll(listOf("-m", op.message.trim()))
             }
-            NativeGit.exec(workDir, *args.toTypedArray())
+            git(workDir, *args.toTypedArray())
         }
-        is GitOp.Unstash -> NativeGit.exec(workDir, "stash", if (op.pop) "pop" else "apply", op.stash.ref)
-        is GitOp.DropStash -> NativeGit.exec(workDir, "stash", "drop", op.stash.ref)
+        is GitOp.Unstash -> git(workDir, "stash", if (op.pop) "pop" else "apply", op.stash.ref)
+        is GitOp.DropStash -> git(workDir, "stash", "drop", op.stash.ref)
         is GitOp.Ignore -> {
             NativeGit.ignore(workDir, op.paths)
-            NativeGit.Output(0, "")
+            logGit(listOf("ignore") + op.paths, NativeGit.Output(0, ""))
         }
-        is GitOp.CheckoutRevision -> NativeGit.exec(workDir, "checkout", "--detach", op.hash)
-        is GitOp.CherryPick -> NativeGit.exec(
+        is GitOp.CheckoutRevision -> git(workDir, "checkout", "--detach", op.hash)
+        is GitOp.CherryPick -> git(
             workDir,
             *buildList {
                 add("cherry-pick")
@@ -317,7 +359,7 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
                 add(op.hash)
             }.toTypedArray(),
         )
-        is GitOp.Revert -> NativeGit.exec(
+        is GitOp.Revert -> git(
             workDir,
             *buildList {
                 add("revert")
@@ -326,9 +368,9 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
                 add(op.hash)
             }.toTypedArray(),
         )
-        is GitOp.Reset -> NativeGit.exec(workDir, "reset", op.mode.flag, op.hash)
-        is GitOp.CreateTag -> NativeGit.exec(workDir, "tag", op.name, op.hash)
-        is GitOp.DeleteTag -> NativeGit.exec(workDir, "tag", "-d", op.name)
+        is GitOp.Reset -> git(workDir, "reset", op.mode.flag, op.hash)
+        is GitOp.CreateTag -> git(workDir, "tag", op.name, op.hash)
+        is GitOp.DeleteTag -> git(workDir, "tag", "-d", op.name)
     }
     return if (result.ok) null else result.failure("${op.status.removeSuffix("…")} failed")
 }
@@ -377,6 +419,7 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            logger.error(e, "git diff failed for ${file.path}")
             gitToast(publish, e.message ?: "Failed to compute diff")
             publish(AppMsg.Modpack(ModpackMsg.GitDiffComputed(null)))
         }

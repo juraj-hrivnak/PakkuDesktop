@@ -228,8 +228,21 @@ private fun GitUpdateDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Uni
                 RadioButtonRow("Merge incoming changes into the current branch", selected = !rebase, onClick = { rebase = false })
                 RadioButtonRow("Rebase the current branch on top of incoming changes", selected = rebase, onClick = { rebase = true })
             }
-            if (git.gitFiles.any { it.status !is GitChange.Untracked }) {
-                PkUiDialogNotice("You have uncommitted changes. Git stops if the update would overwrite them; stash them first.")
+            val trackedChanges = git.gitFiles.filter { it.status !is GitChange.Untracked }
+            if (trackedChanges.isNotEmpty()) {
+                val conflictFiles = trackedChanges
+                    .filter { it.path in git.incomingChangedFiles }
+                    .sortedBy { it.path }
+                if (conflictFiles.isNotEmpty()) {
+                    PkUiDialogNotice(
+                        "These files are changed locally and in the incoming commits, and may conflict:",
+                        kind = PkUiNoticeKind.Warning,
+                    )
+                    PkUiDialogSectionLabel("May conflict", icon = AllIconsKeys.General.Warning)
+                    GitFileList(conflictFiles)
+                } else {
+                    PkUiDialogNotice("You have uncommitted changes. Git stops if the update would overwrite them; stash them first.")
+                }
             }
         }
     }
@@ -249,6 +262,8 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
     val push = { if (canPush) { run(GitOp.Push(force, pushTags)); hide() } }
     val localTags = git.refs.filter { it.type == GitRefType.Tag && it.name !in git.remoteTagNames }
         .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
+    val localTagNames = git.refs.filter { it.type == GitRefType.Tag }.mapTo(HashSet()) { it.name }
+    val deletedTags = (git.remoteTagNames - localTagNames).sorted()
 
     PkUiDialog(
         onDismiss = hide,
@@ -317,7 +332,32 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
-        if (commits.isEmpty() && localTags.isEmpty()) {
+        if (deletedTags.isNotEmpty()) {
+            PkUiDialogSectionLabel("Deleted tags", icon = AllIconsKeys.Nodes.Tag, trailing = deletedTags.size.toString())
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                deletedTags.forEach { tagName ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            AllIconsKeys.General.Delete,
+                            contentDescription = null,
+                            tint = JewelTheme.contentColor.copy(alpha = 0.55f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(tagName, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Text(
+                "These tags will be deleted from the remote when \"Push tags\" is checked.",
+                color = JewelTheme.contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (commits.isEmpty() && localTags.isEmpty() && deletedTags.isEmpty()) {
             Text("Nothing to push, the branch and tags match the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
         }
     }

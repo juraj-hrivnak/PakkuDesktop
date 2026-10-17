@@ -125,6 +125,8 @@ class NativeGitTest {
     fun readStateTracksUpstreamAheadAndBehind() = runBlocking {
         val clone = Files.createTempDirectory("pakku-native-git-clone").toFile()
         try {
+            git("config", "tag.gpgsign", "false")
+            git("tag", "-a", "v1", "-m", "annotated")
             git("clone", "-q", repo.absolutePath, clone.absolutePath)
             fun cloneGit(vararg args: String) = runBlocking {
                 val out = NativeGit.exec(clone, *args)
@@ -146,6 +148,8 @@ class NativeGitTest {
             assertEquals("origin/main", state.upstream)
             assertEquals(1, state.incomingCount)
             assertEquals(listOf("local"), state.outgoingCommits.map { it.message })
+            assertEquals(setOf("remote.txt"), state.incomingChangedFiles)
+            assertEquals(setOf("v1"), state.remoteTagNames)
             assertTrue(state.branches.any { it.isRemote && it.name == "origin/main" })
             assertFalse(state.branches.any { it.name == "origin/HEAD" })
             assertEquals(listOf("origin"), state.remotes)

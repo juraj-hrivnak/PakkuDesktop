@@ -101,6 +101,7 @@ object NativeGit
             .orEmpty()
         val defaultRemote = remotesList.firstOrNull { it == "origin" } ?: remotesList.firstOrNull()
         val remoteTagNames = async { readRemoteTags(root, defaultRemote) }
+        val incomingFiles = async { readIncomingChangedFiles(root, st.upstream, st.behind) }
 
         GitState(
             gitFiles = st.files.toPersistentList(),
@@ -116,6 +117,7 @@ object NativeGit
             outgoingCommits = outgoing.await(),
             upstream = st.upstream,
             incomingCount = st.behind,
+            incomingChangedFiles = incomingFiles.await(),
             remotes = remotesList.toPersistentList(),
             headMessage = headMessage.await()?.trimEnd().orEmpty(),
             stashes = stashes.await().toPersistentList(),
@@ -134,10 +136,28 @@ object NativeGit
             .mapNotNull { line ->
                 // Format: HASH\trefs/tags/NAME  or  HASH\trefs/tags/NAME^{peel}
                 val ref = line.substringAfter("\t")
-                ref.takeIf { it.startsWith("refs/tags/") && !it.startsWith("refs/tags/^") }
+                // Annotated tags also emit `refs/tags/name^{}`; that peel is not a tag name.
+                ref.takeIf { it.startsWith("refs/tags/") && !it.endsWith("^{}") }
                     ?.removePrefix("refs/tags/")
             }
             .toSet()
+    }
+
+    /**
+     * Files the incoming commits changed since HEAD and the upstream diverged.
+     * Three dots are the merge-base range; two dots would also list files changed only locally.
+     * Nothing is incoming when [behind] is 0, so the diff is skipped.
+     */
+    private suspend fun readIncomingChangedFiles(root: File, upstream: String?, behind: Int): Set<String> {
+        if (upstream == null || behind == 0) return emptySet()
+        val output = try {
+            run(root, "diff", "--name-only", "HEAD...@{u}")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return emptySet()
+        } ?: return emptySet()
+        return output.lineSequence().filter { it.isNotBlank() }.toSet()
     }
 
     /** `objectname NUL *objectname NUL refname NUL creatordate`: the peeled hash of an annotated tag wins. */

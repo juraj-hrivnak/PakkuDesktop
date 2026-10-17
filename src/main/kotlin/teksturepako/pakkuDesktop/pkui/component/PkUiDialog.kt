@@ -243,19 +243,20 @@ private fun DialogFooter(
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = HorizontalPadding, vertical = 12.dp),
+            .padding(start = HorizontalPadding, end = 10.dp, top = 12.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
     ) {
         if (footerStart != null) {
             Row(
-                Modifier.weight(1f, fill = false),
+                Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Bottom,
                 content = footerStart,
             )
+        } else {
+            Spacer(Modifier.weight(1f))
         }
-        Spacer(Modifier.weight(1f))
         footer?.invoke(this)
     }
 }

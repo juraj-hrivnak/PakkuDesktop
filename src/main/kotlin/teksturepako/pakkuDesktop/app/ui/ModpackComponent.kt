@@ -886,6 +886,7 @@ private fun GitState.withRepoFrom(incoming: GitState): GitState {
         outgoingCommits = reuse(outgoingCommits, incoming.outgoingCommits),
         upstream = incoming.upstream,
         incomingCount = incoming.incomingCount,
+        incomingChangedFiles = reuse(incomingChangedFiles, incoming.incomingChangedFiles),
         remotes = reuse(remotes, incoming.remotes),
         headMessage = incoming.headMessage,
         stashes = reuse(stashes, incoming.stashes),

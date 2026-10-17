@@ -42,6 +42,8 @@ data class GitState(
     val upstream: String? = null,
     /** Commits on the upstream not yet on HEAD (as of the last fetch). */
     val incomingCount: Int = 0,
+    /** Files changed on the upstream since it diverged from HEAD. Used to warn about conflicts. */
+    val incomingChangedFiles: Set<String> = emptySet(),
     val remotes: PersistentList<String> = persistentListOf(),
     /** Full message of HEAD, prefilled when amending. Empty before the first commit. */
     val headMessage: String = "",
