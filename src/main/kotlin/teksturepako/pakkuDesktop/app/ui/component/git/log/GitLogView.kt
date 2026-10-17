@@ -47,6 +47,8 @@ fun GitLogView(
     val branchesSplit = remember { SplitLayoutState(0.22f) }
     val detailsSplit = remember { SplitLayoutState(0.62f) }
     val diffSplit = remember { SplitLayoutState(0.68f) }
+    // The drag handle is centered on the divider and covers this much of each pane.
+    val splitDrag = 16.dp
 
     fun jumpToHash(hash: String) {
         val row = graph?.rowOf(hash) ?: return
@@ -106,28 +108,30 @@ fun GitLogView(
                     state = branchesSplit,
                     dividerStyle = animatedDividerStyle(),
                     first = {
-                        GitBranchesPane(
-                            refs = model.refs,
-                            headHash = model.headHash,
-                            currentBranch = model.currentBranchName,
-                            busy = model.gitBusy,
-                            onJump = ::jumpToHash,
-                            onFilter = { name ->
-                                publish(
-                                    ModpackMsg.GitLogFiltersChanged(
-                                        log.filters.copy(branches = persistentSetOf(name)),
-                                    ),
-                                )
-                            },
-                            publish = publish,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Box(Modifier.fillMaxSize().padding(end = splitDrag / 2)) {
+                            GitBranchesPane(
+                                refs = model.refs,
+                                headHash = model.headHash,
+                                currentBranch = model.currentBranchName,
+                                busy = model.gitBusy,
+                                onJump = ::jumpToHash,
+                                onFilter = { name ->
+                                    publish(
+                                        ModpackMsg.GitLogFiltersChanged(
+                                            log.filters.copy(branches = persistentSetOf(name)),
+                                        ),
+                                    )
+                                },
+                                publish = publish,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     },
                     second = { commits() },
                     modifier = Modifier.fillMaxSize(),
                     firstPaneMinWidth = 160.dp,
                     secondPaneMinWidth = 240.dp,
-                    draggableWidth = 16.dp,
+                    draggableWidth = splitDrag,
                 )
             } else {
                 commits()
@@ -137,7 +141,9 @@ fun GitLogView(
             HorizontalSplitLayout(
                 state = detailsSplit,
                 dividerStyle = animatedDividerStyle(),
-                first = { history() },
+                first = {
+                    Box(Modifier.fillMaxSize().padding(end = splitDrag / 2)) { history() }
+                },
                 second = {
                     GitLogDetails(
                         details = log.details,
@@ -149,19 +155,21 @@ fun GitLogView(
                 modifier = Modifier.fillMaxSize(),
                 firstPaneMinWidth = 280.dp,
                 secondPaneMinWidth = 220.dp,
-                draggableWidth = 16.dp,
+                draggableWidth = splitDrag,
             )
         }
         if (log.selectedChange != null) {
             VerticalSplitLayout(
                 state = diffSplit,
                 dividerStyle = animatedDividerStyle(),
-                first = { logBody() },
+                first = {
+                    Box(Modifier.fillMaxSize().padding(bottom = splitDrag / 2)) { logBody() }
+                },
                 second = { DiffViewer(log.diff, Modifier.fillMaxSize()) },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 firstPaneMinWidth = 160.dp,
                 secondPaneMinWidth = 80.dp,
-                draggableWidth = 16.dp,
+                draggableWidth = splitDrag,
             )
         } else {
             Box(Modifier.weight(1f).fillMaxWidth()) { logBody() }

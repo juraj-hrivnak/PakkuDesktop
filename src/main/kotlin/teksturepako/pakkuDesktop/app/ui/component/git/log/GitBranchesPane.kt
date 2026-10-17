@@ -6,12 +6,13 @@ package teksturepako.pakkuDesktop.app.ui.component.git.log
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import teksturepako.pakkuDesktop.app.git.GitBranch
 import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.GitRefType
@@ -39,8 +41,9 @@ fun GitBranchesPane(
 ) {
     val local = refs.filter { it.type == GitRefType.LocalBranch }.sortedBy { it.name }
     val remote = refs.filter { it.type == GitRefType.RemoteBranch }.groupBy { it.name.substringBefore('/') }
-    Column(modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize()) {
+    val scrollState = rememberLazyListState()
+    Row(modifier.fillMaxSize()) {
+        LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = scrollState) {
             if (headHash != null) {
                 item(key = "head") {
                     BranchHeader("HEAD")
@@ -83,6 +86,10 @@ fun GitBranchesPane(
                 }
             }
         }
+        VerticalScrollbar(
+            scrollState = scrollState,
+            modifier = Modifier.fillMaxHeight(),
+        )
     }
 }
 

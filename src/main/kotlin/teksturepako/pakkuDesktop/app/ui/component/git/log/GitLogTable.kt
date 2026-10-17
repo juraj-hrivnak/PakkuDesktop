@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.theme.treeStyle
 import teksturepako.pakkuDesktop.app.git.log.GitLogElement
 import teksturepako.pakkuDesktop.app.git.log.GitLogGraph
@@ -87,10 +88,12 @@ fun GitLogTable(
         }.distinctUntilChanged().collect { publish(ModpackMsg.GitLogVisibleRowsChanged(it)) }
     }
 
+    Row(modifier.fillMaxSize()) {
     LazyColumn(
         state = listState,
-        modifier = modifier
-            .fillMaxSize()
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
             .focusable()
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -127,6 +130,11 @@ fun GitLogTable(
                 },
             )
         }
+    }
+        VerticalScrollbar(
+            scrollState = listState,
+            modifier = Modifier.fillMaxHeight(),
+        )
     }
 }
 

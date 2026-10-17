@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -35,6 +37,7 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticalScrollbar
 import org.jetbrains.jewel.ui.theme.dropdownStyle
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.git.GitCommitChange
@@ -69,7 +72,9 @@ fun GitLogDetails(
         var expanded by remember(details.hash) { mutableStateOf(details.changes.mapNotNull { parentFolders(it.path) }.flatten().toSet()) }
         val tree = remember(details.changes) { PathTreeSnapshot.of(details.changes) { it.path } }
         val rows = tree.flatRows(expanded, setOfNotNull(selectedChange?.path))
-        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+        val filesScroll = rememberLazyListState()
+        Row(Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = filesScroll) {
             items(rows, key = { row ->
                 when (row) {
                     is PathTreeRow.Folder -> "f:${row.fullPath}"
@@ -96,6 +101,11 @@ fun GitLogDetails(
                     )
                 }
             }
+        }
+            VerticalScrollbar(
+                scrollState = filesScroll,
+                modifier = Modifier.fillMaxHeight(),
+            )
         }
         Divider(Orientation.Horizontal)
         CommitSummary(details, containing)
@@ -132,8 +142,8 @@ private fun CommitSummary(details: GitCommitDetails, containing: List<String>?) 
         }
         if (open) {
             val scroll = rememberScrollState()
-            Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(top = 4.dp, end = 4.dp)) {
-                SelectionContainer(Modifier.fillMaxWidth().verticalScroll(scroll).padding(end = 8.dp, bottom = 4.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(top = 4.dp)) {
+                SelectionContainer(Modifier.fillMaxWidth().verticalScroll(scroll).padding(end = 12.dp, bottom = 4.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (body.isNotEmpty()) BasicText(body, style = bodyStyle)
                         BasicText(commitLine(details), style = muted)
@@ -151,6 +161,10 @@ private fun CommitSummary(details: GitCommitDetails, containing: List<String>?) 
                         }
                     }
                 }
+                VerticalScrollbar(
+                    scroll,
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                )
             }
         }
     }
