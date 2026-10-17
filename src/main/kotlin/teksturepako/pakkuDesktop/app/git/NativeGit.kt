@@ -659,7 +659,7 @@ object NativeGit
         val file =
             File(root, path).canonicalFile.takeIf { it.path.startsWith(root.path + File.separator) || it == root }
                 ?: return placeholderDiffContent(path, "INVALID PATH")
-        if (file.isDirectory) return placeholderDiffContent(path, "Directory — select individual files.")
+        if (file.isDirectory) return placeholderDiffContent(path, "Directory, select individual files.")
         if (isBinaryFile(file)) return placeholderDiffContent(path, "Binary file not shown.")
         if (file.length() > MAX_FILE_BYTES)
         {
