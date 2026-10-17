@@ -213,16 +213,21 @@ private fun appendCappedStderr(capture: StringBuilder, line: String) {
 }
 
 private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: GitState, force: Boolean, tags: Boolean): NativeGit.Output {
+    val remote = state.defaultRemote ?: return NativeGit.Output(1, "No remote configured")
     val args = buildList {
         add("push")
         add("--progress")
         if (force) add("--force-with-lease")
         if (tags) add("--tags")
         if (state.upstream == null) {
-            val remote = state.defaultRemote ?: return NativeGit.Output(1, "No remote configured")
             add("-u")
             add(remote)
             add("HEAD")
+        } else {
+            add(remote)
+            if (!tags) {
+                add("${state.currentBranch?.name ?: "HEAD"}")
+            }
         }
     }
     return runGitWithProgress(workDir, publish, *args.toTypedArray())

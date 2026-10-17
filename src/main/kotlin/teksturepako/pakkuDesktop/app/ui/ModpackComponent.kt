@@ -14,8 +14,10 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.collections.immutable.toPersistentSet
 import teksturepako.pakkuDesktop.app.actions.AdditionPlan
+import teksturepako.pakkuDesktop.app.actions.AppToast
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
 import teksturepako.pakkuDesktop.app.actions.uiKey
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
 import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
@@ -755,9 +757,18 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (model.pendingGitOp != msg.op) model
         else {
             val done = model.withPendingGitOp(null).copy(gitEventProgress = null)
-            if (msg.success && msg.op is GitOp.Commit) {
-                done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
-            } else done
+            when {
+                msg.success && msg.op is GitOp.Commit ->
+                    done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
+                msg.success && msg.op is GitOp.Push ->
+                    done.copy(
+                        toasts = done.toasts.mutate { toasts ->
+                            toasts.add(ToastData(body = AppToast.Message("Pushed successfully")))
+                            while (toasts.size > MAX_TOASTS) toasts.removeAt(0)
+                        },
+                    )
+                else -> done
+            }
         }
     is ModpackMsg.GitGroupUnversionedChanged ->
         if (model.gitGroupUnversioned == msg.grouped) model
