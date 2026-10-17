@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.git.log
 
+import kotlinx.datetime.Instant
 import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.GitRefType
@@ -207,6 +208,71 @@ class GitLogGraphTest {
         assertTrue(label.colors.contains(REF_HEAD))
         assertTrue(label.colors.contains(REF_LOCAL))
         assertTrue(label.colors.contains(REF_TAG))
+    }
+
+    @Test
+    fun tagsOrderedByCreationTimeNewestFirst() {
+        val t1 = Instant.fromEpochSeconds(1000)
+        val t2 = Instant.fromEpochSeconds(2000)
+        val t3 = Instant.fromEpochSeconds(3000)
+        val graph = graph(
+            hashes = listOf("a", "b"),
+            parents = listOf("b", ""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "b"),
+                GitRef("v1.0", GitRefType.Tag, "a", t1),
+                GitRef("v2.0", GitRefType.Tag, "a", t3),
+                GitRef("v1.5", GitRefType.Tag, "a", t2),
+            ),
+            head = "b",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        // Newest tag first: v2.0 (t3), v1.5 (t2), v1.0 (t1)
+        assertEquals("v2.0, v1.5, v1.0", label.text)
+    }
+
+    @Test
+    fun tagsWithoutTimeFallBackToNameOrder() {
+        val graph = graph(
+            hashes = listOf("a", "b"),
+            parents = listOf("b", ""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "b"),
+                GitRef("v2.0", GitRefType.Tag, "a"),
+                GitRef("v1.0", GitRefType.Tag, "a"),
+                GitRef("v1.10", GitRefType.Tag, "a"),
+            ),
+            head = "b",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        // No creation time — falls back to name order
+        assertEquals("v1.0, v1.10, v2.0", label.text)
+    }
+
+    @Test
+    fun tagsMixedTimeAndNoTime() {
+        val t1 = Instant.fromEpochSeconds(1000)
+        val t3 = Instant.fromEpochSeconds(3000)
+        val graph = graph(
+            hashes = listOf("a", "b"),
+            parents = listOf("b", ""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "b"),
+                GitRef("v1.0", GitRefType.Tag, "a", t1),
+                GitRef("v2.0", GitRefType.Tag, "a", t3),
+                GitRef("latest", GitRefType.Tag, "a", null),
+            ),
+            head = "b",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        // v2.0 (newest), v1.0 (older), then null-time tags by name
+        assertEquals("v2.0, v1.0, latest", label.text)
     }
 }
 

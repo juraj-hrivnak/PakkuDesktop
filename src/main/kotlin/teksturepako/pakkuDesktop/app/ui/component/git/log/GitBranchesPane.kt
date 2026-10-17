@@ -46,7 +46,8 @@ fun GitBranchesPane(
 ) {
     val local = refs.filter { it.type == GitRefType.LocalBranch }.sortedBy { it.name }
     val remote = refs.filter { it.type == GitRefType.RemoteBranch }.groupBy { it.name.substringBefore('/') }
-    val tags = refs.filter { it.type == GitRefType.Tag }.sortedBy { it.name }
+    val tags = refs.filter { it.type == GitRefType.Tag }
+        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
     val scrollState = rememberLazyListState()
     Row(modifier.fillMaxSize()) {
         LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = scrollState) {

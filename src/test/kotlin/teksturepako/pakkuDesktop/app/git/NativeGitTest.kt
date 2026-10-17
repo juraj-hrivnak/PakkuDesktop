@@ -233,6 +233,21 @@ class NativeGitTest {
     }
 
     @Test
+    fun readStateTagCreatedAtIsPopulated() {
+        runBlocking {
+            git("tag", "v1.0")
+            git("tag", "-a", "v2.0", "-m", "annotated")
+            val state = NativeGit.readState(repo)
+            val tags = state.refs.filter { it.type == GitRefType.Tag }
+            assertEquals(2, tags.size)
+            val v1 = tags.single { it.name == "v1.0" }
+            val v2 = tags.single { it.name == "v2.0" }
+            assertNotNull(v1.createdAt, "Lightweight tag should have createdAt from commit date")
+            assertNotNull(v2.createdAt, "Annotated tag should have createdAt from tagger date")
+        }
+    }
+
+    @Test
     fun subjectsAndCommitDiffComeFromTheFirstParent() = runBlocking {
         write("a.txt", "a2\n")
         git("add", "a.txt")

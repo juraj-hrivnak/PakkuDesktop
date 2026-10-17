@@ -44,6 +44,8 @@ data class GitRef(
     val name: String,
     val type: GitRefType,
     val hash: String,
+    /** Creation time for tags (tagger date); null for branches and lightweight tags. */
+    val createdAt: Instant? = null,
 )
 
 /** One file of a commit, from `git diff --name-status` against the first parent. */

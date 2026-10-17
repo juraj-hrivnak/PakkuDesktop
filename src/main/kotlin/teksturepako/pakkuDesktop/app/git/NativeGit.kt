@@ -67,7 +67,7 @@ object NativeGit
         val status = async { readStatus(root) }
         val refs = async {
             run(
-                root, "for-each-ref", "--format=%(objectname)%00%(*objectname)%00%(refname)",
+                root, "for-each-ref", "--format=%(objectname)%00%(*objectname)%00%(refname)%00%(creatordate:iso8601)",
                 "refs/heads", "refs/remotes", "refs/tags", "refs/stash",
             )
         }
@@ -90,25 +90,46 @@ object NativeGit
                 .orEmpty().toPersistentList(),
             headMessage = headMessage.await()?.trimEnd().orEmpty(),
             stashes = stashes.await().toPersistentList(),
-            refs = refLines.mapNotNull { (hash, name) -> gitRefOf(name, hash) }.toPersistentList(),
+            refs = refLines.mapNotNull { (hash, name, dateStr) -> gitRefOf(name, hash, dateStr) }.toPersistentList(),
             headHash = st.headHash,
         )
     }
 
-    /** `objectname NUL *objectname NUL refname`: the peeled hash of an annotated tag wins. */
-    private fun parseRefLine(line: String): Pair<String, String>? {
+    /** `objectname NUL *objectname NUL refname NUL creatordate`: the peeled hash of an annotated tag wins. */
+    private fun parseRefLine(line: String): Triple<String, String, String?>? {
         val parts = line.trim().split('\u0000')
-        if (parts.size != 3 || parts[2].isEmpty()) return null
-        return parts[1].ifEmpty { parts[0] } to parts[2]
+        if (parts.size < 3 || parts[2].isEmpty()) return null
+        val dateStr = if (parts.size >= 4 && parts[3].isNotEmpty()) parts[3] else null
+        return Triple(parts[1].ifEmpty { parts[0] }, parts[2], dateStr)
     }
 
-    private fun gitRefOf(refname: String, hash: String): GitRef? = when {
+    private fun gitRefOf(refname: String, hash: String, dateStr: String?): GitRef? = when {
         refname.startsWith("refs/heads/") -> GitRef(refname.removePrefix("refs/heads/"), GitRefType.LocalBranch, hash)
         refname.startsWith("refs/remotes/") && !refname.endsWith("/HEAD") ->
             GitRef(refname.removePrefix("refs/remotes/"), GitRefType.RemoteBranch, hash)
-        refname.startsWith("refs/tags/") -> GitRef(refname.removePrefix("refs/tags/"), GitRefType.Tag, hash)
+        refname.startsWith("refs/tags/") -> {
+            val name = refname.removePrefix("refs/tags/")
+            val createdAt = dateStr?.let { parseGitDate(it) }
+            GitRef(name, GitRefType.Tag, hash, createdAt)
+        }
         else -> null
     }
+
+    /**
+     * Parse git's ISO 8601 date format (e.g., "2026-10-17 00:01:48 +0200") into an [Instant].
+     * Git uses space between date/time and timezone without colon; [Instant.parse] needs "T" and colon.
+     */
+    private fun parseGitDate(s: String): Instant? = runCatching {
+        // "2026-10-17 00:01:48 +0200" -> "2026-10-17T00:01:48+02:00"
+        val fixed = s.substring(0, 10) + "T" + s.substring(11).replace(" ", "")
+        // Insert colon in timezone offset: "+0200" -> "+02:00"
+        val lastPlus = fixed.lastIndexOf('+')
+        if (lastPlus > 0 && lastPlus + 5 <= fixed.length) {
+            val before = fixed.substring(0, lastPlus + 3)
+            val after = fixed.substring(lastPlus + 3)
+            Instant.parse(before + ":" + after)
+        } else Instant.parse(fixed)
+    }.getOrNull()
 
     private class StatusSnapshot(
         val files: List<GitFile>,

@@ -245,7 +245,8 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
     val target = git.upstream ?: remote?.let { "$it/$branch" }
     val canPush = remote != null
     val push = { if (canPush) run(GitOp.Push(force, pushTags)) }
-    val localTags = git.refs.filter { it.type == GitRefType.Tag }.sortedBy { it.name }
+    val localTags = git.refs.filter { it.type == GitRefType.Tag }
+        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
 
     PkUiDialog(
         onDismiss = hide,
