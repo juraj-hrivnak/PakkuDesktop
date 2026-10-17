@@ -143,7 +143,7 @@ class GitLogGraphTest {
         )
         val label = graph.labelAt(0)
         assertNotNull(label)
-        assertEquals("main", label.text)
+        assertEquals("main, v1.0", label.text)
         assertTrue(label.colors.contains(REF_HEAD))
         assertTrue(label.colors.contains(REF_LOCAL))
         assertTrue(label.colors.contains(REF_TAG))
@@ -164,6 +164,48 @@ class GitLogGraphTest {
         val label = graph.labelAt(0)
         assertNotNull(label)
         assertEquals("v1.0", label.text)
+        assertTrue(label.colors.contains(REF_TAG))
+    }
+
+    @Test
+    fun multipleTagsOnSameCommitShowAllNames() {
+        val graph = graph(
+            hashes = listOf("a", "b"),
+            parents = listOf("b", ""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "b"),
+                GitRef("v1.0", GitRefType.Tag, "a"),
+                GitRef("v1.0-rc1", GitRefType.Tag, "a"),
+                GitRef("latest", GitRefType.Tag, "a"),
+            ),
+            head = "b",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        assertEquals("latest, v1.0, v1.0-rc1", label.text)
+        // Three tag icons should be present (REF_TAG appears 3 times, collapsed to 2 by distinctRepeating)
+        assertTrue(label.colors.contains(REF_TAG))
+    }
+
+    @Test
+    fun multipleTagsWithBranchShowAllNames() {
+        val graph = graph(
+            hashes = listOf("a"),
+            parents = listOf(""),
+            refs = listOf(
+                GitRef("main", GitRefType.LocalBranch, "a"),
+                GitRef("v1.0", GitRefType.Tag, "a"),
+                GitRef("v2.0", GitRefType.Tag, "a"),
+            ),
+            head = "a",
+            current = "main",
+        )
+        val label = graph.labelAt(0)
+        assertNotNull(label)
+        assertEquals("main, v1.0, v2.0", label.text)
+        assertTrue(label.colors.contains(REF_HEAD))
+        assertTrue(label.colors.contains(REF_LOCAL))
         assertTrue(label.colors.contains(REF_TAG))
     }
 }

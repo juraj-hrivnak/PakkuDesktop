@@ -160,7 +160,21 @@ class GitLogGraph internal constructor(
         val text = when {
             detached -> "HEAD"
             groups.isEmpty() -> ""
-            else -> shortenRef(groups.first().name)
+            else -> {
+                // Build text from all groups: branch names first, then tag names
+                val parts = ArrayList<String>()
+                for (group in groups) {
+                    if (!group.tagsOnly) {
+                        parts.add(shortenRef(group.name))
+                    }
+                }
+                for (group in groups) {
+                    if (group.tagsOnly) {
+                        parts.add(shortenRef(group.name))
+                    }
+                }
+                parts.joinToString(", ")
+            }
         }
         val colors = ArrayList<Int>(4)
         if (headHere) colors.add(REF_HEAD)
@@ -527,7 +541,10 @@ private fun labelGroups(refs: List<GitRef>, currentBranch: String?, upstream: St
         ordered.add(LabelGroup(otherRemotes.first().name, List(otherRemotes.size) { REF_REMOTE }, tagsOnly = false))
     }
     val tags = refs.filter { it.type == GitRefType.Tag }.sortedWith { a, b -> naturalCompare(a.name, b.name) }
-    if (tags.isNotEmpty()) ordered.add(LabelGroup(tags.first().name, List(tags.size) { REF_TAG }, tagsOnly = true))
+    if (tags.isNotEmpty()) {
+        val tagNames = tags.joinToString(", ") { it.name }
+        ordered.add(LabelGroup(tagNames, List(tags.size) { REF_TAG }, tagsOnly = true))
+    }
     return ordered
 }
 
