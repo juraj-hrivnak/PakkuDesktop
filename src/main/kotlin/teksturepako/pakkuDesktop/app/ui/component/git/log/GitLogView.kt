@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.persistentSetOf
@@ -24,9 +26,12 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
 import teksturepako.pakkuDesktop.app.ui.driver.LocalGitLogPrep
 import teksturepako.pakkuDesktop.app.ui.model.LogTabModel
@@ -165,7 +170,22 @@ fun GitLogView(
                 first = {
                     Box(Modifier.fillMaxSize().padding(bottom = splitDrag / 2)) { logBody() }
                 },
-                second = { DiffViewer(log.diff, Modifier.fillMaxSize()) },
+                second = {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.TopEnd,
+                        ) {
+                            IconButton(
+                                onClick = { publish(ModpackMsg.GitLogChangeSelected(null)) },
+                                modifier = Modifier.size(20.dp),
+                            ) {
+                                Icon(AllIconsKeys.General.Close, contentDescription = "Close diff")
+                            }
+                        }
+                        DiffViewer(log.diff, Modifier.weight(1f).fillMaxWidth())
+                    }
+                },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 firstPaneMinWidth = 160.dp,
                 secondPaneMinWidth = 80.dp,

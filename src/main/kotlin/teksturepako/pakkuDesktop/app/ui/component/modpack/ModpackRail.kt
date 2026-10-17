@@ -91,7 +91,7 @@ fun ModpackRail(
             )
             RailButton(
                 key = AllIconsKeys.General.Vcs,
-                tooltip = "Log",
+                tooltip = "Git Log",
                 selected = selectedTab == SelectedTab.LOG,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.LOG)) },
             )
