@@ -760,13 +760,23 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             when {
                 msg.success && msg.op is GitOp.Commit ->
                     done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
-                msg.success && msg.op is GitOp.Push ->
+                msg.success && msg.op is GitOp.Push -> {
+                    val op = msg.op as GitOp.Push
+                    // After pushing tags, mark all local tags as pushed so they disappear from the Push dialog.
+                    val git = if (op.tags) {
+                        val localTagNames = done.git.refs.filter { it.type == GitRefType.Tag }.mapTo(mutableSetOf()) { it.name }
+                        val updated = done.git.remoteTagNames.toMutableSet()
+                        updated.addAll(localTagNames)
+                        done.git.copy(remoteTagNames = updated)
+                    } else done.git
                     done.copy(
+                        git = git,
                         toasts = done.toasts.mutate { toasts ->
                             toasts.add(ToastData(body = AppToast.Message("Pushed successfully")))
                             while (toasts.size > MAX_TOASTS) toasts.removeAt(0)
                         },
                     )
+                }
                 else -> done
             }
         }
@@ -880,6 +890,7 @@ private fun GitState.withRepoFrom(incoming: GitState): GitState {
         headMessage = incoming.headMessage,
         stashes = reuse(stashes, incoming.stashes),
         refs = reuse(refs, incoming.refs),
+        remoteTagNames = reuse(remoteTagNames, incoming.remoteTagNames),
         headHash = incoming.headHash,
     )
     return if (next == this) this else next

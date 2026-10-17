@@ -244,8 +244,8 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
     val remote = git.defaultRemote
     val target = git.upstream ?: remote?.let { "$it/$branch" }
     val canPush = remote != null
-    val push = { if (canPush) run(GitOp.Push(force, pushTags)) }
-    val localTags = git.refs.filter { it.type == GitRefType.Tag }
+    val push = { if (canPush) { run(GitOp.Push(force, pushTags)); hide() } }
+    val localTags = git.refs.filter { it.type == GitRefType.Tag && it.name !in git.remoteTagNames }
         .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
 
     PkUiDialog(
@@ -316,7 +316,7 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
             )
         }
         if (commits.isEmpty() && localTags.isEmpty()) {
-            Text("Nothing to push — the branch matches the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
+            Text("Nothing to push — the branch and tags match the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
         }
     }
 }

@@ -44,6 +44,8 @@ data class GitState(
     val stashes: PersistentList<GitStash> = persistentListOf(),
     /** Branch and tag tips; the Log reloads its graph when these or [headHash] change. */
     val refs: PersistentList<GitRef> = persistentListOf(),
+    /** Tag names on the default remote (from `git ls-remote --tags`); used to filter the Push dialog. */
+    val remoteTagNames: Set<String> = emptySet(),
     /** Commit at HEAD; null before the first commit. */
     val headHash: String? = null,
 ) {

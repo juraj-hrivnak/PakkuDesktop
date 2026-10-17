@@ -79,6 +79,10 @@ object NativeGit
         val refNames = refLines.map { it.second }
         val outgoing = async { readOutgoingCommits(root, st) }
         val stashes = async { if ("refs/stash" in refNames) readStashes(root) else emptyList() }
+        val remotesList = remotes.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList()
+            .orEmpty()
+        val defaultRemote = remotesList.firstOrNull { it == "origin" } ?: remotesList.firstOrNull()
+        val remoteTagNames = async { readRemoteTags(root, defaultRemote) }
 
         GitState(
             gitFiles = st.files.toPersistentList(),
@@ -86,13 +90,27 @@ object NativeGit
             outgoingCommits = outgoing.await(),
             upstream = st.upstream,
             incomingCount = st.behind,
-            remotes = remotes.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList()
-                .orEmpty().toPersistentList(),
+            remotes = remotesList.toPersistentList(),
             headMessage = headMessage.await()?.trimEnd().orEmpty(),
             stashes = stashes.await().toPersistentList(),
             refs = refLines.mapNotNull { (hash, name, dateStr) -> gitRefOf(name, hash, dateStr) }.toPersistentList(),
+            remoteTagNames = remoteTagNames.await(),
             headHash = st.headHash,
         )
+    }
+
+    /** Fetches tag names from the remote via `git ls-remote --tags`. Falls back to empty set on any error. */
+    private suspend fun readRemoteTags(root: File, remote: String?): Set<String> {
+        if (remote == null) return emptySet()
+        val output = run(root, "ls-remote", "--tags", remote) ?: return emptySet()
+        return output.lineSequence()
+            .mapNotNull { line ->
+                // Format: HASH\trefs/tags/NAME  or  HASH\trefs/tags/NAME^{peel}
+                val ref = line.substringAfter("\t")
+                ref.takeIf { it.startsWith("refs/tags/") && !it.startsWith("refs/tags/^") }
+                    ?.removePrefix("refs/tags/")
+            }
+            .toSet()
     }
 
     /** `objectname NUL *objectname NUL refname NUL creatordate`: the peeled hash of an annotated tag wins. */
