@@ -293,7 +293,14 @@ private fun graph(
     return GitLogGraph.build(builder.build(), refs, head, current, upstream, filters, textMatches)
 }
 
-/** `DefaultColorGenerator.calcColor`, saturation 0.4 and brightness 0.65. */
+/*
+ * Portions adapted from JetBrains/intellij-community: platform/vcs-log/impl/src/com/intellij/vcs/log/graph/DefaultColorGenerator.kt, ref 85a7e1b862cecbe12e63128e36eec454fa6735f4
+ * Copyright 2000-2025 JetBrains s.r.o. and contributors. Use of this source code is governed
+ * by the Apache 2.0 license that can be found in the LICENSE file at https://www.apache.org/licenses/LICENSE-2.0.
+ * Modified and adapted for Pakku Desktop by Juraj Hrivnák.
+ *
+ * `DefaultColorGenerator.calcColor`, saturation 0.4 and brightness 0.65.
+ */
 private fun intellijColor(colorId: Int): Int {
     fun rangeFix(n: Int) = abs(n % 100) + 70
     val hsb = Color.RGBtoHSB(rangeFix(colorId * 200 + 30), rangeFix(colorId * 130 + 50), rangeFix(colorId * 90 + 100), null)

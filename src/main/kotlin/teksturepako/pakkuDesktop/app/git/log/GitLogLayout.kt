@@ -1,5 +1,10 @@
 /*
  * Copyright (c) Juraj Hrivnák. All Rights Reserved unless otherwise explicitly stated.
+ *
+ * Portions adapted from JetBrains/intellij-community: platform/vcs-log/graph/src/com/intellij/vcs/log/graph/impl/permanent/GraphLayoutBuilder.kt, ref 85a7e1b862cecbe12e63128e36eec454fa6735f4
+ * Copyright 2000-2025 JetBrains s.r.o. and contributors. Use of this source code is governed
+ * by the Apache 2.0 license that can be found in the LICENSE file at https://www.apache.org/licenses/LICENSE-2.0.
+ * Modified and adapted for Pakku Desktop by Juraj Hrivnák.
  */
 
 package teksturepako.pakkuDesktop.app.git.log
