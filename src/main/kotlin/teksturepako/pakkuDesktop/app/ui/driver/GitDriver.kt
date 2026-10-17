@@ -212,16 +212,22 @@ private fun appendCappedStderr(capture: StringBuilder, line: String) {
     }
 }
 
-private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: GitState, force: Boolean): NativeGit.Output {
+private suspend fun runPush(publish: (AppMsg) -> Unit, workDir: File, state: GitState, force: Boolean, tags: Boolean): NativeGit.Output {
+    val remote = state.defaultRemote ?: return NativeGit.Output(1, "No remote configured")
     val args = buildList {
         add("push")
         add("--progress")
         if (force) add("--force-with-lease")
+        if (tags) add("--tags")
         if (state.upstream == null) {
-            val remote = state.defaultRemote ?: return NativeGit.Output(1, "No remote configured")
             add("-u")
             add(remote)
             add("HEAD")
+        } else {
+            add(remote)
+            if (!tags) {
+                add("${state.currentBranch?.name ?: "HEAD"}")
+            }
         }
     }
     return runGitWithProgress(workDir, publish, *args.toTypedArray())
@@ -245,12 +251,12 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
             workDir, publish,
             "pull", "--progress", if (op.rebase) "--rebase" else "--no-rebase",
         )
-        is GitOp.Push -> runPush(publish, workDir, state, op.force)
+        is GitOp.Push -> runPush(publish, workDir, state, op.force, op.tags)
         is GitOp.Commit -> {
             val commit = NativeGit.commitPaths(workDir, op.message, op.paths, op.amend)
             if (commit.ok && op.pushAfter) {
                 // Upstream may have changed meaning after the commit; re-read before pushing.
-                runPush(publish, workDir, NativeGit.readState(workDir), force = op.amend)
+                runPush(publish, workDir, NativeGit.readState(workDir), force = op.amend, tags = false)
             } else commit
         }
         is GitOp.Checkout -> runCheckout(workDir, op.branch)
@@ -278,6 +284,27 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
             NativeGit.ignore(workDir, op.paths)
             NativeGit.Output(0, "")
         }
+        is GitOp.CheckoutRevision -> NativeGit.exec(workDir, "checkout", "--detach", op.hash)
+        is GitOp.CherryPick -> NativeGit.exec(
+            workDir,
+            *buildList {
+                add("cherry-pick")
+                if (op.merge) addAll(listOf("-m", "1"))
+                add(op.hash)
+            }.toTypedArray(),
+        )
+        is GitOp.Revert -> NativeGit.exec(
+            workDir,
+            *buildList {
+                add("revert")
+                add("--no-edit")
+                if (op.merge) addAll(listOf("-m", "1"))
+                add(op.hash)
+            }.toTypedArray(),
+        )
+        is GitOp.Reset -> NativeGit.exec(workDir, "reset", op.mode.flag, op.hash)
+        is GitOp.CreateTag -> NativeGit.exec(workDir, "tag", op.name, op.hash)
+        is GitOp.DeleteTag -> NativeGit.exec(workDir, "tag", "-d", op.name)
     }
     return if (result.ok) null else result.failure("${op.status.removeSuffix("…")} failed")
 }

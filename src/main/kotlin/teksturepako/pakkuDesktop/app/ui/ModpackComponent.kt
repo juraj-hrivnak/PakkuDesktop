@@ -14,8 +14,10 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.collections.immutable.toPersistentSet
 import teksturepako.pakkuDesktop.app.actions.AdditionPlan
+import teksturepako.pakkuDesktop.app.actions.AppToast
 import teksturepako.pakkuDesktop.app.actions.RemovalPlan
 import teksturepako.pakkuDesktop.app.actions.uiKey
+import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import teksturepako.pakkuDesktop.app.git.*
 import teksturepako.pakkuDesktop.app.ui.component.dropdown.modpackDropdownComponent
 import teksturepako.pakkuDesktop.app.ui.component.git.gitDropdownComponent
@@ -169,7 +171,7 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.ActivateLastGitFab -> {
         val busy = model.gitBusy()
         val selected = model.git.selectedFiles.isNotEmpty()
-        val canPush = model.git.outgoingCommits.isNotEmpty()
+        val canPush = model.git.defaultRemote != null
         when (model.lastGitFab) {
             GitFabAction.Pull if !busy ->
                 modpackUpdate(ModpackMsg.ShowGitDialog(GitDialog.Update), model)
@@ -755,9 +757,28 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (model.pendingGitOp != msg.op) model
         else {
             val done = model.withPendingGitOp(null).copy(gitEventProgress = null)
-            if (msg.success && msg.op is GitOp.Commit) {
-                done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
-            } else done
+            when {
+                msg.success && msg.op is GitOp.Commit ->
+                    done.copy(git = done.git.copy(commitMessage = "", selectedFiles = persistentSetOf()))
+                msg.success && msg.op is GitOp.Push -> {
+                    val op = msg.op as GitOp.Push
+                    // After pushing tags, mark all local tags as pushed so they disappear from the Push dialog.
+                    val git = if (op.tags) {
+                        val localTagNames = done.git.refs.filter { it.type == GitRefType.Tag }.mapTo(mutableSetOf()) { it.name }
+                        val updated = done.git.remoteTagNames.toMutableSet()
+                        updated.addAll(localTagNames)
+                        done.git.copy(remoteTagNames = updated)
+                    } else done.git
+                    done.copy(
+                        git = git,
+                        toasts = done.toasts.mutate { toasts ->
+                            toasts.add(ToastData(body = AppToast.Message("Pushed successfully")))
+                            while (toasts.size > MAX_TOASTS) toasts.removeAt(0)
+                        },
+                    )
+                }
+                else -> done
+            }
         }
     is ModpackMsg.GitGroupUnversionedChanged ->
         if (model.gitGroupUnversioned == msg.grouped) model
@@ -769,6 +790,51 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         )
     is ModpackMsg.GitFilterTextChanged ->
         if (model.gitFilterText == msg.text) model else model.copy(gitFilterText = msg.text)
+    is ModpackMsg.GitLogCommitSelected ->
+        if (model.gitLog.selectedHash == msg.hash) model
+        else model.copy(
+            gitLog = model.gitLog.copy(
+                selectedHash = msg.hash,
+                details = null,
+                containingBranches = null,
+                selectedChange = null,
+                diff = null,
+            ),
+        )
+    is ModpackMsg.GitLogVisibleRowsChanged ->
+        if (model.gitLog.visibleRows == msg.rows) model
+        else model.copy(gitLog = model.gitLog.copy(visibleRows = msg.rows))
+    is ModpackMsg.GitLogFiltersChanged ->
+        if (model.gitLog.filters == msg.filters) model
+        else model.copy(gitLog = model.gitLog.copy(filters = msg.filters))
+    is ModpackMsg.GitLogSubjectsLoaded -> {
+        val log = model.gitLog
+        val keep = msg.keep
+        val dropsAny = keep != null && log.subjects.keys.any { it !in keep }
+        val addsAny = msg.subjects.any { (hash, subject) -> log.subjects[hash] != subject }
+        if (!dropsAny && !addsAny) model
+        else {
+            val subjects = log.subjects.mutate { map ->
+                if (keep != null) map.keys.retainAll(keep)
+                map.putAll(msg.subjects)
+            }
+            model.copy(gitLog = log.copy(subjects = subjects))
+        }
+    }
+    is ModpackMsg.GitLogDetailsLoaded ->
+        if (model.gitLog.selectedHash != msg.details.hash || model.gitLog.details == msg.details) model
+        else model.copy(gitLog = model.gitLog.copy(details = msg.details))
+    is ModpackMsg.GitLogContainingBranchesLoaded ->
+        if (model.gitLog.selectedHash != msg.hash || model.gitLog.containingBranches == msg.branches) model
+        else model.copy(gitLog = model.gitLog.copy(containingBranches = msg.branches.toPersistentList()))
+    is ModpackMsg.GitLogChangeSelected ->
+        if (model.gitLog.selectedChange == msg.change) model
+        else model.copy(gitLog = model.gitLog.copy(selectedChange = msg.change, diff = null))
+    is ModpackMsg.GitLogDiffComputed ->
+        if (model.gitLog.selectedHash != msg.hash || model.gitLog.selectedChange != msg.change ||
+            model.gitLog.diff == msg.diff
+        ) model
+        else model.copy(gitLog = model.gitLog.copy(diff = msg.diff))
 
     is ModpackMsg.ModpackDropdown -> {
         val updatedDropdown = modpackDropdownComponent.update(msg.msg, model.modpackDropdown)
@@ -800,6 +866,11 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             is GitDropdownMsg.OpRequested -> modpackUpdate(ModpackMsg.GitOpRequested(child.op), base)
             is GitDropdownMsg.TabSelected ->
                 if (base.selectedTab == child.tab) base else base.copy(selectedTab = child.tab)
+            is GitDropdownMsg.TagsToggled -> {
+                val dd = base.gitDropdown
+                if (dd.tagsExpanded == child.expanded) base
+                else base.withChild(dd, dd.copy(tagsExpanded = child.expanded)) { copy(gitDropdown = it) }
+            }
         }
     }
 }
@@ -818,6 +889,9 @@ private fun GitState.withRepoFrom(incoming: GitState): GitState {
         remotes = reuse(remotes, incoming.remotes),
         headMessage = incoming.headMessage,
         stashes = reuse(stashes, incoming.stashes),
+        refs = reuse(refs, incoming.refs),
+        remoteTagNames = reuse(remoteTagNames, incoming.remoteTagNames),
+        headHash = incoming.headHash,
     )
     return if (next == this) this else next
 }

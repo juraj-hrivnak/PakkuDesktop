@@ -18,7 +18,9 @@ import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitLogModel
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRef
 
 /*
  * Per-tab slices of [ModpackModel]. Property names mirror [ModpackModel] so tab bodies read
@@ -174,4 +176,21 @@ fun ModpackModel.gitTab() = GitTabModel(
     lastGitFab = lastGitFab,
     groupUnversioned = gitGroupUnversioned,
     gitFilterText = gitFilterText,
+)
+
+@Immutable
+data class LogTabModel(
+    val refs: PersistentList<GitRef>,
+    val headHash: String?,
+    val currentBranchName: String?,
+    val gitBusy: Boolean,
+    val gitLog: GitLogModel,
+)
+
+fun ModpackModel.logTab() = LogTabModel(
+    refs = git.refs,
+    headHash = git.headHash,
+    currentBranchName = git.currentBranch?.name,
+    gitBusy = gitBusy(),
+    gitLog = gitLog,
 )

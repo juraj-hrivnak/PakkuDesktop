@@ -50,6 +50,9 @@ import teksturepako.pakkuDesktop.app.git.GitCommit
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRef
+import teksturepako.pakkuDesktop.app.git.GitRefType
+import teksturepako.pakkuDesktop.app.git.GitResetMode
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.toTreeStatus
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
@@ -84,6 +87,9 @@ fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         is GitDialog.DeleteBranch -> GitDeleteBranchDialog(dialog, hide, run)
         GitDialog.Stash -> GitStashDialog(git, hide, run)
         GitDialog.Unstash -> GitUnstashDialog(git, busy, hide, run)
+        is GitDialog.Reset -> GitResetDialog(dialog, hide, run)
+        is GitDialog.NewTag -> GitNewTagDialog(git, dialog, hide, run)
+        is GitDialog.DeleteTag -> GitDeleteTagDialog(dialog, hide, run)
     }
 }
 
@@ -232,12 +238,15 @@ private fun GitUpdateDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Uni
 @Composable
 private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit) {
     var force by remember { mutableStateOf(false) }
+    var pushTags by remember { mutableStateOf(false) }
     val commits = git.outgoingCommits.toList()
     val branch = git.currentBranch?.name ?: "HEAD"
     val remote = git.defaultRemote
     val target = git.upstream ?: remote?.let { "$it/$branch" }
-    val canPush = commits.isNotEmpty() && remote != null
-    val push = { if (canPush) run(GitOp.Push(force)) }
+    val canPush = remote != null
+    val push = { if (canPush) { run(GitOp.Push(force, pushTags)); hide() } }
+    val localTags = git.refs.filter { it.type == GitRefType.Tag && it.name !in git.remoteTagNames }
+        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
 
     PkUiDialog(
         onDismiss = hide,
@@ -251,7 +260,10 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
         size = PkUiDialogSize.Large,
         onConfirm = push,
         footerStart = {
-            CheckboxRow("Force push (with lease)", checked = force, onCheckedChange = { force = it })
+            Column {
+                CheckboxRow("Force push (with lease)", checked = force, onCheckedChange = { force = it })
+                CheckboxRow("Push tags", checked = pushTags, onCheckedChange = { pushTags = it })
+            }
         },
         footer = {
             PkUiDialogButtons(
@@ -272,13 +284,39 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
                 kind = PkUiNoticeKind.Warning,
             )
         }
-        if (commits.isEmpty()) {
-            Text("Nothing to push — the branch matches the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
-        } else {
+        if (commits.isNotEmpty()) {
             PkUiDialogSectionLabel("Commits", icon = AllIconsKeys.Actions.Commit, trailing = commits.size.toString())
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 commits.forEach { GitCommitRow(it) }
             }
+        }
+        if (localTags.isNotEmpty()) {
+            PkUiDialogSectionLabel("Tags", icon = AllIconsKeys.Nodes.Tag, trailing = localTags.size.toString())
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                localTags.forEach { ref ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            AllIconsKeys.Nodes.Tag,
+                            contentDescription = null,
+                            tint = JewelTheme.contentColor.copy(alpha = 0.55f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(ref.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Text(
+                "Tags will be pushed when \"Push tags\" is checked.",
+                color = JewelTheme.contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (commits.isEmpty() && localTags.isEmpty()) {
+            Text("Nothing to push, the branch and tags match the remote.", color = JewelTheme.contentColor.copy(alpha = 0.7f))
         }
     }
 }
@@ -359,13 +397,13 @@ private fun GitRollbackDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> U
 
 private val INVALID_BRANCH_CHARS = Regex("""[\s~^:?*\[\\]""")
 
-private fun branchNameError(name: String, existing: Set<String>): String? = when {
+private fun branchNameError(name: String, existing: Set<String>, kind: String = "branch"): String? = when {
     name.isEmpty() -> null
-    name in existing -> "A branch named '$name' already exists."
+    name in existing -> "A $kind named '$name' already exists."
     INVALID_BRANCH_CHARS.containsMatchIn(name) || ".." in name || "@{" in name ||
         name.startsWith("-") || name.startsWith("/") || name.endsWith("/") ||
         name.endsWith(".") || name.endsWith(".lock") || "//" in name ->
-        "'$name' is not a valid branch name."
+        "'$name' is not a valid $kind name."
     else -> null
 }
 
@@ -380,9 +418,10 @@ private fun GitNewBranchDialog(git: GitState, dialog: GitDialog.NewBranch, hide:
     val existing = remember(git.branches) { git.branches.filterNot { it.isRemote }.map { it.name }.toSet() }
     val error = branchNameError(trimmed, existing)
     val canCreate = trimmed.isNotEmpty() && error == null
-    val from = dialog.startPoint?.name ?: git.currentBranch?.name ?: "HEAD"
+    val start = dialog.startRevision ?: dialog.startPoint?.name
+    val from = dialog.startRevision?.take(8) ?: dialog.startPoint?.name ?: git.currentBranch?.name ?: "HEAD"
     val create = {
-        if (canCreate) run(GitOp.CreateBranch(trimmed, dialog.startPoint?.name, checkout))
+        if (canCreate) run(GitOp.CreateBranch(trimmed, start, checkout))
     }
 
     PkUiDialog(
@@ -535,6 +574,86 @@ private fun GitUnstashDialog(git: GitState, busy: Boolean, hide: () -> Unit, run
             }
             CheckboxRow("Remove the stash after applying (pop)", checked = pop, onCheckedChange = { pop = it })
         }
+    }
+}
+
+// -- Log --
+
+@Composable
+private fun GitResetDialog(dialog: GitDialog.Reset, hide: () -> Unit, run: (GitOp) -> Unit) {
+    var mode by remember { mutableStateOf(GitResetMode.Mixed) }
+    val confirm = { run(GitOp.Reset(dialog.hash, mode)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Reset current branch to here",
+        icon = AllIconsKeys.Actions.Rollback,
+        subtitle = dialog.hash.take(8),
+        size = PkUiDialogSize.Small,
+        onConfirm = confirm,
+        footer = {
+            PkUiDialogButtons(primaryLabel = "Reset", onPrimary = confirm, onSecondary = hide)
+        },
+    ) {
+        RadioButtonRow("Soft, keep all changes staged", selected = mode == GitResetMode.Soft, onClick = { mode = GitResetMode.Soft })
+        RadioButtonRow("Mixed, keep changes, unstage them", selected = mode == GitResetMode.Mixed, onClick = { mode = GitResetMode.Mixed })
+        RadioButtonRow("Hard, discard all local changes", selected = mode == GitResetMode.Hard, onClick = { mode = GitResetMode.Hard })
+        RadioButtonRow("Keep, discard only changes to tracked files that differ", selected = mode == GitResetMode.Keep, onClick = { mode = GitResetMode.Keep })
+        if (mode == GitResetMode.Hard) {
+            PkUiDialogNotice("Hard reset deletes uncommitted work in this branch.", kind = PkUiNoticeKind.Warning)
+        }
+    }
+}
+
+@Composable
+private fun GitNewTagDialog(git: GitState, dialog: GitDialog.NewTag, hide: () -> Unit, run: (GitOp) -> Unit) {
+    val name = rememberTextFieldState("")
+    val nameFocus = remember { FocusRequester() }
+    val trimmed = name.text.toString().trim()
+    val existing = remember(git.refs) { git.refs.filter { it.type == GitRefType.Tag }.map { it.name }.toSet() }
+    val error = branchNameError(trimmed, existing, kind = "tag")
+    val canCreate = trimmed.isNotEmpty() && error == null
+    val create = { if (canCreate) run(GitOp.CreateTag(trimmed, dialog.hash)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Create tag",
+        icon = AllIconsKeys.Nodes.Tag,
+        subtitle = "at ${dialog.hash.take(8)}",
+        size = PkUiDialogSize.Small,
+        onConfirm = create,
+        initialFocus = nameFocus,
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = "Create",
+                onPrimary = create,
+                primaryEnabled = canCreate,
+                onSecondary = hide,
+            )
+        },
+    ) {
+        TextField(
+            state = name,
+            modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
+            placeholder = { Text("v1.0") },
+        )
+        if (error != null) PkUiDialogNotice(error, kind = PkUiNoticeKind.Error)
+    }
+}
+
+@Composable
+private fun GitDeleteTagDialog(dialog: GitDialog.DeleteTag, hide: () -> Unit, run: (GitOp) -> Unit) {
+    val confirm = { run(GitOp.DeleteTag(dialog.name)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Delete tag",
+        icon = AllIconsKeys.General.Delete,
+        subtitle = dialog.name,
+        size = PkUiDialogSize.Small,
+        onConfirm = confirm,
+        footer = {
+            PkUiDialogButtons(primaryLabel = "Delete", onPrimary = confirm, onSecondary = hide)
+        },
+    ) {
+        PkUiDialogNotice("This will delete the tag '${dialog.name}'.", kind = PkUiNoticeKind.Warning)
     }
 }
 

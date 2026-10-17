@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.git
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +23,8 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import teksturepako.pakkuDesktop.app.git.GitBranch
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRef
+import teksturepako.pakkuDesktop.app.git.GitRefType
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownModel
 import teksturepako.pakkuDesktop.app.ui.model.GitDropdownMsg
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -100,6 +103,32 @@ val gitDropdownComponent = component(
             }
         }
 
+        fun MenuScope.tagMenu(ref: GitRef) {
+            pkUiSubmenu(
+                enabled = enabled,
+                iconKey = AllIconsKeys.Nodes.Tag,
+                submenu = {
+                    action("Checkout", AllIconsKeys.Actions.CheckOut) {
+                        op(GitOp.CheckoutRevision(ref.hash))
+                    }
+                    action("New Branch from '${ref.name}'…", AllIconsKeys.General.Add) {
+                        dialog(GitDialog.NewBranch(startRevision = ref.hash))
+                    }
+                    separator()
+                    action("Delete", AllIconsKeys.General.Delete) {
+                        dialog(GitDialog.DeleteTag(ref.name))
+                    }
+                },
+            ) {
+                Text(
+                    ref.name,
+                    color = menuItemColors.content,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
         PkUiDropdown(
             modifier = Modifier.padding(vertical = 4.dp),
             menuModifier = Modifier.width(320.dp),
@@ -137,7 +166,7 @@ val gitDropdownComponent = component(
                 action(
                     if (outgoing > 0) "Push… ($outgoing ahead)" else "Push…",
                     AllIconsKeys.Vcs.Push,
-                    isEnabled = enabled && outgoing > 0,
+                    isEnabled = enabled && gitState.defaultRemote != null,
                 ) { dialog(GitDialog.Push) }
                 action("Fetch", AllIconsKeys.Vcs.Fetch, isEnabled = enabled && gitState.remotes.isNotEmpty()) {
                     op(GitOp.Fetch)
@@ -163,6 +192,8 @@ val gitDropdownComponent = component(
 
                 val local = gitState.branches.filterNot { it.isRemote }.sortedWith(compareBy({ !it.isCurrent }, { it.name }))
                 val remote = gitState.branches.filter { it.isRemote && !it.name.endsWith("/HEAD") }.sortedBy { it.name }
+                val tags = gitState.refs.filter { it.type == GitRefType.Tag }
+                    .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
 
                 if (local.isNotEmpty()) {
                     separator()
@@ -173,6 +204,29 @@ val gitDropdownComponent = component(
                     separator()
                     header("Remote Branches")
                     remote.forEach { branchMenu(it) }
+                }
+                if (tags.isNotEmpty()) {
+                    separator()
+                    passiveItem {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
+                            },
+                        ) {
+                            Icon(
+                                key = if (model.tagsExpanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
+                                contentDescription = null,
+                                tint = muted,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text("Tags", color = muted)
+                        }
+                    }
+                    if (model.tagsExpanded) {
+                        tags.forEach { tagMenu(it) }
+                    }
                 }
             },
         )

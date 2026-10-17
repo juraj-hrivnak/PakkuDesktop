@@ -203,4 +203,73 @@ class NativeGitTest {
         assertTrue(text.contains("too large"), text)
         assertFalse(text.contains("xxxx"))
     }
+
+    @Test
+    fun logTopologyKeepsANegativeAuthorTimezone() = runBlocking {
+        write("z.txt", "z\n")
+        git("add", "z.txt")
+        val env = mapOf("GIT_AUTHOR_DATE" to "1577952245 -0500")
+        val out = NativeGit.exec(repo, "commit", "-q", "-m", "zoned", env = env)
+        assertTrue(out.ok, out.text)
+        val hash = git("rev-parse", "HEAD").trim()
+        val topology = NativeGit.readLogTopology(repo, hash)
+        val index = topology.indexOf(hash)
+        assertNotNull(index)
+        // 1577952245 is 2020-01-02 03:04:05 -0500. %at keeps it; the old ISO parser dropped it.
+        assertEquals(1_577_952_245L, topology.authorTimes[index])
+        assertEquals("Test", topology.authors[index])
+    }
+
+    @Test
+    fun readStatePeelsTagsAndKeepsLocalBranchesWithSlashes() = runBlocking {
+        git("tag", "-a", "v1", "-m", "annotated")
+        git("branch", "feature/x")
+        val state = NativeGit.readState(repo)
+        val head = state.headHash
+        assertNotNull(head)
+        assertEquals(head, state.refs.single { it.name == "v1" && it.type == GitRefType.Tag }.hash)
+        assertEquals(GitRefType.LocalBranch, state.refs.single { it.name == "feature/x" }.type)
+        assertFalse(state.branches.any { it.name == "feature/x" && it.isRemote })
+    }
+
+    @Test
+    fun readStateTagCreatedAtIsPopulated() {
+        runBlocking {
+            git("tag", "v1.0")
+            git("tag", "-a", "v2.0", "-m", "annotated")
+            val state = NativeGit.readState(repo)
+            val tags = state.refs.filter { it.type == GitRefType.Tag }
+            assertEquals(2, tags.size)
+            val v1 = tags.single { it.name == "v1.0" }
+            val v2 = tags.single { it.name == "v2.0" }
+            assertNotNull(v1.createdAt, "Lightweight tag should have createdAt from commit date")
+            assertNotNull(v2.createdAt, "Annotated tag should have createdAt from tagger date")
+        }
+    }
+
+    @Test
+    fun subjectsAndCommitDiffComeFromTheFirstParent() = runBlocking {
+        write("a.txt", "a2\n")
+        git("add", "a.txt")
+        git("commit", "-q", "-m", "edit a")
+        val hash = git("rev-parse", "HEAD").trim()
+        assertEquals("edit a", NativeGit.readSubjects(repo, listOf(hash))[hash])
+        val details = NativeGit.readCommitDetails(repo, hash)
+        assertNotNull(details)
+        assertEquals(1, details.parents.size)
+        val change = details.changes.single { it.path == "a.txt" }
+        assertTrue(change.status is GitChange.Modified)
+        val diff = NativeGit.computeCommitDiff(repo, hash, details.parents.first(), change)
+        val texts = diff.hunks.flatMap { it.lines.map { line -> line.content } }
+        assertTrue(texts.any { it == "a2" }, texts.toString())
+    }
+
+    @Test
+    fun nameStatusParsesRenames() {
+        val changes = NativeGit.parseNameStatus("R100\u0000old.txt\u0000new.txt\u0000M\u0000kept.txt\u0000")
+        val renamed = changes.single { it.path == "new.txt" }
+        assertEquals("old.txt", renamed.oldPath)
+        assertTrue(renamed.status is GitChange.Modified)
+        assertEquals("kept.txt", changes.single { it.oldPath == null }.path)
+    }
 }

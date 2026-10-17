@@ -9,6 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
+import teksturepako.pakkuDesktop.app.git.log.GitLogTopology
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -63,14 +65,24 @@ object NativeGit
     suspend fun readState(workDir: File): GitState = coroutineScope {
         val root = workDir.canonicalFile
         val status = async { readStatus(root) }
-        val refs = async { run(root, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes", "refs/stash") }
+        val refs = async {
+            run(
+                root, "for-each-ref", "--format=%(objectname)%00%(*objectname)%00%(refname)%00%(creatordate:iso8601)",
+                "refs/heads", "refs/remotes", "refs/tags", "refs/stash",
+            )
+        }
         val remotes = async { run(root, "remote") }
         val headMessage = async { run(root, "log", "-1", "--format=%B") }
 
         val st = status.await()
-        val refNames = refs.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList().orEmpty()
+        val refLines = refs.await()?.lineSequence()?.mapNotNull(::parseRefLine)?.toList().orEmpty()
+        val refNames = refLines.map { it.second }
         val outgoing = async { readOutgoingCommits(root, st) }
         val stashes = async { if ("refs/stash" in refNames) readStashes(root) else emptyList() }
+        val remotesList = remotes.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList()
+            .orEmpty()
+        val defaultRemote = remotesList.firstOrNull { it == "origin" } ?: remotesList.firstOrNull()
+        val remoteTagNames = async { readRemoteTags(root, defaultRemote) }
 
         GitState(
             gitFiles = st.files.toPersistentList(),
@@ -78,17 +90,71 @@ object NativeGit
             outgoingCommits = outgoing.await(),
             upstream = st.upstream,
             incomingCount = st.behind,
-            remotes = remotes.await()?.lineSequence()?.map { it.trim() }?.filter { it.isNotEmpty() }?.toList()
-                .orEmpty().toPersistentList(),
+            remotes = remotesList.toPersistentList(),
             headMessage = headMessage.await()?.trimEnd().orEmpty(),
             stashes = stashes.await().toPersistentList(),
+            refs = refLines.mapNotNull { (hash, name, dateStr) -> gitRefOf(name, hash, dateStr) }.toPersistentList(),
+            remoteTagNames = remoteTagNames.await(),
+            headHash = st.headHash,
         )
     }
+
+    /** Fetches tag names from the remote via `git ls-remote --tags`. Falls back to empty set on any error. */
+    private suspend fun readRemoteTags(root: File, remote: String?): Set<String> {
+        if (remote == null) return emptySet()
+        val output = run(root, "ls-remote", "--tags", remote) ?: return emptySet()
+        return output.lineSequence()
+            .mapNotNull { line ->
+                // Format: HASH\trefs/tags/NAME  or  HASH\trefs/tags/NAME^{peel}
+                val ref = line.substringAfter("\t")
+                ref.takeIf { it.startsWith("refs/tags/") && !it.startsWith("refs/tags/^") }
+                    ?.removePrefix("refs/tags/")
+            }
+            .toSet()
+    }
+
+    /** `objectname NUL *objectname NUL refname NUL creatordate`: the peeled hash of an annotated tag wins. */
+    private fun parseRefLine(line: String): Triple<String, String, String?>? {
+        val parts = line.trim().split('\u0000')
+        if (parts.size < 3 || parts[2].isEmpty()) return null
+        val dateStr = if (parts.size >= 4 && parts[3].isNotEmpty()) parts[3] else null
+        return Triple(parts[1].ifEmpty { parts[0] }, parts[2], dateStr)
+    }
+
+    private fun gitRefOf(refname: String, hash: String, dateStr: String?): GitRef? = when {
+        refname.startsWith("refs/heads/") -> GitRef(refname.removePrefix("refs/heads/"), GitRefType.LocalBranch, hash)
+        refname.startsWith("refs/remotes/") && !refname.endsWith("/HEAD") ->
+            GitRef(refname.removePrefix("refs/remotes/"), GitRefType.RemoteBranch, hash)
+        refname.startsWith("refs/tags/") -> {
+            val name = refname.removePrefix("refs/tags/")
+            val createdAt = dateStr?.let { parseGitDate(it) }
+            GitRef(name, GitRefType.Tag, hash, createdAt)
+        }
+        else -> null
+    }
+
+    /**
+     * Parse git's ISO 8601 date format (e.g., "2026-10-17 00:01:48 +0200") into an [Instant].
+     * Git uses space between date/time and timezone without colon; [Instant.parse] needs "T" and colon.
+     */
+    private fun parseGitDate(s: String): Instant? = runCatching {
+        // "2026-10-17 00:01:48 +0200" -> "2026-10-17T00:01:48+02:00"
+        val fixed = s.substring(0, 10) + "T" + s.substring(11).replace(" ", "")
+        // Insert colon in timezone offset: "+0200" -> "+02:00"
+        val lastPlus = fixed.lastIndexOf('+')
+        if (lastPlus > 0 && lastPlus + 5 <= fixed.length) {
+            val before = fixed.substring(0, lastPlus + 3)
+            val after = fixed.substring(lastPlus + 3)
+            Instant.parse(before + ":" + after)
+        } else Instant.parse(fixed)
+    }.getOrNull()
 
     private class StatusSnapshot(
         val files: List<GitFile>,
         /** null when detached */
         val head: String?,
+        /** null before the first commit */
+        val headHash: String? = null,
         val unborn: Boolean,
         /** null without an upstream, or when the upstream ref is gone */
         val upstream: String?,
@@ -101,6 +167,7 @@ object NativeGit
     {
         val changes = HashMap<String, GitChange>()
         var head: String? = null
+        var headHash: String? = null
         var unborn = false
         var upstream: String? = null
         var ab: Pair<Int, Int>? = null
@@ -117,7 +184,10 @@ object NativeGit
                     }
                     when
                     {
-                        rec.startsWith("# branch.oid ")      -> unborn = rec.endsWith("(initial)")
+                        rec.startsWith("# branch.oid ")      -> {
+                            unborn = rec.endsWith("(initial)")
+                            if (!unborn) headHash = rec.removePrefix("# branch.oid ")
+                        }
                         rec.startsWith("# branch.head ")     ->
                             head = rec.removePrefix("# branch.head ").takeIf { it != "(detached)" }
                         rec.startsWith("# branch.upstream ") -> upstream = rec.removePrefix("# branch.upstream ")
@@ -168,6 +238,7 @@ object NativeGit
         return StatusSnapshot(
             files = files,
             head = head,
+            headHash = headHash,
             unborn = unborn,
             upstream = if (counts != null) upstream else null,
             ahead = counts?.first ?: 0,
@@ -244,6 +315,144 @@ object NativeGit
         return output.lineSequence().filter { '\u0000' in it }
             .map { line -> GitStash(ref = line.substringBefore('\u0000'), message = line.substringAfter('\u0000')) }
             .toList()
+    }
+
+    // -- Log --
+
+    /** Revisions the Log shows: every branch and tag, plus a detached HEAD. Stashes are left out. */
+    private fun logRevisions(headHash: String?): List<String> =
+        listOfNotNull("--branches", "--remotes", "--tags", headHash?.let { "HEAD" })
+
+    /**
+     * Topology of the whole history (IntelliJ's permanent graph): hash, parents, author time and
+     * author per commit, children before parents. Streams the output; subjects load separately.
+     */
+    suspend fun readLogTopology(workDir: File, headHash: String?): GitLogTopology
+    {
+        val root = workDir.canonicalFile
+        val builder = GitLogTopology.Builder()
+        val args = listOf("log") + logRevisions(headHash) +
+            listOf("--date-order", "--no-show-signature", "--format=%H%x00%P%x00%at%x00%aN%x00%aE")
+        val code = command(root, args, readOnly = true)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .forEachRecord('\n') { builder.add(it) }
+        return if (code == 0) builder.build() else GitLogTopology.EMPTY
+    }
+
+    /** Subjects of [hashes] in one `git log --no-walk` call. Unknown hashes are skipped. */
+    suspend fun readSubjects(workDir: File, hashes: Collection<String>): Map<String, String>
+    {
+        if (hashes.isEmpty()) return emptyMap()
+        val output = run(workDir, "log", "--no-walk=unsorted", "--format=%H%x00%s", *hashes.toTypedArray())
+            ?: return emptyMap()
+        return output.lineSequence()
+            .filter { '\u0000' in it }
+            .associate { it.substringBefore('\u0000') to it.substringAfter('\u0000') }
+    }
+
+    /** Hashes of commits whose message matches [text], like IntelliJ's text filter. */
+    suspend fun readMessageMatches(
+        workDir: File,
+        headHash: String?,
+        text: String,
+        matchCase: Boolean,
+        regex: Boolean,
+    ): Set<String>
+    {
+        val args = buildList {
+            add("log")
+            addAll(logRevisions(headHash))
+            add("--format=%H")
+            if (!matchCase) add("--regexp-ignore-case")
+            add(if (regex) "--extended-regexp" else "--fixed-strings")
+            add("--grep=$text")
+        }
+        val output = run(workDir, *args.toTypedArray()) ?: return emptySet()
+        return output.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toHashSet()
+    }
+
+    /** Message, people and changed files of [hash]; changes are against the first parent. */
+    suspend fun readCommitDetails(workDir: File, hash: String): GitCommitDetails?
+    {
+        val output = run(
+            workDir, "show", "-s", "--no-show-signature",
+            "--format=%H%x00%P%x00%an%x00%ae%x00%at%x00%cn%x00%ce%x00%ct%x00%B", hash,
+        ) ?: return null
+        val parts = output.split('\u0000', limit = 9)
+        if (parts.size != 9) return null
+        val parents = parts[1].split(' ').filter { it.isNotEmpty() }
+        val changes = if (parents.isEmpty())
+        {
+            run(workDir, "diff-tree", "-r", "--root", "--no-commit-id", "-M", "--name-status", "-z", hash)
+        }
+        else
+        {
+            run(workDir, "diff", "-M", "--name-status", "-z", parents[0], hash)
+        }
+        return GitCommitDetails(
+            hash = parts[0].trim(),
+            parents = parents,
+            authorName = parts[2],
+            authorEmail = parts[3],
+            authorTime = Instant.fromEpochSeconds(parts[4].toLongOrNull() ?: 0L),
+            committerName = parts[5],
+            committerEmail = parts[6],
+            commitTime = Instant.fromEpochSeconds(parts[7].toLongOrNull() ?: 0L),
+            message = parts[8].trimEnd(),
+            changes = parseNameStatus(changes.orEmpty()),
+        )
+    }
+
+    /** `--name-status -z`: `X NUL path NUL`, or `Rnnn NUL old NUL new NUL` for renames and copies. */
+    internal fun parseNameStatus(output: String): List<GitCommitChange>
+    {
+        val fields = output.split('\u0000')
+        val changes = mutableListOf<GitCommitChange>()
+        var i = 0
+        while (i < fields.size)
+        {
+            val code = fields[i].trim()
+            if (code.isEmpty())
+            {
+                i++
+                continue
+            }
+            if (code[0] == 'R' || code[0] == 'C')
+            {
+                val old = fields.getOrNull(i + 1) ?: break
+                val new = fields.getOrNull(i + 2) ?: break
+                changes += if (code[0] == 'R') GitCommitChange(new, GitChange.Modified(new), oldPath = old)
+                else GitCommitChange(new, GitChange.Added(new), oldPath = old)
+                i += 3
+            }
+            else
+            {
+                val path = fields.getOrNull(i + 1) ?: break
+                val status = when (code[0])
+                {
+                    'A'  -> GitChange.Added(path)
+                    'D'  -> GitChange.Deleted(path)
+                    else -> GitChange.Modified(path)
+                }
+                changes += GitCommitChange(path, status)
+                i += 2
+            }
+        }
+        return changes.sortedBy { it.path }
+    }
+
+    /** Branches (local and remote) that contain [hash], IntelliJ's "In N branches". */
+    suspend fun readContainingBranches(workDir: File, hash: String): List<String>
+    {
+        val output = run(workDir, "branch", "-a", "--contains", hash, "--format=%(refname)") ?: return emptyList()
+        return output.lineSequence().map { it.trim() }.mapNotNull { ref ->
+            when
+            {
+                ref.startsWith("refs/heads/")                                 -> ref.removePrefix("refs/heads/")
+                ref.startsWith("refs/remotes/") && !ref.endsWith("/HEAD") -> ref.removePrefix("refs/remotes/")
+                else                                                          -> null
+            }
+        }.toList()
     }
 
     // -- Operations --
@@ -397,6 +606,50 @@ object NativeGit
         }
     }
 
+    /** One file of commit [hash] against [parent] (its first parent; null for a root commit). */
+    suspend fun computeCommitDiff(workDir: File, hash: String, parent: String?, change: GitCommitChange): DiffContent
+    {
+        val root = workDir.canonicalFile
+        val path = change.path
+        val oldPath = change.oldPath ?: path
+        val deleted = change.status is GitChange.Deleted
+        val created = change.status is GitChange.Added && change.oldPath == null
+        val newBytes = if (deleted) null else run(root, "cat-file", "-s", "$hash:$path")?.trim()?.toLongOrNull()
+        val oldBytes = if (parent == null || created) null
+        else run(root, "cat-file", "-s", "$parent:$oldPath")?.trim()?.toLongOrNull()
+        val largest = maxOf(newBytes ?: 0L, oldBytes ?: 0L)
+        if (largest > MAX_FILE_BYTES) return tooLargeDiff(path, largest)
+
+        val paths = listOf(oldPath, path).distinct()
+        val args = if (parent != null) listOf("diff", "-M", parent, hash, "--") + paths
+        else listOf("diff-tree", "-p", "-M", "--root", "--no-commit-id", hash, "--") + paths
+        val captured = try
+        {
+            paths.forEach { requireInside(root, it) }
+            command(root, args, readOnly = true)
+                .redirectError(ProcessBuilder.Redirect.DISCARD).runCapturingCapped(MAX_FILE_BYTES.toInt())
+        }
+        catch (e: CancellationException)
+        {
+            throw e
+        }
+        catch (_: Exception)
+        {
+            return placeholderDiffContent(path, "Diff not available.")
+        }
+        if (captured.truncated) return tooLargeDiff(path, captured.text.length.toLong())
+        val parsed = UnifiedDiffParser.parse(captured.text, path)
+        if (parsed.hunks.isEmpty())
+        {
+            val binary = "Binary files" in captured.text
+            return placeholderDiffContent(path, if (binary) "Binary file not shown." else "No content changes.")
+        }
+        val text = if (deleted) null else run(root, "show", "$hash:$path")
+        val context = if (text == null || text.length > MAX_FILE_BYTES || text.indexOf('\u0000') >= 0) emptyList()
+        else text.lines()
+        return UnifiedDiffParser.withEnclosingContext(parsed, context)
+    }
+
     private fun tooLargeDiff(path: String, bytes: Long) =
         placeholderDiffContent(path, "File too large to display (${bytes / 1024} KB).")
 
@@ -406,7 +659,7 @@ object NativeGit
         val file =
             File(root, path).canonicalFile.takeIf { it.path.startsWith(root.path + File.separator) || it == root }
                 ?: return placeholderDiffContent(path, "INVALID PATH")
-        if (file.isDirectory) return placeholderDiffContent(path, "Directory — select individual files.")
+        if (file.isDirectory) return placeholderDiffContent(path, "Directory, select individual files.")
         if (isBinaryFile(file)) return placeholderDiffContent(path, "Binary file not shown.")
         if (file.length() > MAX_FILE_BYTES)
         {

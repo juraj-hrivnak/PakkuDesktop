@@ -33,6 +33,7 @@ import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitLogModel
 import teksturepako.pakkuDesktop.app.git.GitOp
 
 // -- App model --
@@ -289,6 +290,7 @@ data class ModpackModel(
     val gitGroupUnversioned: Boolean = true,
     /** Free-text filter for the Git changelist tree (matches against file paths). */
     val gitFilterText: String = "",
+    val gitLog: GitLogModel = GitLogModel(),
 
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
@@ -298,7 +300,7 @@ data class ModpackModel(
 // -- Enums / sealed --
 
 enum class SelectedTab {
-    MODPACK, PROJECTS, FILES, COMMIT
+    MODPACK, PROJECTS, FILES, COMMIT, LOG
 }
 
 sealed class SortOrder(open val ascending: Boolean) {

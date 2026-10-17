@@ -144,7 +144,7 @@ fun AddProjectsDialog(
         when (dialog.phase) {
             AddDialogPhase.Input -> {
                 Text(
-                    "Project names, slugs, or URLs — comma-separated.",
+                    "CurseForge/Modrinth slugs, GitHub repos, or file IDs — comma-separated.",
                     color = JewelTheme.contentColor.copy(alpha = 0.65f),
                 )
                 TextField(
@@ -152,7 +152,7 @@ fun AddProjectsDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(inputFocus),
-                    placeholder = { Text("sodium, iris, gh:owner/repo") },
+                    placeholder = { Text("jei, CaffeineMC/sodium, 238222:5101366") },
                 )
             }
 

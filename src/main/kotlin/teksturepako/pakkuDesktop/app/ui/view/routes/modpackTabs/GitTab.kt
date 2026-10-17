@@ -14,9 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
@@ -158,14 +157,46 @@ private fun SourceControlSidePanel(
     }
 
     Column(modifier.fillMaxSize()) {
+        GitChangesSection(
+            gitState = gitState,
+            changelistSnapshot = changelistSnapshot,
+            treeReady = treeReady,
+            grouped = grouped,
+            currentDiff = currentDiff,
+            diffPendingPath = diffPendingPath,
+            modpackRoot = modpackRoot,
+            gitBusy = gitBusy,
+            filterText = filterText,
+            flatRows = flatRows,
+            publish = publish,
+        )
+    }
+}
+
+@Composable
+private fun GitChangesSection(
+    gitState: GitState,
+    changelistSnapshot: GitChangelistUiSnapshot,
+    treeReady: Boolean,
+    grouped: Boolean,
+    currentDiff: DiffContent?,
+    diffPendingPath: String?,
+    modpackRoot: Path?,
+    gitBusy: Boolean,
+    filterText: String,
+    flatRows: List<PathTreeRow<GitFile>>,
+    publish: (ModpackMsg) -> Unit,
+) {
+    val files = gitState.gitFiles
+    Column(Modifier.fillMaxSize()) {
+        // Search filter
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 8.dp),
+                .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Changes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             val textFieldState = rememberTextFieldState(filterText)
             LaunchedEffect(textFieldState.text) {
                 val text = textFieldState.text.toString()
@@ -176,96 +207,93 @@ private fun SourceControlSidePanel(
             TextField(
                 textFieldState,
                 Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .height(28.dp),
                 placeholder = {
                     Text("Search files…", color = JewelTheme.contentColor.copy(alpha = 0.5f))
                 },
             )
         }
-
         Divider(Orientation.Horizontal)
-
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         if (!treeReady) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (files.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "No local changes",
+                    style = JewelTheme.defaultTextStyle,
+                    color = JewelTheme.contentColor.copy(alpha = 0.55f),
+                )
+                Text(
+                    text = "Edits to tracked files and new files will appear in this list.",
+                    style = JewelTheme.defaultTextStyle,
+                    color = JewelTheme.contentColor.copy(alpha = 0.45f),
+                )
+            }
+        } else if (flatRows.isEmpty() && filterText.isNotBlank()) {
             Text(
-                text = "No local changes",
+                text = "No files match \"$filterText\"",
                 modifier = Modifier
                     .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp)
                     .fillMaxWidth(),
                 style = JewelTheme.defaultTextStyle,
                 color = JewelTheme.contentColor.copy(alpha = 0.55f),
             )
-            Text(
-                text = "Edits to tracked files and new files will appear in this list.",
-                modifier = Modifier
-                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
-                    .fillMaxWidth(),
-                style = JewelTheme.defaultTextStyle,
-                color = JewelTheme.contentColor.copy(alpha = 0.45f),
-            )
-            Spacer(Modifier.weight(1f))
         } else {
             val listState = rememberLazyListState()
             Box(
                 Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(bottom = 4.dp)
                     .clipToBounds(),
             ) {
-                if (flatRows.isEmpty() && filterText.isNotBlank()) {
-                    Text(
-                        text = "No files match \"$filterText\"",
-                        modifier = Modifier
-                            .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp)
-                            .fillMaxWidth(),
-                        style = JewelTheme.defaultTextStyle,
-                        color = JewelTheme.contentColor.copy(alpha = 0.55f),
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = listState,
-                    ) {
-                        flatRows.forEach { row ->
-                            val key = when (row) {
-                                is PathTreeRow.Folder -> "d:${row.fullPath}"
-                                is PathTreeRow.Item -> "f:${row.path}"
-                            }
-                            val contentType = when (row) {
-                                is PathTreeRow.Folder -> "changelist_folder"
-                                is PathTreeRow.Item -> "changelist_file"
-                            }
-                            item(key = key, contentType = contentType) {
-                                GitChangesListRow(
-                                    row = row,
-                                    currentDiff = currentDiff,
-                                    diffPendingPath = diffPendingPath,
-                                    modpackRoot = modpackRoot,
-                                    gitBusy = gitBusy,
-                                    publish = publish,
-                                )
-                            }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                ) {
+                    flatRows.forEach { row ->
+                        val key = when (row) {
+                            is PathTreeRow.Folder -> "d:${row.fullPath}"
+                            is PathTreeRow.Item -> "f:${row.path}"
+                        }
+                        val contentType = when (row) {
+                            is PathTreeRow.Folder -> "changelist_folder"
+                            is PathTreeRow.Item -> "changelist_file"
+                        }
+                        item(key = key, contentType = contentType) {
+                            GitChangesListRow(
+                                row = row,
+                                currentDiff = currentDiff,
+                                diffPendingPath = diffPendingPath,
+                                modpackRoot = modpackRoot,
+                                gitBusy = gitBusy,
+                                publish = publish,
+                            )
                         }
                     }
-                    StickyTreeFolderHeaders(listState, flatRows) { folderRow ->
-                        GitChangesListRow(
-                            row = folderRow,
-                            currentDiff = currentDiff,
-                            diffPendingPath = diffPendingPath,
-                            modpackRoot = modpackRoot,
-                            gitBusy = gitBusy,
-                            publish = publish,
-                        )
-                    }
+                }
+                StickyTreeFolderHeaders(listState, flatRows) { folderRow ->
+                    GitChangesListRow(
+                        row = folderRow,
+                        currentDiff = currentDiff,
+                        diffPendingPath = diffPendingPath,
+                        modpackRoot = modpackRoot,
+                        gitBusy = gitBusy,
+                        publish = publish,
+                    )
                 }
             }
         }
-    }
+        } // end Box(weight(1f))
+    } // end Column
 }
 
 /**
