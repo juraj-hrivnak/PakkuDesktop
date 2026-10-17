@@ -4,6 +4,8 @@
 
 package teksturepako.pakkuDesktop.app.git
 
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -30,6 +32,72 @@ data class GitCommit(
     val hash: String,
     val message: String,
 )
+
+enum class GitRefType {
+    LocalBranch,
+    RemoteBranch,
+    Tag,
+}
+
+/** A branch or tag from `git for-each-ref`; [hash] is the commit it points at (peeled for tags). */
+data class GitRef(
+    val name: String,
+    val type: GitRefType,
+    val hash: String,
+)
+
+/** One file of a commit, from `git diff --name-status` against the first parent. */
+data class GitCommitChange(
+    val path: String,
+    val status: GitChange,
+    /** Source path of a rename or copy. */
+    val oldPath: String? = null,
+)
+
+/** The commit selected in the Log: full message and changed files. */
+data class GitCommitDetails(
+    val hash: String,
+    val parents: List<String>,
+    val authorName: String,
+    val authorEmail: String,
+    val authorTime: Instant,
+    val committerName: String,
+    val committerEmail: String,
+    val commitTime: Instant,
+    val message: String,
+    val changes: List<GitCommitChange>,
+)
+
+/** Sections of the Git tool window (IntelliJ's Commit and Log). */
+enum class GitTabSection {
+    Changes,
+    Log,
+}
+
+/** Author-time range of the Log's Date filter; a null end is open. */
+data class GitLogDateFilter(
+    val since: Instant?,
+    val until: Instant?,
+)
+
+/** Log filters, like IntelliJ's filter bar. */
+data class GitLogFilters(
+    val text: String = "",
+    val matchCase: Boolean = false,
+    val regex: Boolean = false,
+    /** Ref names whose history is shown; null shows every branch. */
+    val branches: PersistentSet<String>? = null,
+    /** Author names; empty matches everyone. */
+    val users: PersistentSet<String> = persistentSetOf(),
+    val date: GitLogDateFilter? = null,
+)
+
+enum class GitResetMode(val flag: String) {
+    Soft("--soft"),
+    Mixed("--mixed"),
+    Hard("--hard"),
+    Keep("--keep"),
+}
 
 /** Entry of `git stash list`; [ref] is `stash@{n}`. */
 data class GitStash(

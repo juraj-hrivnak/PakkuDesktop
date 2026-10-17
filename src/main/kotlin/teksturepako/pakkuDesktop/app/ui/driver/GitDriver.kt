@@ -278,6 +278,26 @@ private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp
             NativeGit.ignore(workDir, op.paths)
             NativeGit.Output(0, "")
         }
+        is GitOp.CheckoutRevision -> NativeGit.exec(workDir, "checkout", "--detach", op.hash)
+        is GitOp.CherryPick -> NativeGit.exec(
+            workDir,
+            *buildList {
+                add("cherry-pick")
+                if (op.merge) addAll(listOf("-m", "1"))
+                add(op.hash)
+            }.toTypedArray(),
+        )
+        is GitOp.Revert -> NativeGit.exec(
+            workDir,
+            *buildList {
+                add("revert")
+                add("--no-edit")
+                if (op.merge) addAll(listOf("-m", "1"))
+                add(op.hash)
+            }.toTypedArray(),
+        )
+        is GitOp.Reset -> NativeGit.exec(workDir, "reset", op.mode.flag, op.hash)
+        is GitOp.CreateTag -> NativeGit.exec(workDir, "tag", op.name, op.hash)
     }
     return if (result.ok) null else result.failure("${op.status.removeSuffix("…")} failed")
 }

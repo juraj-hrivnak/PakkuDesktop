@@ -100,6 +100,7 @@ fun main() {
                 modpackDiskDriver,
                 modpackSummaryDriver,
                 gitDriver,
+                gitLogDriver,
                 windowDiskDriver(
                     onQuit = {
                         exitApplication()

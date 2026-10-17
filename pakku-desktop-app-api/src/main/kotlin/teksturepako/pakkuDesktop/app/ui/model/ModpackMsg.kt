@@ -24,8 +24,12 @@ import teksturepako.pakkuDesktop.app.git.GitEvent
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitDialog
+import teksturepako.pakkuDesktop.app.git.GitCommitChange
+import teksturepako.pakkuDesktop.app.git.GitCommitDetails
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitTabSection
 
 /** pending project property write for projectEditDriver */
 data class PropertyWrite(
@@ -456,6 +460,20 @@ sealed interface ModpackMsg {
     data class GitOpFinished(val op: GitOp, val success: Boolean) : ModpackMsg
     data class GitGroupUnversionedChanged(val grouped: Boolean) : ModpackMsg
     data class GitFilterTextChanged(val text: String) : ModpackMsg
+    /** Switch the Git tab section (Changes / Log). */
+    data class GitTabSectionSelected(val section: GitTabSection) : ModpackMsg
+    /** Select a commit in the Log by full hash; null to deselect. */
+    data class GitLogCommitSelected(val hash: String?) : ModpackMsg
+    /** Rows of the Log table on screen; gitLogDriver loads subjects around them. */
+    data class GitLogVisibleRowsChanged(val rows: IntRange) : ModpackMsg
+    data class GitLogFiltersChanged(val filters: GitLogFilters) : ModpackMsg
+    /** gitLogDriver: merge [subjects]; when [keep] is set, first drop subjects of other hashes. */
+    data class GitLogSubjectsLoaded(val subjects: Map<String, String>, val keep: Set<String>? = null) : ModpackMsg
+    data class GitLogDetailsLoaded(val details: GitCommitDetails) : ModpackMsg
+    data class GitLogContainingBranchesLoaded(val hash: String, val branches: List<String>) : ModpackMsg
+    /** Changed file of the selected commit to show in the diff preview; null to close it. */
+    data class GitLogChangeSelected(val change: GitCommitChange?) : ModpackMsg
+    data class GitLogDiffComputed(val hash: String, val change: GitCommitChange, val diff: DiffContent) : ModpackMsg
 
     // -- Dropdown children --
 

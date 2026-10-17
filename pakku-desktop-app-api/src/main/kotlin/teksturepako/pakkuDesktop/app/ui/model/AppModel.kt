@@ -33,7 +33,9 @@ import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.DiffContent
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
+import teksturepako.pakkuDesktop.app.git.GitLogModel
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitTabSection
 
 // -- App model --
 
@@ -289,6 +291,9 @@ data class ModpackModel(
     val gitGroupUnversioned: Boolean = true,
     /** Free-text filter for the Git changelist tree (matches against file paths). */
     val gitFilterText: String = "",
+    /** Changes or Log in the Git tab. */
+    val gitToolSection: GitTabSection = GitTabSection.Changes,
+    val gitLog: GitLogModel = GitLogModel(),
 
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),

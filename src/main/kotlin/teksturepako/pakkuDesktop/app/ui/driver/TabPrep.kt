@@ -40,6 +40,11 @@ class GitChangelistPrep(
 
 val LocalGitChangelistPrep = compositionLocalOf<GitChangelistPrep?> { null }
 
+/** Commit graph for the Log, built off the UI thread. */
+class GitLogPrep(val graph: teksturepako.pakkuDesktop.app.git.log.GitLogGraph)
+
+val LocalGitLogPrep = compositionLocalOf<GitLogPrep?> { null }
+
 class ProjectsListPrep(
     val key: Any,
     val all: List<Project>,

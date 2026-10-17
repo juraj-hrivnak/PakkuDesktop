@@ -5,8 +5,10 @@
 package teksturepako.pakkuDesktop.app.git
 
 import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
 /**
  * Progress events surfaced from native git stderr into the ELM model.
@@ -40,12 +42,36 @@ data class GitState(
     /** Full message of HEAD, prefilled when amending. Empty before the first commit. */
     val headMessage: String = "",
     val stashes: PersistentList<GitStash> = persistentListOf(),
+    /** Branch and tag tips; the Log reloads its graph when these or [headHash] change. */
+    val refs: PersistentList<GitRef> = persistentListOf(),
+    /** Commit at HEAD; null before the first commit. */
+    val headHash: String? = null,
 ) {
     val currentBranch: GitBranch? get() = branches.firstOrNull { it.isCurrent }
 
     /** Remote that a branch without upstream is pushed to. */
     val defaultRemote: String? get() = remotes.firstOrNull { it == "origin" } ?: remotes.firstOrNull()
 }
+
+/**
+ * UI state of the Git Log. The commit graph itself is not here: the log driver builds it off the
+ * UI thread and provides it to the view.
+ */
+data class GitLogModel(
+    val filters: GitLogFilters = GitLogFilters(),
+    val selectedHash: String? = null,
+    /** Rows of the visible graph on screen; the driver loads subjects around them. */
+    val visibleRows: IntRange = IntRange.EMPTY,
+    /** Commit subjects by hash, loaded in pages around [visibleRows] and capped by the driver. */
+    val subjects: PersistentMap<String, String> = persistentMapOf(),
+    /** Details of [selectedHash]; null while loading. */
+    val details: GitCommitDetails? = null,
+    /** Branches that contain [selectedHash]; null while loading. */
+    val containingBranches: PersistentList<String>? = null,
+    /** File of [details] shown in the diff preview. */
+    val selectedChange: GitCommitChange? = null,
+    val diff: DiffContent? = null,
+)
 
 /** Modal Git dialogs; at most one is open ([teksturepako.pakkuDesktop.app.ui.model.ModpackModel.gitDialog]). */
 sealed interface GitDialog {
@@ -54,10 +80,13 @@ sealed interface GitDialog {
     data object Update : GitDialog
     data object Push : GitDialog
     data object Rollback : GitDialog
-    data class NewBranch(val startPoint: GitBranch? = null) : GitDialog
+    /** [startRevision] (a commit hash from the Log) wins over [startPoint]. */
+    data class NewBranch(val startPoint: GitBranch? = null, val startRevision: String? = null) : GitDialog
     data class DeleteBranch(val branch: GitBranch) : GitDialog
     data object Stash : GitDialog
     data object Unstash : GitDialog
+    data class Reset(val hash: String) : GitDialog
+    data class NewTag(val hash: String) : GitDialog
 }
 
 /** One native git operation; set as `pendingGitOp` and run by the git driver. */
@@ -126,5 +155,27 @@ sealed interface GitOp {
     /** Appends repo-relative [paths] to the root `.gitignore`. */
     data class Ignore(val paths: List<String>) : GitOp {
         override val status get() = "Updating .gitignore…"
+    }
+
+    /** Detached checkout of [hash]. */
+    data class CheckoutRevision(val hash: String) : GitOp {
+        override val status get() = "Checking out ${hash.take(8)}…"
+    }
+
+    /** [merge] picks against the first parent (`-m 1`). */
+    data class CherryPick(val hash: String, val merge: Boolean) : GitOp {
+        override val status get() = "Cherry-picking ${hash.take(8)}…"
+    }
+
+    data class Revert(val hash: String, val merge: Boolean) : GitOp {
+        override val status get() = "Reverting ${hash.take(8)}…"
+    }
+
+    data class Reset(val hash: String, val mode: GitResetMode) : GitOp {
+        override val status get() = "Resetting to ${hash.take(8)}…"
+    }
+
+    data class CreateTag(val name: String, val hash: String) : GitOp {
+        override val status get() = "Creating tag $name…"
     }
 }

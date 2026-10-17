@@ -50,6 +50,8 @@ import teksturepako.pakkuDesktop.app.git.GitCommit
 import teksturepako.pakkuDesktop.app.git.GitDialog
 import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitOp
+import teksturepako.pakkuDesktop.app.git.GitRefType
+import teksturepako.pakkuDesktop.app.git.GitResetMode
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.toTreeStatus
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
@@ -84,6 +86,8 @@ fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         is GitDialog.DeleteBranch -> GitDeleteBranchDialog(dialog, hide, run)
         GitDialog.Stash -> GitStashDialog(git, hide, run)
         GitDialog.Unstash -> GitUnstashDialog(git, busy, hide, run)
+        is GitDialog.Reset -> GitResetDialog(dialog, hide, run)
+        is GitDialog.NewTag -> GitNewTagDialog(git, dialog, hide, run)
     }
 }
 
@@ -359,13 +363,13 @@ private fun GitRollbackDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> U
 
 private val INVALID_BRANCH_CHARS = Regex("""[\s~^:?*\[\\]""")
 
-private fun branchNameError(name: String, existing: Set<String>): String? = when {
+private fun branchNameError(name: String, existing: Set<String>, kind: String = "branch"): String? = when {
     name.isEmpty() -> null
-    name in existing -> "A branch named '$name' already exists."
+    name in existing -> "A $kind named '$name' already exists."
     INVALID_BRANCH_CHARS.containsMatchIn(name) || ".." in name || "@{" in name ||
         name.startsWith("-") || name.startsWith("/") || name.endsWith("/") ||
         name.endsWith(".") || name.endsWith(".lock") || "//" in name ->
-        "'$name' is not a valid branch name."
+        "'$name' is not a valid $kind name."
     else -> null
 }
 
@@ -380,9 +384,10 @@ private fun GitNewBranchDialog(git: GitState, dialog: GitDialog.NewBranch, hide:
     val existing = remember(git.branches) { git.branches.filterNot { it.isRemote }.map { it.name }.toSet() }
     val error = branchNameError(trimmed, existing)
     val canCreate = trimmed.isNotEmpty() && error == null
-    val from = dialog.startPoint?.name ?: git.currentBranch?.name ?: "HEAD"
+    val start = dialog.startRevision ?: dialog.startPoint?.name
+    val from = dialog.startRevision?.take(8) ?: dialog.startPoint?.name ?: git.currentBranch?.name ?: "HEAD"
     val create = {
-        if (canCreate) run(GitOp.CreateBranch(trimmed, dialog.startPoint?.name, checkout))
+        if (canCreate) run(GitOp.CreateBranch(trimmed, start, checkout))
     }
 
     PkUiDialog(
@@ -535,6 +540,68 @@ private fun GitUnstashDialog(git: GitState, busy: Boolean, hide: () -> Unit, run
             }
             CheckboxRow("Remove the stash after applying (pop)", checked = pop, onCheckedChange = { pop = it })
         }
+    }
+}
+
+// -- Log --
+
+@Composable
+private fun GitResetDialog(dialog: GitDialog.Reset, hide: () -> Unit, run: (GitOp) -> Unit) {
+    var mode by remember { mutableStateOf(GitResetMode.Mixed) }
+    val confirm = { run(GitOp.Reset(dialog.hash, mode)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Reset current branch to here",
+        icon = AllIconsKeys.Actions.Rollback,
+        subtitle = dialog.hash.take(8),
+        size = PkUiDialogSize.Small,
+        onConfirm = confirm,
+        footer = {
+            PkUiDialogButtons(primaryLabel = "Reset", onPrimary = confirm, onSecondary = hide)
+        },
+    ) {
+        RadioButtonRow("Soft — keep all changes staged", selected = mode == GitResetMode.Soft, onClick = { mode = GitResetMode.Soft })
+        RadioButtonRow("Mixed — keep changes, unstage them", selected = mode == GitResetMode.Mixed, onClick = { mode = GitResetMode.Mixed })
+        RadioButtonRow("Hard — discard all local changes", selected = mode == GitResetMode.Hard, onClick = { mode = GitResetMode.Hard })
+        RadioButtonRow("Keep — discard only changes to tracked files that differ", selected = mode == GitResetMode.Keep, onClick = { mode = GitResetMode.Keep })
+        if (mode == GitResetMode.Hard) {
+            PkUiDialogNotice("Hard reset deletes uncommitted work in this branch.", kind = PkUiNoticeKind.Warning)
+        }
+    }
+}
+
+@Composable
+private fun GitNewTagDialog(git: GitState, dialog: GitDialog.NewTag, hide: () -> Unit, run: (GitOp) -> Unit) {
+    val name = rememberTextFieldState("")
+    val nameFocus = remember { FocusRequester() }
+    val trimmed = name.text.toString().trim()
+    val existing = remember(git.refs) { git.refs.filter { it.type == GitRefType.Tag }.map { it.name }.toSet() }
+    val error = branchNameError(trimmed, existing, kind = "tag")
+    val canCreate = trimmed.isNotEmpty() && error == null
+    val create = { if (canCreate) run(GitOp.CreateTag(trimmed, dialog.hash)) }
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Create tag",
+        icon = AllIconsKeys.Nodes.Tag,
+        subtitle = "at ${dialog.hash.take(8)}",
+        size = PkUiDialogSize.Small,
+        onConfirm = create,
+        initialFocus = nameFocus,
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = "Create",
+                onPrimary = create,
+                primaryEnabled = canCreate,
+                onSecondary = hide,
+            )
+        },
+    ) {
+        TextField(
+            state = name,
+            modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
+            placeholder = { Text("v1.0") },
+        )
+        if (error != null) PkUiDialogNotice(error, kind = PkUiNoticeKind.Error)
     }
 }
 

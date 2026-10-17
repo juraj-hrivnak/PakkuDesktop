@@ -149,6 +149,26 @@ class ModpackUpdateSameInstanceTest {
         assertNoOp(busy, ModpackMsg.GitOpFinished(GitOp.Refresh, success = true))
         assertNoOp(ModpackModel(), ModpackMsg.GitGroupUnversionedChanged(grouped = true))
         assertNoOp(ModpackModel(), ModpackMsg.GitFilterTextChanged(""))
+        assertNoOp(ModpackModel(), ModpackMsg.GitTabSectionSelected(GitTabSection.Changes))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogCommitSelected(null))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogVisibleRowsChanged(IntRange.EMPTY))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogFiltersChanged(GitLogFilters()))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogSubjectsLoaded(emptyMap()))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogChangeSelected(null))
+        val other = GitCommitDetails(
+            hash = "abc",
+            parents = emptyList(),
+            authorName = "A",
+            authorEmail = "a@b",
+            authorTime = kotlinx.datetime.Instant.fromEpochSeconds(0),
+            committerName = "A",
+            committerEmail = "a@b",
+            commitTime = kotlinx.datetime.Instant.fromEpochSeconds(0),
+            message = "m",
+            changes = emptyList(),
+        )
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogDetailsLoaded(other))
+        assertNoOp(ModpackModel(), ModpackMsg.GitLogContainingBranchesLoaded("abc", emptyList()))
     }
 
     @Test
