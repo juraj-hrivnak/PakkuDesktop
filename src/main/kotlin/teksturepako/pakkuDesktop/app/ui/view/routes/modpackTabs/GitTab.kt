@@ -4,8 +4,6 @@
 
 package teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -16,11 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
@@ -42,7 +37,6 @@ import teksturepako.pakkuDesktop.app.ui.component.tree.StickyTreeFolderHeaders
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeFolderRow
 import teksturepako.pakkuDesktop.app.ui.component.tree.TreeItemRow
 import teksturepako.pakkuDesktop.app.ui.driver.LocalGitChangelistPrep
-import teksturepako.pakkuDesktop.app.ui.component.git.log.GitLogView
 import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
@@ -73,14 +67,6 @@ fun GitTab(
     val diffPendingPath = model.gitDiffPendingFile?.path
 
     Column(Modifier.fillMaxSize()) {
-        GitTabRow(selected = model.gitToolSection, publish = publish)
-        Divider(Orientation.Horizontal)
-
-        if (model.gitToolSection == GitTabSection.Log) {
-            GitLogView(publish, model, Modifier.weight(1f).fillMaxWidth())
-            return@Column
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,44 +170,6 @@ private fun SourceControlSidePanel(
             flatRows = flatRows,
             publish = publish,
         )
-    }
-}
-
-@Composable
-private fun GitTabRow(selected: GitTabSection, publish: (ModpackMsg) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        GitTabSection.entries.forEach { section ->
-            val label = when (section) {
-                GitTabSection.Changes -> "Changes"
-                GitTabSection.Log -> "Log"
-            }
-            val isSelected = section == selected
-            val bg = if (isSelected) {
-                PakkuDesktopConstants.highlightColor.copy(alpha = 0.12f)
-            } else {
-                Color.Transparent
-            }
-            Box(
-                modifier = Modifier
-                    .background(bg)
-                    .clickable { publish(ModpackMsg.GitTabSectionSelected(section)) }
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = label,
-                    style = JewelTheme.defaultTextStyle.copy(
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    ),
-                    color = if (isSelected) JewelTheme.contentColor else JewelTheme.contentColor.copy(alpha = 0.6f),
-                )
-            }
-        }
     }
 }
 

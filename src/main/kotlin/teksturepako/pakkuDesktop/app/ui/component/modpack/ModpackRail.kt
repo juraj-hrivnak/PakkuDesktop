@@ -89,6 +89,12 @@ fun ModpackRail(
                 selected = selectedTab == SelectedTab.COMMIT,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.COMMIT)) },
             )
+            RailButton(
+                key = AllIconsKeys.General.Vcs,
+                tooltip = "Log",
+                selected = selectedTab == SelectedTab.LOG,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.LOG)) },
+            )
         }
         Spacer(Modifier.background(borderColor).width(1.dp).fillMaxHeight())
     }

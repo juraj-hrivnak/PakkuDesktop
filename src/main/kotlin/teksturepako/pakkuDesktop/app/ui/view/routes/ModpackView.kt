@@ -43,6 +43,8 @@ import teksturepako.pakkuDesktop.app.ui.model.gitTab
 import teksturepako.pakkuDesktop.app.ui.model.modpackTab
 import teksturepako.pakkuDesktop.app.ui.model.projectsTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
+import teksturepako.pakkuDesktop.app.ui.component.git.log.GitLogView
+import teksturepako.pakkuDesktop.app.ui.model.logTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.FilesTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
@@ -141,6 +143,11 @@ fun PakkuApplicationScope.ModpackView(
                                     publish,
                                     model.gitTab(),
                                     appModel.profile.data.currentProfilePath,
+                                )
+                                SelectedTab.LOG      -> GitLogView(
+                                    publish,
+                                    model.logTab(),
+                                    Modifier.fillMaxSize(),
                                 )
                             }
                         }

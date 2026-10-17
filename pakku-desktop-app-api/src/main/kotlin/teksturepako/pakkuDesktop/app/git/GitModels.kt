@@ -68,12 +68,6 @@ data class GitCommitDetails(
     val changes: List<GitCommitChange>,
 )
 
-/** Sections of the Git tool window (IntelliJ's Commit and Log). */
-enum class GitTabSection {
-    Changes,
-    Log,
-}
-
 /** Author-time range of the Log's Date filter; a null end is open. */
 data class GitLogDateFilter(
     val since: Instant?,

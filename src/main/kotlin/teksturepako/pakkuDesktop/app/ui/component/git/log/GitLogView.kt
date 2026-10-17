@@ -30,14 +30,14 @@ import org.jetbrains.jewel.ui.component.SplitLayoutState
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
 import teksturepako.pakkuDesktop.app.ui.driver.LocalGitLogPrep
-import teksturepako.pakkuDesktop.app.ui.model.GitTabModel
+import teksturepako.pakkuDesktop.app.ui.model.LogTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 
 @Composable
 fun GitLogView(
     publish: (ModpackMsg) -> Unit,
-    model: GitTabModel,
+    model: LogTabModel,
     modifier: Modifier = Modifier,
 ) {
     val graph = LocalGitLogPrep.current?.graph
@@ -63,7 +63,7 @@ fun GitLogView(
     Column(modifier.fillMaxSize()) {
         GitLogFilterBar(
             filters = log.filters,
-            refs = model.git.refs,
+            refs = model.refs,
             authors = graph?.authors.orEmpty(),
             branchesOpen = branchesOpen,
             onBranchesOpen = { branchesOpen = it },
@@ -85,9 +85,9 @@ fun GitLogView(
                 Row(Modifier.fillMaxSize()) {
                     if (branchesOpen) {
                         GitBranchesPane(
-                            refs = model.git.refs,
-                            headHash = model.git.headHash,
-                            currentBranch = model.git.currentBranch?.name,
+                            refs = model.refs,
+                            headHash = model.headHash,
+                            currentBranch = model.currentBranchName,
                             busy = model.gitBusy,
                             onJump = ::jumpToHash,
                             onFilter = { name ->

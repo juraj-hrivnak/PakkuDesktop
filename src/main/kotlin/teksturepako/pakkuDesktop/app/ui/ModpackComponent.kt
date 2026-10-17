@@ -769,8 +769,6 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         )
     is ModpackMsg.GitFilterTextChanged ->
         if (model.gitFilterText == msg.text) model else model.copy(gitFilterText = msg.text)
-    is ModpackMsg.GitTabSectionSelected ->
-        if (model.gitToolSection == msg.section) model else model.copy(gitToolSection = msg.section)
     is ModpackMsg.GitLogCommitSelected ->
         if (model.gitLog.selectedHash == msg.hash) model
         else model.copy(

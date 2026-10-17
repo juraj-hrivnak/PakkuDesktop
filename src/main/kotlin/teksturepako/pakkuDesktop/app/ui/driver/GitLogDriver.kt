@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import teksturepako.pakkuDesktop.app.git.GitTabSection
 import teksturepako.pakkuDesktop.app.git.NativeGit
 import teksturepako.pakkuDesktop.app.git.log.GitLogGraph
 import teksturepako.pakkuDesktop.app.git.log.GitLogTopology
@@ -47,7 +46,7 @@ val gitLogDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val latest by rememberUpdatedState(model)
     val modpack = model.modpack
     val active = model.screen == AppScreen.Modpack && modpack.loaded &&
-        modpack.selectedTab == SelectedTab.COMMIT && modpack.gitToolSection == GitTabSection.Log
+        modpack.selectedTab == SelectedTab.LOG
     val path = model.profile.data.currentProfile?.path
     val head = modpack.git.headHash
     val refs = modpack.git.refs
