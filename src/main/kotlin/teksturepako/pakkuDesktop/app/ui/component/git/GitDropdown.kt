@@ -155,77 +155,83 @@ val gitDropdownComponent = component(
                 }
             },
             menuContent = {
-                action(
-                    if (incoming > 0) "Update Project… ($incoming incoming)" else "Update Project…",
-                    AllIconsKeys.Actions.CheckOut,
-                ) { dialog(GitDialog.Update) }
-                action("Commit…", AllIconsKeys.Actions.Commit) {
-                    publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
-                    dialog(GitDialog.Commit)
-                }
-                action(
-                    if (outgoing > 0) "Push… ($outgoing ahead)" else "Push…",
-                    AllIconsKeys.Vcs.Push,
-                    isEnabled = enabled && gitState.defaultRemote != null,
-                ) { dialog(GitDialog.Push) }
-                action("Fetch", AllIconsKeys.Vcs.Fetch, isEnabled = enabled && gitState.remotes.isNotEmpty()) {
-                    op(GitOp.Fetch)
-                }
-                action("Refresh", AllIconsKeys.Actions.Refresh) { op(GitOp.Refresh) }
-
-                separator()
-
-                action("Source Control", AllIconsKeys.Vcs.Changelist, isEnabled = true) {
-                    publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
-                }
-                action("New Branch…", AllIconsKeys.General.Add) { dialog(GitDialog.NewBranch()) }
-                action(
-                    "Stash Changes…",
-                    AllIconsKeys.Vcs.ShelveSilent,
-                    isEnabled = enabled && gitState.gitFiles.isNotEmpty(),
-                ) { dialog(GitDialog.Stash) }
-                action(
-                    if (gitState.stashes.isEmpty()) "Unstash Changes…" else "Unstash Changes… (${gitState.stashes.size})",
-                    AllIconsKeys.Vcs.Unshelve,
-                    isEnabled = enabled && gitState.stashes.isNotEmpty(),
-                ) { dialog(GitDialog.Unstash) }
-
-                val local = gitState.branches.filterNot { it.isRemote }.sortedWith(compareBy({ !it.isCurrent }, { it.name }))
-                val remote = gitState.branches.filter { it.isRemote && !it.name.endsWith("/HEAD") }.sortedBy { it.name }
-                val tags = gitState.refs.filter { it.type == GitRefType.Tag }
-                    .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
-
-                if (local.isNotEmpty()) {
-                    separator()
-                    header("Local Branches")
-                    local.forEach { branchMenu(it) }
-                }
-                if (remote.isNotEmpty()) {
-                    separator()
-                    header("Remote Branches")
-                    remote.forEach { branchMenu(it) }
-                }
-                if (tags.isNotEmpty()) {
-                    separator()
-                    passiveItem {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
-                            },
-                        ) {
-                            Icon(
-                                key = if (model.tagsExpanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
-                                contentDescription = null,
-                                tint = muted,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text("Tags", color = muted)
-                        }
+                if (gitState.isRepository == false) {
+                    action("Initialize Repository…", AllIconsKeys.Vcs.Branch) {
+                        dialog(GitDialog.Init)
                     }
-                    if (model.tagsExpanded) {
-                        tags.forEach { tagMenu(it) }
+                } else {
+                    action(
+                        if (incoming > 0) "Update Project… ($incoming incoming)" else "Update Project…",
+                        AllIconsKeys.Actions.CheckOut,
+                    ) { dialog(GitDialog.Update) }
+                    action("Commit…", AllIconsKeys.Actions.Commit) {
+                        publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
+                        dialog(GitDialog.Commit)
+                    }
+                    action(
+                        if (outgoing > 0) "Push… ($outgoing ahead)" else "Push…",
+                        AllIconsKeys.Vcs.Push,
+                        isEnabled = enabled && gitState.defaultRemote != null,
+                    ) { dialog(GitDialog.Push) }
+                    action("Fetch", AllIconsKeys.Vcs.Fetch, isEnabled = enabled && gitState.remotes.isNotEmpty()) {
+                        op(GitOp.Fetch)
+                    }
+                    action("Refresh", AllIconsKeys.Actions.Refresh) { op(GitOp.Refresh) }
+
+                    separator()
+
+                    action("Source Control", AllIconsKeys.Vcs.Changelist, isEnabled = true) {
+                        publish(GitDropdownMsg.TabSelected(SelectedTab.COMMIT))
+                    }
+                    action("New Branch…", AllIconsKeys.General.Add) { dialog(GitDialog.NewBranch()) }
+                    action(
+                        "Stash Changes…",
+                        AllIconsKeys.Vcs.ShelveSilent,
+                        isEnabled = enabled && gitState.gitFiles.isNotEmpty(),
+                    ) { dialog(GitDialog.Stash) }
+                    action(
+                        if (gitState.stashes.isEmpty()) "Unstash Changes…" else "Unstash Changes… (${gitState.stashes.size})",
+                        AllIconsKeys.Vcs.Unshelve,
+                        isEnabled = enabled && gitState.stashes.isNotEmpty(),
+                    ) { dialog(GitDialog.Unstash) }
+
+                    val local = gitState.branches.filterNot { it.isRemote }.sortedWith(compareBy({ !it.isCurrent }, { it.name }))
+                    val remote = gitState.branches.filter { it.isRemote && !it.name.endsWith("/HEAD") }.sortedBy { it.name }
+                    val tags = gitState.refs.filter { it.type == GitRefType.Tag }
+                        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
+
+                    if (local.isNotEmpty()) {
+                        separator()
+                        header("Local Branches")
+                        local.forEach { branchMenu(it) }
+                    }
+                    if (remote.isNotEmpty()) {
+                        separator()
+                        header("Remote Branches")
+                        remote.forEach { branchMenu(it) }
+                    }
+                    if (tags.isNotEmpty()) {
+                        separator()
+                        passiveItem {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
+                                },
+                            ) {
+                                Icon(
+                                    key = if (model.tagsExpanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
+                                    contentDescription = null,
+                                    tint = muted,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text("Tags", color = muted)
+                            }
+                        }
+                        if (model.tagsExpanded) {
+                            tags.forEach { tagMenu(it) }
+                        }
                     }
                 }
             },

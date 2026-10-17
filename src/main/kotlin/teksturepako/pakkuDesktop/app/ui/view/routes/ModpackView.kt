@@ -173,7 +173,11 @@ fun PakkuApplicationScope.ModpackView(
 
         AddProjectsDialog(publish = publish, model = model)
         RemoveProjectsDialog(publish = publish, model = model)
-        GitDialogs(publish = publish, model = model)
+        GitDialogs(
+            publish = publish,
+            model = model,
+            directory = appModel.profile.data.currentProfile?.path,
+        )
     }
 }
 

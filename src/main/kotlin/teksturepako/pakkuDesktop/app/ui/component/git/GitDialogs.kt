@@ -45,6 +45,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.git.DEFAULT_BRANCH_NAME
 import teksturepako.pakkuDesktop.app.git.GitChange
 import teksturepako.pakkuDesktop.app.git.GitCommit
 import teksturepako.pakkuDesktop.app.git.GitDialog
@@ -71,7 +72,7 @@ import teksturepako.pakkuDesktop.pkui.component.PkUiNoticeKind
 
 /** The open [ModpackModel.gitDialog], if any. */
 @Composable
-fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
+fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel, directory: String?) {
     val dialog = model.gitDialog ?: return
     val hide = { publish(ModpackMsg.HideGitDialog) }
     val run = { op: GitOp -> publish(ModpackMsg.GitOpRequested(op)) }
@@ -90,6 +91,7 @@ fun GitDialogs(publish: (ModpackMsg) -> Unit, model: ModpackModel) {
         is GitDialog.Reset -> GitResetDialog(dialog, hide, run)
         is GitDialog.NewTag -> GitNewTagDialog(git, dialog, hide, run)
         is GitDialog.DeleteTag -> GitDeleteTagDialog(dialog, hide, run)
+        GitDialog.Init -> GitInitDialog(git, directory, hide, run)
     }
 }
 
@@ -405,6 +407,44 @@ private fun branchNameError(name: String, existing: Set<String>, kind: String = 
         name.endsWith(".") || name.endsWith(".lock") || "//" in name ->
         "'$name' is not a valid $kind name."
     else -> null
+}
+
+@Composable
+private fun GitInitDialog(git: GitState, directory: String?, hide: () -> Unit, run: (GitOp) -> Unit) {
+    val name = rememberTextFieldState(git.defaultBranch.ifBlank { DEFAULT_BRANCH_NAME })
+    val nameFocus = remember { FocusRequester() }
+    val trimmed = name.text.toString().trim()
+    val error = branchNameError(trimmed, emptySet())
+    val canInit = trimmed.isNotEmpty() && error == null
+    val init = {
+        if (canInit) run(GitOp.Init(trimmed))
+    }
+
+    PkUiDialog(
+        onDismiss = hide,
+        title = "Initialize repository",
+        icon = AllIconsKeys.Vcs.Branch,
+        subtitle = directory,
+        size = PkUiDialogSize.Medium,
+        onConfirm = init,
+        initialFocus = nameFocus,
+        footer = {
+            PkUiDialogButtons(
+                primaryLabel = "Initialize",
+                onPrimary = init,
+                primaryEnabled = canInit,
+                onSecondary = hide,
+            )
+        },
+    ) {
+        PkUiDialogSectionLabel("Default branch")
+        TextField(
+            state = name,
+            modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
+            placeholder = { Text(DEFAULT_BRANCH_NAME) },
+        )
+        error?.let { PkUiDialogNotice(it, kind = PkUiNoticeKind.Error) }
+    }
 }
 
 @Composable

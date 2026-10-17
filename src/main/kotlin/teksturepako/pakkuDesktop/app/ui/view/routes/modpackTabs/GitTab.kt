@@ -67,22 +67,24 @@ fun GitTab(
     val diffPendingPath = model.gitDiffPendingFile?.path
 
     Column(Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
-                .padding(top = PakkuDesktopConstants.commonPaddingSize, bottom = 2.dp),
-        ) {
-            ChangelistToolbar(
-                gitState = gitState,
-                busy = model.gitBusy,
-                hasFolders = changelistSnapshot.folderIds.isNotEmpty(),
-                grouped = grouped,
-                publish = publish,
-            )
-        }
+        if (gitState.isRepository != false) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize)
+                    .padding(top = PakkuDesktopConstants.commonPaddingSize, bottom = 2.dp),
+            ) {
+                ChangelistToolbar(
+                    gitState = gitState,
+                    busy = model.gitBusy,
+                    hasFolders = changelistSnapshot.folderIds.isNotEmpty(),
+                    grouped = grouped,
+                    publish = publish,
+                )
+            }
 
-        Divider(Orientation.Horizontal)
+            Divider(Orientation.Horizontal)
+        }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             HorizontalSplitLayout(
@@ -189,6 +191,32 @@ private fun GitChangesSection(
 ) {
     val files = gitState.gitFiles
     Column(Modifier.fillMaxSize()) {
+        if (gitState.isRepository == false) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PakkuDesktopConstants.commonPaddingSize, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "This folder is not a Git repository.",
+                    style = JewelTheme.defaultTextStyle,
+                    color = JewelTheme.contentColor.copy(alpha = 0.55f),
+                )
+                Text(
+                    text = "Initialize it to track changes. You can set the default branch name first.",
+                    style = JewelTheme.defaultTextStyle,
+                    color = JewelTheme.contentColor.copy(alpha = 0.45f),
+                )
+                DefaultButton(
+                    onClick = { publish(ModpackMsg.ShowGitDialog(GitDialog.Init)) },
+                    enabled = !gitBusy,
+                ) {
+                    Text("Initialize Repository…")
+                }
+            }
+            return@Column
+        }
         // Search filter
         Row(
             modifier = Modifier
@@ -354,7 +382,7 @@ private fun ChangelistToolbar(
         ToolbarActionButton(
             key = AllIconsKeys.Actions.Refresh,
             label = "Refresh",
-            enabled = !busy,
+            enabled = !busy && gitState.isRepository != false,
             onClick = { publish(ModpackMsg.GitOpRequested(GitOp.Refresh)) },
         )
         ToolbarActionButton(

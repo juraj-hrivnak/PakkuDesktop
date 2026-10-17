@@ -40,6 +40,24 @@ object NativeGit
         workDir
     }
 
+    /** `git init -b [branch]` in [workDir]. The directory does not need to be a repository yet. */
+    suspend fun initRepository(workDir: File, branch: String): Output =
+        exec(workDir, "init", "-b", branch)
+
+    /**
+     * Branch name `git init` would use: global `init.defaultBranch`, or [DEFAULT_BRANCH_NAME].
+     * [workDir] does not need to be a repository; a missing config or git failure falls back.
+     */
+    suspend fun suggestedDefaultBranch(workDir: File): String = try {
+        val out = exec(workDir, "config", "--global", "--get", "init.defaultBranch")
+        val configured = out.text.trim()
+        if (out.ok && configured.isNotEmpty()) configured else DEFAULT_BRANCH_NAME
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        DEFAULT_BRANCH_NAME
+    }
+
     // -- Process --
 
     /**
@@ -86,7 +104,15 @@ object NativeGit
 
         GitState(
             gitFiles = st.files.toPersistentList(),
-            branches = branchesFrom(refNames, st.head),
+            // An unborn branch (right after `git init`) has no ref yet, so for-each-ref omits it.
+            branches = branchesFrom(refNames, st.head).let { parsed ->
+                val head = st.head
+                if (st.unborn && head != null && parsed.none { !it.isRemote && it.name == head }) {
+                    parsed + GitBranch(name = head, isRemote = false, isCurrent = true)
+                } else {
+                    parsed
+                }
+            },
             outgoingCommits = outgoing.await(),
             upstream = st.upstream,
             incomingCount = st.behind,
@@ -96,6 +122,7 @@ object NativeGit
             refs = refLines.mapNotNull { (hash, name, dateStr) -> gitRefOf(name, hash, dateStr) }.toPersistentList(),
             remoteTagNames = remoteTagNames.await(),
             headHash = st.headHash,
+            isRepository = true,
         )
     }
 

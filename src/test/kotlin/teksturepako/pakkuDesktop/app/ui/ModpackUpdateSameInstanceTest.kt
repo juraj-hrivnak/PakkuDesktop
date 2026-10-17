@@ -59,6 +59,34 @@ class ModpackUpdateSameInstanceTest {
         assertNoOp(ModpackModel(fetchProgressCompleted = 3, fetchProgressTotal = 10), ModpackMsg.FetchProgressUpdated(3, 10))
 
     @Test
+    fun gitAbsentRepositoryOffersInitBranch() {
+        val present = modpackUpdate(
+            ModpackMsg.GitStateUpdated(
+                GitState(isRepository = true, gitFiles = persistentListOf(file), defaultBranch = "main"),
+            ),
+            ModpackModel(),
+        )
+        val absent = modpackUpdate(
+            ModpackMsg.GitStateUpdated(GitState(isRepository = false, defaultBranch = "trunk")),
+            present,
+        )
+        assertEquals(false, absent.git.isRepository)
+        assertEquals(false, absent.gitDropdown.gitState.isRepository)
+        assertTrue(absent.git.gitFiles.isEmpty())
+        assertEquals("trunk", absent.git.defaultBranch)
+        assertEquals("trunk", absent.gitDropdown.gitState.defaultBranch)
+        assertNoOp(absent, ModpackMsg.GitStateUpdated(GitState(isRepository = false, defaultBranch = "trunk")))
+
+        val refreshed = modpackUpdate(
+            ModpackMsg.GitStateUpdated(GitState(isRepository = true, gitFiles = persistentListOf(file.copy()))),
+            absent,
+        )
+        assertEquals(true, refreshed.git.isRepository)
+        assertEquals("trunk", refreshed.git.defaultBranch)
+        assertEquals(listOf(file.path), refreshed.git.gitFiles.map { it.path })
+    }
+
+    @Test
     fun gitStateUpdatedWithEqualState() {
         val first = modpackUpdate(ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file))), ModpackModel())
         assertNoOp(first, ModpackMsg.GitStateUpdated(GitState(gitFiles = persistentListOf(file.copy()))))

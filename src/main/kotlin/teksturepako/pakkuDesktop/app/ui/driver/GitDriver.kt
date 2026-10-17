@@ -58,10 +58,18 @@ private class GitRepositoryWorker(
 
     val current: File? get() = root
 
-    /** Points the worker at [path]; null or a non-repository closes it. Touches the disk, call off Main. */
-    fun open(path: String?) {
-        root = path?.let(::File)?.takeIf { it.resolve(".git").exists() }
+    /**
+     * Points the worker at [path]. Returns whether [path] is a git repository.
+     * Null or a non-repository closes it. Touches the disk, call off Main.
+     */
+    fun open(path: String?): Boolean {
+        val dir = path?.let(::File)?.takeIf { it.resolve(".git").exists() }
+        root = dir
+        return dir != null
     }
+
+    private fun modpackDirectory(): File? =
+        latestModel().profile.data.currentProfile?.path?.let(::File)?.takeIf { it.isDirectory }
 
     fun requestRefresh() {
         refreshRequests.trySend(Unit)
@@ -71,12 +79,20 @@ private class GitRepositoryWorker(
         scope.launch(Dispatchers.IO) {
             var success = false
             try {
-                val dir = root
+                // Init is the one op that runs before a repository exists.
+                val dir = root ?: if (op is GitOp.Init) modpackDirectory() else null
                 if (dir == null) {
                     gitToast(publish, "Not a git repository")
                     return@launch
                 }
                 lock.withLock {
+                    // Already initialized (or initialized while this op was queued): attach and refresh.
+                    if (op is GitOp.Init && dir.resolve(".git").exists()) {
+                        root = dir
+                        success = true
+                        refreshAfterOp(dir)
+                        return@withLock
+                    }
                     val pakkuBefore = pakkuFilesStamp(dir)
                     val failure = try {
                         runGitOp(publish, dir, op, latestModel().modpack.git)
@@ -86,22 +102,29 @@ private class GitRepositoryWorker(
                         e.message ?: "${op.status.removeSuffix("…")} failed"
                     }
                     if (failure != null) gitToast(publish, failure) else success = true
-                    try {
-                        refreshLocked(dir)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        gitToast(publish, e.message ?: "Failed to refresh repository")
+                    if (op is GitOp.Init && dir.resolve(".git").exists()) root = dir
+                    if (root == dir) {
+                        refreshAfterOp(dir)
+                        // Checkout, pull, stash and rollback rewrite the working tree. Like an IDE
+                        // reloading open files, re-read the modpack when its files changed.
+                        if (pakkuFilesStamp(dir) != pakkuBefore) reloadModpack()
                     }
-                    // Checkout, pull, stash and rollback rewrite the working tree. Like an IDE
-                    // reloading open files, re-read the modpack when its files changed.
-                    if (pakkuFilesStamp(dir) != pakkuBefore) reloadModpack()
                 }
             } finally {
                 withContext(NonCancellable) {
                     publish(AppMsg.Modpack(ModpackMsg.GitOpFinished(op, success)))
                 }
             }
+        }
+    }
+
+    private suspend fun refreshAfterOp(dir: File) {
+        try {
+            refreshLocked(dir)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            gitToast(publish, e.message ?: "Failed to refresh repository")
         }
     }
 
@@ -246,6 +269,7 @@ private suspend fun runCheckout(workDir: File, branch: GitBranch): NativeGit.Out
 private suspend fun runGitOp(publish: (AppMsg) -> Unit, workDir: File, op: GitOp, state: GitState): String? {
     val result: NativeGit.Output = when (op) {
         GitOp.Refresh -> NativeGit.Output(0, "")
+        is GitOp.Init -> NativeGit.initRepository(workDir, op.branch)
         GitOp.Fetch -> runGitWithProgress(workDir, publish, "fetch", "--all", "--prune", "--progress")
         is GitOp.Pull -> runGitWithProgress(
             workDir, publish,
@@ -322,8 +346,17 @@ val gitDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
 
     LaunchedEffect(modpackOpen, modpackPath) {
         val path = modpackPath.takeIf { modpackOpen }
-        withContext(Dispatchers.IO) { worker.open(path) }
-        if (path != null) worker.requestRefresh()
+        val opened = withContext(Dispatchers.IO) { worker.open(path) }
+        if (path != null && opened) {
+            worker.requestRefresh()
+        } else if (path != null) {
+            val branch = withContext(Dispatchers.IO) { NativeGit.suggestedDefaultBranch(File(path)) }
+            publish(
+                AppMsg.Modpack(
+                    ModpackMsg.GitStateUpdated(GitState(isRepository = false, defaultBranch = branch)),
+                ),
+            )
+        }
     }
 
     // Keyed on the op alone: closing a dialog or reloading the modpack must not restart it.

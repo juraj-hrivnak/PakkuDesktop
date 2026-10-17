@@ -892,6 +892,9 @@ private fun GitState.withRepoFrom(incoming: GitState): GitState {
         refs = reuse(refs, incoming.refs),
         remoteTagNames = reuse(remoteTagNames, incoming.remoteTagNames),
         headHash = incoming.headHash,
+        // A refresh that omits presence (null) must not forget a check that already happened.
+        isRepository = incoming.isRepository ?: isRepository,
+        defaultBranch = if (incoming.isRepository == false) incoming.defaultBranch else defaultBranch,
     )
     return if (next == this) this else next
 }

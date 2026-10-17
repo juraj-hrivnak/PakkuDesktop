@@ -40,6 +40,20 @@ class NativeGitTest {
     }
 
     @Test
+    fun initRepositorySetsDefaultBranch() = runBlocking {
+        val dir = Files.createTempDirectory("pakku-git-init").toFile()
+        try {
+            val out = NativeGit.initRepository(dir, "trunk")
+            assertTrue(out.ok, out.text)
+            val state = NativeGit.readState(dir)
+            assertEquals(true, state.isRepository)
+            assertEquals("trunk", state.currentBranch?.name)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun commitPathsCommitsOnlyThoseAndKeepsOtherStaging() = runBlocking {
         write("a.txt", "a2\n")
         write("b.txt", "b2\n")

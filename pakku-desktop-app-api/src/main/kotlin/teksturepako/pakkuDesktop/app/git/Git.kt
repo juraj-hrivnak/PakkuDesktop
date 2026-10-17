@@ -10,6 +10,10 @@ import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.persistentSetOf
+
+/** Branch `git init` uses when `init.defaultBranch` is unset. */
+const val DEFAULT_BRANCH_NAME = "main"
+
 /**
  * Progress events surfaced from native git stderr into the ELM model.
  */
@@ -48,6 +52,13 @@ data class GitState(
     val remoteTagNames: Set<String> = emptySet(),
     /** Commit at HEAD; null before the first commit. */
     val headHash: String? = null,
+    /**
+     * null until the open folder has been checked.
+     * false → the Git menu offers [GitDialog.Init].
+     */
+    val isRepository: Boolean? = null,
+    /** Prefill for [GitDialog.Init]. Set when [isRepository] is false. */
+    val defaultBranch: String = DEFAULT_BRANCH_NAME,
 ) {
     val currentBranch: GitBranch? get() = branches.firstOrNull { it.isCurrent }
 
@@ -90,6 +101,8 @@ sealed interface GitDialog {
     data class Reset(val hash: String) : GitDialog
     data class NewTag(val hash: String) : GitDialog
     data class DeleteTag(val name: String) : GitDialog
+    /** Create a repository in the open modpack. */
+    data object Init : GitDialog
 }
 
 /** One native git operation; set as `pendingGitOp` and run by the git driver. */
@@ -99,6 +112,11 @@ sealed interface GitOp {
 
     data object Refresh : GitOp {
         override val status get() = "Refreshing…"
+    }
+
+    /** `git init -b [branch]` in the open modpack folder. */
+    data class Init(val branch: String) : GitOp {
+        override val status get() = "Initializing repository…"
     }
 
     data object Fetch : GitOp {
