@@ -9,54 +9,28 @@ import kotlin.test.assertEquals
 
 class UnifiedDiffParserTest {
     @Test
-    fun `hunk header names the enclosing declaration`() {
-        val lines = listOf(
-            "class Pack {",
-            "    fun name() {",
-            "        val a = 1",
-            "        val b = 2",
-            "    }",
-            "}",
-        )
-        val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -3,2 +3,2 @@"), lines)
-        assertEquals("@@ -3,2 +3,2 @@ " + "    fun name() {", enriched.hunks.single().header)
+    fun `hunk header drops the function context`() {
+        val diff = """
+            --- a/A.kt
+            +++ b/A.kt
+            @@ -3,2 +3,2 @@     fun name() {
+            -        val a = 1
+            +        val b = 2
+        """.trimIndent()
+        val parsed = UnifiedDiffParser.parse(diff, "A.kt")
+        assertEquals("@@ -3,2 +3,2 @@", parsed.hunks.single().header)
+        assertEquals("        val b = 2", parsed.hunks.single().lines.last().content)
     }
 
     @Test
-    fun `top level hunk uses the nearest line above it`() {
-        val lines = listOf(
-            "fun first() {}",
-            "fun second() {}",
-        )
-        val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -2,1 +2,1 @@"), lines)
-        assertEquals("@@ -2,1 +2,1 @@ fun first() {}", enriched.hunks.single().header)
+    fun `hunk header without context stays the range`() {
+        val diff = """
+            --- a/A.kt
+            +++ b/A.kt
+            @@ -2,1 +2,1 @@
+             fun second() {}
+        """.trimIndent()
+        val parsed = UnifiedDiffParser.parse(diff, "A.kt")
+        assertEquals("@@ -2,1 +2,1 @@", parsed.hunks.single().header)
     }
-
-    @Test
-    fun `replaces git context with the indented source line`() {
-        val lines = listOf(
-            "class Pack {",
-            "    fun name() {",
-            "        val a = 1",
-        )
-        val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -3,1 +3,1 @@ fun name() {"), lines)
-        assertEquals("@@ -3,1 +3,1 @@ " + "    fun name() {", enriched.hunks.single().header)
-    }
-
-    @Test
-    fun `deleted file uses the old line`() {
-        val lines = listOf(
-            "fun kept() {",
-            "    val gone = 1",
-            "}",
-        )
-        val enriched = UnifiedDiffParser.withEnclosingContext(diff("@@ -2,1 +0,0 @@"), lines)
-        assertEquals("@@ -2,1 +0,0 @@ fun kept() {", enriched.hunks.single().header)
-    }
-
-    private fun diff(header: String) = DiffContent(
-        oldPath = "A.kt",
-        newPath = "A.kt",
-        hunks = listOf(DiffHunk(header = header, lines = emptyList())),
-    )
 }

@@ -293,6 +293,12 @@ private data class RenderedDiff(
 )
 
 
+/** `@@ -1,2 +3,4 @@`, without the source line Git appends after the closing `@@`. */
+private fun hunkRangeLabel(header: String): String {
+    val close = header.indexOf("@@", startIndex = 2)
+    return if (header.startsWith("@@") && close > 0) header.substring(0, close + 2) else header
+}
+
 private const val MAX_RENDERED_LINES = 5_000
 private const val MAX_RENDERED_CHARS = 512_000
 
@@ -311,7 +317,7 @@ private fun buildRenderedDiff(diff: DiffContent): RenderedDiff
             kind = DiffRenderedLineKind.HUNK_HEADER,
             startOffset = hunkStart,
             endOffsetExclusive = sb.length,
-            hunkHeader = hunk.header,
+            hunkHeader = hunkRangeLabel(hunk.header),
         )
 
         for (line in hunk.lines)

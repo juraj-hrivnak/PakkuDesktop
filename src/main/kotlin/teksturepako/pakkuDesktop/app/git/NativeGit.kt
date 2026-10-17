@@ -625,10 +625,7 @@ object NativeGit
         return when
         {
             captured.truncated         -> tooLargeDiff(path, captured.text.length.toLong())
-            captured.text.isNotBlank() -> UnifiedDiffParser.withEnclosingContext(
-                UnifiedDiffParser.parse(captured.text, path),
-                contextLines(root, path),
-            )
+            captured.text.isNotBlank() -> UnifiedDiffParser.parse(captured.text, path)
             else                       -> untrackedAsNewFile(workDir, path)
         }
     }
@@ -671,10 +668,7 @@ object NativeGit
             val binary = "Binary files" in captured.text
             return placeholderDiffContent(path, if (binary) "Binary file not shown." else "No content changes.")
         }
-        val text = if (deleted) null else run(root, "show", "$hash:$path")
-        val context = if (text == null || text.length > MAX_FILE_BYTES || text.indexOf('\u0000') >= 0) emptyList()
-        else text.lines()
-        return UnifiedDiffParser.withEnclosingContext(parsed, context)
+        return parsed
     }
 
     private fun tooLargeDiff(path: String, bytes: Long) =
@@ -693,35 +687,22 @@ object NativeGit
             return placeholderDiffContent(path, "File too large to display (${file.length() / 1024} KB).")
         }
         val lines = file.readText().lines().take(MAX_RENDERED_LINES)
-        return UnifiedDiffParser.withEnclosingContext(
-            DiffContent(
-                oldPath = null,
-                newPath = path,
-                hunks = listOf(
-                    DiffHunk(
-                        header = "@@ -0,0 +1,${lines.size} @@",
-                        lines = lines.mapIndexed { i, line ->
-                            DiffLine(
-                                number = DiffLine.LineNumbers(old = null, new = i + 1),
-                                content = line,
-                                type = DiffType.ADDED,
-                            )
-                        },
-                    ),
+        return DiffContent(
+            oldPath = null,
+            newPath = path,
+            hunks = listOf(
+                DiffHunk(
+                    header = "@@ -0,0 +1,${lines.size} @@",
+                    lines = lines.mapIndexed { i, line ->
+                        DiffLine(
+                            number = DiffLine.LineNumbers(old = null, new = i + 1),
+                            content = line,
+                            type = DiffType.ADDED,
+                        )
+                    },
                 ),
             ),
-            lines,
         )
-    }
-
-    private suspend fun contextLines(root: File, path: String): List<String> {
-        val onDisk = root.childOrNull(path)
-        if (onDisk != null && onDisk.isFile && onDisk.length() <= MAX_FILE_BYTES && !isBinaryFile(onDisk)) {
-            return onDisk.readLines()
-        }
-        val text = run(root, "show", "HEAD:$path") ?: return emptyList()
-        if (text.length > MAX_FILE_BYTES || text.indexOf('\u0000') >= 0) return emptyList()
-        return text.lines()
     }
 
     private fun placeholderDiffContent(path: String, message: String) = DiffContent(
