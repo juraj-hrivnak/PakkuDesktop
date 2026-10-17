@@ -176,8 +176,6 @@ data class ModpackModel(
 
     val selectedProject: Project? = null,
     val editingProject: Boolean = false,
-    /** True while the Modpack tab is in edit mode (auto-saves like project props). */
-    val editingModpack: Boolean = false,
 
     /** [teksturepako.pakkuDesktop.app.actions.uiKey] for each selected project */
     val selectedProjectKeys: PersistentSet<String> = persistentSetOf(),
@@ -274,9 +272,21 @@ data class ModpackModel(
 
     /** cleared by projectEditDriver when done */
     val pendingPropertyWrite: PropertyWrite? = null,
-    val pendingMetaWrite: MetaWrite? = null,
-    /** Inline validation / write failures on the Modpack tab, keyed by [ModpackMetaField]. */
+    /** Validated metadata writes, oldest first; projectEditDriver writes the head, then drops it. */
+    val pendingMetaWrites: PersistentList<MetaWrite> = persistentListOf(),
+    /** Inline validation / write failures on the Modpack tab, keyed by field key. */
     val modpackMetaErrors: PersistentMap<String, PersistentList<ActionError>> = persistentMapOf(),
+
+    // -- Overview (Modpack) tab --
+    val overviewMode: OverviewMode = OverviewMode.Form,
+    /** JSON view shows the session diff instead of the file. */
+    val overviewShowDiff: Boolean = false,
+    /** Last read of `pakku.json` while the Overview tab was open. */
+    val configText: ConfigFileText? = null,
+    /** `pakku.json` text when the Overview tab was entered; the JSON diff compares against it. */
+    val configBaselineText: String? = null,
+    /** Set when the Overview leaves the JSON view; modpackDiskDriver re-reads both files. */
+    val wantsConfigReload: Boolean = false,
 
     // -- Git (Pro) --
     val git: GitState = GitState(),

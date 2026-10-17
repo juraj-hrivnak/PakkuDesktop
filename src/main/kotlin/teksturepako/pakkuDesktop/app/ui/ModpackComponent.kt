@@ -97,15 +97,18 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     ModpackMsg.Reset -> ModpackModel()
 
+    // Entering the Overview starts a new JSON diff session.
     is ModpackMsg.TabSelected        ->
-        if (model.selectedTab == msg.tab) model else model.copy(selectedTab = msg.tab)
+        if (model.selectedTab == msg.tab) model
+        else model.copy(
+            selectedTab = msg.tab,
+            configBaselineText = if (msg.tab == SelectedTab.MODPACK) null else model.configBaselineText,
+        )
     is ModpackMsg.ProjectSelected    ->
         if (model.selectedProject == msg.project && !model.editingProject) model
         else model.copy(selectedProject = msg.project, editingProject = false)
     is ModpackMsg.ProjectEditing     ->
         if (model.editingProject == msg.editing) model else model.copy(editingProject = msg.editing)
-    is ModpackMsg.ModpackEditing     ->
-        if (model.editingModpack == msg.editing) model else model.copy(editingModpack = msg.editing)
     is ModpackMsg.ProjectsSelected   ->
         if (model.selectedProjectKeys.containsAll(msg.keys)) model
         else model.copy(selectedProjectKeys = model.selectedProjectKeys.addAll(msg.keys))
@@ -632,27 +635,24 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             model.copy(modpackMetaErrors = model.modpackMetaErrors.put(fieldKey, errors.toPersistentList()))
         } else {
             model.copy(
-                pendingMetaWrite = msg.request,
+                pendingMetaWrites = model.pendingMetaWrites.add(msg.request),
                 modpackMetaErrors = model.modpackMetaErrors.remove(fieldKey),
             )
         }
     }
     ModpackMsg.MetaWriteCompleted -> {
-        val fieldKey = model.pendingMetaWrite?.fieldKey
-        if (model.pendingMetaWrite == null) {
-            model
-        } else {
-            model.copy(
-                pendingMetaWrite = null,
-                modpackMetaErrors = fieldKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
-            )
-        }
+        val head = model.pendingMetaWrites.firstOrNull() ?: return@modpackUpdate model
+        model.copy(
+            pendingMetaWrites = model.pendingMetaWrites.removeAt(0),
+            modpackMetaErrors = head.fieldKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
+        )
     }
     is ModpackMsg.MetaWriteFailed -> {
-        if (msg.errors.isEmpty() && model.pendingMetaWrite == null) return@modpackUpdate model
+        if (msg.errors.isEmpty() && model.pendingMetaWrites.isEmpty()) return@modpackUpdate model
         val fieldKey = msg.fieldKey ?: ModpackMetaField.GENERAL
         model.copy(
-            pendingMetaWrite = null,
+            pendingMetaWrites = if (model.pendingMetaWrites.isEmpty()) model.pendingMetaWrites
+                else model.pendingMetaWrites.removeAt(0),
             modpackMetaErrors = if (msg.errors.isEmpty()) {
                 model.modpackMetaErrors
             } else {
@@ -660,6 +660,22 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             },
         )
     }
+
+    is ModpackMsg.OverviewModeChanged ->
+        if (model.overviewMode == msg.mode) model
+        else model.copy(
+            overviewMode = msg.mode,
+            wantsConfigReload = model.wantsConfigReload || model.overviewMode == OverviewMode.Json,
+        )
+    is ModpackMsg.OverviewDiffToggled ->
+        if (model.overviewShowDiff == msg.showDiff) model else model.copy(overviewShowDiff = msg.showDiff)
+    is ModpackMsg.ConfigTextLoaded -> {
+        val baseline = model.configBaselineText ?: msg.text?.text
+        if (msg.text == model.configText && baseline == model.configBaselineText) model
+        else model.copy(configText = msg.text, configBaselineText = baseline)
+    }
+    ModpackMsg.ConfigReloadCompleted ->
+        if (!model.wantsConfigReload) model else model.copy(wantsConfigReload = false)
 
     is ModpackMsg.ToastAdded     -> model.copy(
         toasts = model.toasts.mutate { toasts ->

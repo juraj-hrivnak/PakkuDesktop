@@ -21,6 +21,7 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakkuDesktop.app.actions.buildDiskSnapshot
+import teksturepako.pakkuDesktop.app.actions.readConfigFileText
 import teksturepako.pakkuDesktop.app.actions.toPreview
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.actions.walkManagedFiles
@@ -101,6 +102,28 @@ val modpackDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (model.modpack.actionName != null) return@LaunchedEffect
         val lock = model.modpack.lockFile?.get() ?: return@LaunchedEffect
         publishDiskSnapshot(publish, diskSnapshotNow, lock, model.modpack.configFile?.get(), model.modpack.manualOverrides)
+    }
+
+    // Overview: pakku.json text after every load, and again on entering the JSON view.
+    LaunchedEffect(
+        model.screen,
+        model.modpack.selectedTab == SelectedTab.MODPACK,
+        model.modpack.configFile,
+        model.modpack.overviewMode,
+    ) {
+        if (model.screen != AppScreen.Modpack) return@LaunchedEffect
+        if (model.modpack.selectedTab != SelectedTab.MODPACK) return@LaunchedEffect
+        val text = withContext(Dispatchers.IO) { readConfigFileText() }
+        publish(AppMsg.Modpack(ModpackMsg.ConfigTextLoaded(text)))
+    }
+
+    LaunchedEffect(model.screen, model.modpack.wantsConfigReload) {
+        if (model.screen != AppScreen.Modpack) return@LaunchedEffect
+        if (!model.modpack.wantsConfigReload) return@LaunchedEffect
+        val lockFile = withContext(Dispatchers.IO) { LockFile.readToResult() }
+        val configFile = withContext(Dispatchers.IO) { ConfigFile.readToResult() }
+        publish(AppMsg.Modpack(ModpackMsg.Loaded(lockFile, configFile)))
+        publish(AppMsg.Modpack(ModpackMsg.ConfigReloadCompleted))
     }
 
     var projectsPrep by remember { mutableStateOf<ProjectsListPrep?>(null) }

@@ -4,12 +4,11 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.meta
 
-import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.NoFilesOn
 import teksturepako.pakku.api.actions.errors.NotFoundOn
@@ -22,34 +21,39 @@ import teksturepako.pakku.api.platforms.Modrinth
 import teksturepako.pakku.api.platforms.Multiplatform
 import teksturepako.pakku.api.platforms.Platform
 
-/** The three `pakku.json` override lists, by their serial names. */
-enum class OverrideList(val serialName: String, val title: String, val description: String)
-{
-    Common("overrides", "Overrides", "Copied into every export."),
-    Server("server_overrides", "Server overrides", "Copied into server exports only."),
-    Client("client_overrides", "Client overrides", "Copied into client exports only."),
-}
-
 /** Plain Pakku-style message when no dedicated [ActionError] exists (matches CLI `set` output). */
 data class PackMetaSettingError(override val rawMessage: String) : ActionError()
 
 /*
- * ConfigFile exposes override lists only glob-expanded, and has no setters for the server and
- * client lists, so these go through its serialized form.
+ * Most ConfigFile properties are private and have no setters, so generic field access goes
+ * through the serialized form. A null value removes the key, which decodes to the default.
  */
 
-fun ConfigFile.overrideEntries(list: OverrideList): List<String> =
-    json.encodeToJsonElement(ConfigFile.serializer(), this).jsonObject[list.serialName]
-        ?.jsonArray
-        ?.map { it.jsonPrimitive.content }
-        .orEmpty()
+fun ConfigFile.withJsonField(key: String, value: JsonElement?): ConfigFile =
+    withJsonField(ConfigFile.serializer(), this, key, value)
 
-fun ConfigFile.withOverrideEntries(list: OverrideList, entries: List<String>): ConfigFile
+fun LockFile.withJsonField(key: String, value: JsonElement?): LockFile =
+    withJsonField(LockFile.serializer(), this, key, value)
+
+private fun <T> withJsonField(serializer: KSerializer<T>, value: T, key: String, field: JsonElement?): T
 {
-    val current = json.encodeToJsonElement(ConfigFile.serializer(), this).jsonObject
-    val next = JsonObject(current + (list.serialName to JsonArray(entries.map(::JsonPrimitive))))
-    return json.decodeFromJsonElement(ConfigFile.serializer(), next)
+    val current = json.encodeToJsonElement(serializer, value).jsonObject
+    val next = if (field == null || field is JsonNull) current - key else current + (key to field)
+    return json.decodeFromJsonElement(serializer, JsonObject(next))
 }
+
+/** Why [ConfigFile.withJsonField] would reject [value], or empty when it decodes. */
+fun ConfigFile.jsonFieldErrors(key: String, value: JsonElement?): List<ActionError> =
+    decodeErrors(key) { withJsonField(key, value) }
+
+fun LockFile.jsonFieldErrors(key: String, value: JsonElement?): List<ActionError> =
+    decodeErrors(key) { withJsonField(key, value) }
+
+private fun decodeErrors(key: String, decode: () -> Unit): List<ActionError> =
+    runCatching(decode).exceptionOrNull()?.let { error ->
+        val reason = error.message?.lineSequence()?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "invalid value"
+        listOf(PackMetaSettingError("Cannot set '$key': $reason"))
+    }.orEmpty()
 
 /** Same rules as `pakku set --target` / [teksturepako.pakku.api.actions.createAdditionRequest]. */
 fun LockFile.targetChangeErrors(target: String): List<ActionError>

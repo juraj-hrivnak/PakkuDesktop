@@ -140,15 +140,21 @@ fun ModpackModel.filesTab() = FilesTabModel(
 data class ModpackTabModel(
     val lockFile: Result<LockFile, ActionError>?,
     val configFile: Result<ConfigFile, ActionError>?,
-    val editingModpack: Boolean,
     val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
+    val overviewMode: OverviewMode,
+    val overviewShowDiff: Boolean,
+    val configText: ConfigFileText?,
+    val configBaselineText: String?,
 )
 
 fun ModpackModel.modpackTab() = ModpackTabModel(
     lockFile = lockFile,
     configFile = configFile,
-    editingModpack = editingModpack,
     metaErrors = modpackMetaErrors,
+    overviewMode = overviewMode,
+    overviewShowDiff = overviewShowDiff,
+    configText = configText,
+    configBaselineText = configBaselineText,
 )
 
 fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =

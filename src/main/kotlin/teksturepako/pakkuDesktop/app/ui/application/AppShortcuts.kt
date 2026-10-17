@@ -271,7 +271,9 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         }
         true
     }
-    model.screen == AppScreen.Modpack && model.modpack.selectedProject != null ->
+    // The Overview has no inspector; its inline editors cancel on Esc.
+    model.screen == AppScreen.Modpack && model.modpack.selectedTab != SelectedTab.MODPACK &&
+        model.modpack.selectedProject != null ->
     {
         publish(AppMsg.Modpack(ModpackMsg.ProjectSelected(null)))
         true
