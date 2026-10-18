@@ -57,6 +57,7 @@ data class ProjectsTabModel(
     val syncAdded: PersistentList<Project>,
     val syncRemoved: PersistentList<Project>,
     val syncUpdated: PersistentList<Project>,
+    val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
 )
 
 fun ModpackModel.projectsTab() = ProjectsTabModel(
@@ -83,6 +84,7 @@ fun ModpackModel.projectsTab() = ProjectsTabModel(
     syncAdded = syncAdded,
     syncRemoved = syncRemoved,
     syncUpdated = syncUpdated,
+    metaErrors = modpackMetaErrors,
 )
 
 @Immutable

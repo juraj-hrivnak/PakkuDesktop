@@ -78,6 +78,8 @@ import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectPropert
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectPropertyReadOnly
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProviderIcon
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyDisplay
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyUiValue
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.showProjectPropertyReadOnly
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
@@ -106,6 +108,7 @@ fun ModpackFieldSelection(
     onEdit: (JsonElement?) -> MetaWrite?,
     publish: (ModpackMsg) -> Unit,
     projectOf: (String) -> Project? = { null },
+    metaErrors: Map<String, List<ActionError>> = emptyMap(),
 ) {
     RecomposeProbe("ModpackFieldSelection")
     val write: (JsonElement?) -> Unit = { next ->
@@ -120,7 +123,7 @@ fun ModpackFieldSelection(
         FieldWidget.StringList -> StringListSelection(field, value, errors, write)
         FieldWidget.StringMap -> StringMapSelection(field, value, errors, write)
         FieldWidget.Object -> ObjectSelection(field, value, errors, onEdit, publish)
-        FieldWidget.ObjectMap -> ObjectMapSelection(field, value, errors, onEdit, publish, projectOf)
+        FieldWidget.ObjectMap -> ObjectMapSelection(field, value, errors, onEdit, publish, projectOf, metaErrors)
         FieldWidget.RawJson -> RawJsonSelection(field, value, errors, write)
     }
 }
@@ -712,6 +715,7 @@ private fun ObjectMapSelection(
     onEdit: (JsonElement?) -> MetaWrite?,
     publish: (ModpackMsg) -> Unit,
     projectOf: (String) -> Project?,
+    metaErrors: Map<String, List<ActionError>>,
 ) {
     RecomposeProbe("ModpackObjectMapSelection")
     val entries = (value as? JsonObject)?.toList().orEmpty()
@@ -783,7 +787,19 @@ private fun ObjectMapSelection(
                         showBody = children.isNotEmpty(),
                     ) {
                         children.forEach { child ->
-                            OverrideChild(child, entry, name, value, editingEntry, projectStyle = true, onEdit, publish)
+                            OverrideChild(
+                                projectsField = field,
+                                child = child,
+                                entry = entry,
+                                name = name,
+                                map = value,
+                                editing = editingEntry,
+                                projectStyle = true,
+                                project = project,
+                                metaErrors = metaErrors,
+                                onEdit = onEdit,
+                                publish = publish,
+                            )
                         }
                     }
                 } else {
@@ -816,7 +832,19 @@ private fun ObjectMapSelection(
                             )
                         }
                         children.forEach { child ->
-                            OverrideChild(child, entry, name, value, editingEntry, projectStyle = false, onEdit, publish)
+                            OverrideChild(
+                                projectsField = field,
+                                child = child,
+                                entry = entry,
+                                name = name,
+                                map = value,
+                                editing = editingEntry,
+                                projectStyle = false,
+                                project = null,
+                                metaErrors = metaErrors,
+                                onEdit = onEdit,
+                                publish = publish,
+                            )
                         }
                     }
                 }
@@ -969,19 +997,62 @@ private fun OverrideActions(
 
 @Composable
 private fun OverrideChild(
+    projectsField: ModpackField,
     child: ModpackField,
     entry: JsonElement,
     name: String,
     map: JsonElement,
     editing: Boolean,
     projectStyle: Boolean,
+    project: Project?,
+    metaErrors: Map<String, List<ActionError>>,
     onEdit: (JsonElement?) -> MetaWrite?,
     publish: (ModpackMsg) -> Unit,
 ) {
-    val childValue = entry.child(child.serialName)
+    val override = entry.child(child.serialName)
+    val display = if (projectStyle && project != null) {
+        projectPropertyUiValue(project, child, override)
+    } else if (child.serialName == "subpath" && override.text.trim() == ".") {
+        JsonNull
+    } else {
+        override
+    }
+    if (projectStyle && child.serialName == "subpath" && override.text.trim() == ".") {
+        LaunchedEffect(name) {
+            publish(
+                ModpackMsg.MetaWriteRequested(
+                    writeProjectOverride(
+                        projectsField,
+                        map,
+                        name,
+                        creating = false,
+                        childName = child.serialName,
+                        next = null,
+                    ),
+                ),
+            )
+        }
+    }
+    val fieldErrors = metaErrors[projectOverrideErrorKey(projectsField, name, child.serialName)].orEmpty()
+    val mapObject = map as? JsonObject ?: JsonObject(emptyMap())
     val write: (JsonElement?) -> Unit = { next ->
-        onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
-            ?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
+        if (projectStyle) {
+            publish(
+                ModpackMsg.MetaWriteRequested(
+                    writeProjectOverride(
+                        projectsField,
+                        map,
+                        name,
+                        creating = name !in mapObject,
+                        childName = child.serialName,
+                        next = next,
+                    ),
+                ),
+            )
+        } else {
+            onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
+                ?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
+        }
     }
     val listed = projectStyle && child.widget in setOf(
         FieldWidget.Choice,
@@ -990,19 +1061,33 @@ private fun OverrideChild(
         FieldWidget.StringList,
     )
     if (editing && listed) {
-        ProjectPropertyEditor(child, childValue, write)
+        ProjectPropertyEditor(child, display, fieldErrors, write)
     } else if (editing) {
         ModpackFieldSelection(
             field = child,
-            value = childValue,
-            errors = emptyList(),
-            onEdit = { next -> onEdit(map.withChild(name, entry.withChild(child.serialName, next))) },
+            value = display,
+            errors = fieldErrors,
+            onEdit = { next ->
+                if (projectStyle) {
+                    writeProjectOverride(
+                        projectsField,
+                        map,
+                        name,
+                        creating = name !in mapObject,
+                        childName = child.serialName,
+                        next = next,
+                    )
+                } else {
+                    onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
+                }
+            },
             publish = publish,
+            metaErrors = metaErrors,
         )
-    } else if (projectStyle) {
-        ProjectPropertyReadOnly(child, childValue)
-    } else {
-        OverrideValue(child, childValue)
+    } else if (projectStyle && project != null && showProjectPropertyReadOnly(project, child, override)) {
+        ProjectPropertyReadOnly(child, display)
+    } else if (!projectStyle) {
+        OverrideValue(child, override)
     }
 }
 

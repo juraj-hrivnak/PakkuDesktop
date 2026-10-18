@@ -7,9 +7,11 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.meta
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import com.github.michaelbull.result.getError
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import teksturepako.pakku.api.actions.errors.ActionError
+import teksturepako.pakku.io.filterPath
 import teksturepako.pakku.api.actions.errors.NoFilesOn
 import teksturepako.pakku.api.actions.errors.NotFoundOn
 import teksturepako.pakku.api.data.ConfigFile
@@ -48,6 +50,12 @@ fun ConfigFile.jsonFieldErrors(key: String, value: JsonElement?): List<ActionErr
 
 fun LockFile.jsonFieldErrors(key: String, value: JsonElement?): List<ActionError> =
     decodeErrors(key) { withJsonField(key, value) }
+
+/** Same check as [teksturepako.pakku.api.projects.Project.setSubpath] / [filterPath]. */
+fun projectSubpathOverrideErrors(subpath: String?): List<ActionError> {
+    val text = subpath?.trim()?.takeIf { it.isNotEmpty() } ?: return emptyList()
+    return filterPath(text).getError()?.let(::listOf).orEmpty()
+}
 
 private fun decodeErrors(key: String, decode: () -> Unit): List<ActionError> =
     runCatching(decode).exceptionOrNull()?.let { error ->

@@ -7,9 +7,13 @@ package teksturepako.pakkuDesktop.app.ui.component.modpack.meta
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -140,6 +144,45 @@ class ModpackConfigFieldsTest {
 
         assertEquals("lib", next.projects["jei"]?.subpath)
         assertEquals(false, next.projects["jei"]?.export)
+    }
+
+    @Test
+    fun `removing aliases keeps an explicit list on the config`() {
+        val config = config().withJsonField(
+            "projects",
+            buildJsonObject {
+                put("jei", buildJsonObject { put("aliases", buildJsonArray { add("foo"); add("bar") }) })
+            },
+        )
+        val removed = config.withJsonField(
+            "projects",
+            buildJsonObject {
+                put("jei", buildJsonObject { put("aliases", buildJsonArray { add("foo") }) })
+            },
+        )
+        val cleared = removed.withJsonField(
+            "projects",
+            buildJsonObject {
+                put("jei", buildJsonObject { put("aliases", JsonArray(emptyList<JsonElement>())) })
+            },
+        )
+
+        val removedJson = json.encodeToJsonElement(ConfigFile.serializer(), removed).jsonObject
+        val clearedJson = json.encodeToJsonElement(ConfigFile.serializer(), cleared).jsonObject
+        assertEquals(
+            listOf("foo"),
+            removedJson["projects"]!!.jsonObject["jei"]!!.jsonObject["aliases"]!!.jsonArray.map { it.jsonPrimitive.content },
+        )
+        assertEquals(JsonArray(emptyList<JsonElement>()), clearedJson["projects"]!!.jsonObject["jei"]!!.jsonObject["aliases"])
+        assertTrue(cleared.projects["jei"]?.aliases?.isEmpty() == true)
+    }
+
+    @Test
+    fun `project subpath overrides use filterPath`() {
+        assertTrue(projectSubpathOverrideErrors("libs/mods").isEmpty())
+        assertTrue(projectSubpathOverrideErrors(null).isEmpty())
+        assertTrue(projectSubpathOverrideErrors("").isEmpty())
+        assertEquals(1, projectSubpathOverrideErrors("../escape").size)
     }
 
     @Test

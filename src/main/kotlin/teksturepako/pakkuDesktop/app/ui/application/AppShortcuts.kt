@@ -73,7 +73,10 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             }
             Key.Enter, Key.NumPadEnter ->
             {
-                if (!filterFocused && !model.hasModalOverlay()) {
+                if (!filterFocused &&
+                    !model.hasModalOverlay() &&
+                    !model.modpack.editingProject
+                ) {
                     publish(AppMsg.Modpack(ModpackMsg.ActivateLastProjectsFab))
                     return true
                 }

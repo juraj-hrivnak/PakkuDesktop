@@ -420,6 +420,7 @@ private fun IslandColumn(
                             onEdit = { next -> field.write(next) },
                             publish = publish,
                             projectOf = projectOf,
+                            metaErrors = model.metaErrors,
                         )
                     }
                 }
