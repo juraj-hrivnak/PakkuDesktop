@@ -8,6 +8,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import com.github.michaelbull.result.get
+import com.github.michaelbull.result.onErr
+import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import teksturepako.pakku.api.data.ConfigFile
@@ -27,6 +29,9 @@ import teksturepako.pakkuDesktop.elm.Driver
  * Disk mutations for remove / init — write then reload lock+config.
  * Network add runs in [actionDriver].
  */
+
+private val mutationLogger = logger("ProjectMutationDriver")
+
 val projectMutationDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val latestPublish by rememberUpdatedState(publish)
     val latestModel by rememberUpdatedState(model)
@@ -65,7 +70,14 @@ val projectMutationDriver: Driver<AppModel, AppMsg> = { publish, model, content 
     // Remove by keys (auto recommended deps) — e.g. fallback paths
     LaunchedEffect(model.modpack.pendingRemovalKeys) {
         val keys = model.modpack.pendingRemovalKeys ?: return@LaunchedEffect
-        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+
+        val lockFile = LockFile.readToResult()
+            .onErr {
+                mutationLogger.error(it.rawMessage)
+            }
+            .get()
+            ?: return@LaunchedEffect
+
         val projects = lockFile.getAllProjects().filter { it.uiKey() in keys }
 
         withContext(Dispatchers.IO) {
@@ -78,7 +90,13 @@ val projectMutationDriver: Driver<AppModel, AppMsg> = { publish, model, content 
     // Remove confirmed plan
     LaunchedEffect(model.modpack.pendingRemovalPlan) {
         val plan = model.modpack.pendingRemovalPlan ?: return@LaunchedEffect
-        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
+
+        val lockFile = LockFile.readToResult()
+            .onErr {
+                mutationLogger.error(it.rawMessage)
+            }
+            .get()
+            ?: return@LaunchedEffect
 
         withContext(Dispatchers.IO) {
             applyRemovalPlan(lockFile, plan, ::toast)

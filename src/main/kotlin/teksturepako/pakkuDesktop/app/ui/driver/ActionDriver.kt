@@ -13,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import com.github.michaelbull.result.get
+import com.github.michaelbull.result.onErr
+import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -49,6 +51,8 @@ import teksturepako.pakkuDesktop.elm.conflatedPublisher
 
 /** Provides a function to launch a named action (suspend block). */
 val LocalLaunchAction = compositionLocalOf<(name: String, block: suspend () -> Unit) -> Unit> { { _, _ -> } }
+
+private val actionLogger = logger("ActionDriver")
 
 // -- actionDriver --
 
@@ -164,8 +168,12 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // React to update intent
     LaunchedEffect(model.modpack.wantsUpdate) {
         if (!model.modpack.wantsUpdate) return@LaunchedEffect
-        val lockFile   = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val lockFile = LockFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
+        val configFile = ConfigFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
         val keys = latestModel.modpack.selectedProjectKeys
         val projects = lockFile.getAllProjects().filter { it.uiKey() in keys }
         launchAction("Updating") {
@@ -233,8 +241,12 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // Sync apply: add / remove / update lock from the last detect result
     LaunchedEffect(model.modpack.pendingSyncApply) {
         if (!model.modpack.pendingSyncApply) return@LaunchedEffect
-        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val lockFile = LockFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
+        val configFile = ConfigFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
         val added = latestModel.modpack.syncAdded
         val removed = latestModel.modpack.syncRemoved
         val updated = latestModel.modpack.syncUpdated
@@ -325,8 +337,12 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // DnD / auto add from query
     LaunchedEffect(model.modpack.pendingAddQuery) {
         val query = model.modpack.pendingAddQuery ?: return@LaunchedEffect
-        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val lockFile = LockFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
+        val configFile = ConfigFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
         launchAction("Adding") {
             addSuspend(lockFile, configFile, query) { toast ->
                 withContext(Dispatchers.Main) {
@@ -343,8 +359,12 @@ val actionDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     // Confirmed addition plan from Add popup
     LaunchedEffect(model.modpack.pendingAdditionPlan) {
         val plan = model.modpack.pendingAdditionPlan ?: return@LaunchedEffect
-        val lockFile = latestModel.modpack.lockFile?.get() ?: return@LaunchedEffect
-        val configFile = latestModel.modpack.configFile?.get() ?: return@LaunchedEffect
+        val lockFile = LockFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
+        val configFile = ConfigFile.readToResult()
+            .onErr { actionLogger.error(it.rawMessage) }
+            .get() ?: return@LaunchedEffect
         launchAction("Adding") {
             applyAdditionPlan(lockFile, configFile, plan) { toast ->
                 withContext(Dispatchers.Main) {
