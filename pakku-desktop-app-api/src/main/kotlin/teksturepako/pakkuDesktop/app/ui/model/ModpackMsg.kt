@@ -33,11 +33,6 @@ import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitOp
 
-/** pending project property write for projectEditDriver */
-data class PropertyWrite(
-    val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
-)
-
 /**
  * pack metadata mutation; projectEditDriver applies + writes.
  * [replaceConfig] runs before [mutate], for `pakku.json` fields [ConfigFile] has no setter for.
@@ -446,11 +441,7 @@ sealed interface ModpackMsg {
     /** dismiss config error (not FileNotFound) */
     data object DismissConfigError : ModpackMsg
 
-    // -- Project property editing --
-
-    /** projectEditDriver writes, then Loaded */
-    data class PropertyWriteRequested(val request: PropertyWrite) : ModpackMsg
-    data object PropertyWriteCompleted : ModpackMsg
+    // -- pakku.json writes (Overview overrides and Projects properties) --
 
     /** Modpack tab metadata write; queued behind writes still in flight */
     data class MetaWriteRequested(val request: MetaWrite) : ModpackMsg
@@ -464,6 +455,8 @@ sealed interface ModpackMsg {
     data class OverviewDiffToggled(val showDiff: Boolean) : ModpackMsg
     /** modpackDiskDriver: `pakku.json` as on disk; null when it cannot be read. */
     data class ConfigTextLoaded(val text: ConfigFileText?) : ModpackMsg
+    /** modpackDiskDriver: `git diff HEAD -- pakku.json`. */
+    data class ConfigDiffLoaded(val diff: DiffContent?) : ModpackMsg
     /** modpackDiskDriver after the [ModpackModel.wantsConfigReload] re-read. */
     data object ConfigReloadCompleted : ModpackMsg
 

@@ -23,6 +23,7 @@ import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.ErrorDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.NewModpackDialog
 import teksturepako.pakkuDesktop.app.ui.view.routes.dialogs.SettingsDialog
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import teksturepako.pakkuDesktop.elm.component
 import teksturepako.pakkuDesktop.elm.withChild
@@ -217,7 +218,7 @@ private fun handleWelcomeMsg(msg: AppMsg.Welcome, model: AppModel): AppModel {
 private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
     val newModpack = modpackComponent.update(msg.msg, model.modpack)
     val persistListPrefs = msg.msg.persistsProjectsListPrefs()
-    return when (val child = msg.msg) {
+    val updated = when (val child = msg.msg) {
         ModpackMsg.ShowSettings   -> model.commitModpack(newModpack, persistListPrefs).openSettings()
         ModpackMsg.ShowNewModpack -> model.commitModpack(newModpack, persistListPrefs).copy(showNewModpack = true)
 
@@ -301,6 +302,31 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
 
         else -> model.commitModpack(newModpack, persistListPrefs)
     }
+    return when (msg.msg) {
+        is ModpackMsg.MetaWriteRequested,
+        is ModpackMsg.Loaded,
+        is ModpackMsg.MetaWriteFailed -> updated.reflectModpackName()
+        else -> updated
+    }
+}
+
+/** Keeps the dropdown, window title, and recent entry on the name stored in `pakku.json`. */
+private fun AppModel.reflectModpackName(): AppModel {
+    val name = modpack.configFile?.get()?.getName()?.trim()?.takeIf { it.isNotEmpty() } ?: return this
+    val current = profile.data.currentProfile ?: return this
+    val named = if (current.name == name) {
+        this
+    } else {
+        val data = profile.data.withCurrentProfile(current.copy(name = name))
+        copy(profile = profile.copy(data = data)).syncDropdownProfileData(data)
+    }
+    val summary = named.welcome.summaries[current.path] ?: return named
+    if (summary.name == name) return named
+    return named.copy(
+        welcome = named.welcome.copy(
+            summaries = named.welcome.summaries.put(current.path, summary.copy(name = name)),
+        ),
+    )
 }
 
 // -- appUpdate --

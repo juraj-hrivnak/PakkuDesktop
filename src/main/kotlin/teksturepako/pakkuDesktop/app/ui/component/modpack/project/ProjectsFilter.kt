@@ -45,6 +45,8 @@ import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.ProjectSide
 import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectListQuery
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.projectListQuery
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 
@@ -53,25 +55,71 @@ private val FilterProviderSerialNames = setOf("curseforge", "modrinth", "github"
 /**
  * Search + collapsible filter toggles (type, side, provider, redistributable, updates).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProjectFilter(
     publish: (ModpackMsg) -> Unit,
     model: ProjectsTabModel,
     focusRequester: FocusRequester,
 ) {
-    val textFieldState = rememberTextFieldState(model.projectsFilterText)
+    val query = model.projectListQuery()
+    ProjectFilterBar(
+        query = query,
+        onQuery = { next -> publishProjectListQuery(publish, query, next) },
+        focusRequester = focusRequester,
+        onFocusChanged = { publish(ModpackMsg.ProjectsFilterFocusChanged(it)) },
+        showUpdates = model.updatePreviews != null,
+        updatesEnabled = model.actionName == null,
+    )
+    LaunchedEffect(model.wantsFocusProjectsFilter) {
+        if (!model.wantsFocusProjectsFilter) return@LaunchedEffect
+        focusRequester.requestFocus()
+        publish(ModpackMsg.FocusProjectsFilterConsumed)
+    }
+}
+
+private fun publishProjectListQuery(
+    publish: (ModpackMsg) -> Unit,
+    current: ProjectListQuery,
+    next: ProjectListQuery,
+) {
+    if (next.text != current.text) publish(ModpackMsg.FilterTextChanged(next.text))
+    if (next.sides != current.sides) publish(ModpackMsg.FilterSidesChanged(next.sides))
+    if (next.missingSide != current.missingSide) publish(ModpackMsg.FilterMissingSideChanged(next.missingSide))
+    if (next.types != current.types) publish(ModpackMsg.FilterTypesChanged(next.types))
+    if (next.providers != current.providers) publish(ModpackMsg.FilterProvidersChanged(next.providers))
+    if (next.redistributable != current.redistributable) {
+        publish(ModpackMsg.FilterRedistributableChanged(next.redistributable))
+    }
+    if (next.updatesOnly != current.updatesOnly) publish(ModpackMsg.FilterUpdatesOnlyChanged(next.updatesOnly))
+}
+
+/**
+ * Search field and the same filter toggles as the Projects tab.
+ * [showUpdates] reveals "Has update" when an update check has results to filter on.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProjectFilterBar(
+    query: ProjectListQuery,
+    onQuery: (ProjectListQuery) -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+    onFocusChanged: (Boolean) -> Unit = {},
+    showUpdates: Boolean = false,
+    updatesEnabled: Boolean = true,
+) {
+    val textFieldState = rememberTextFieldState(query.text)
 
     val filterProviders = remember {
         Provider.providers.filter { it.serialName in FilterProviderSerialNames }
     }
 
-    val activeCount = model.filterTypes.size +
-        model.filterSides.size +
-        (if (model.filterMissingSide) 1 else 0) +
-        model.filterProviders.size +
-        (if (model.filterRedistributable != null) 1 else 0) +
-        (if (model.filterUpdatesOnly) 1 else 0)
+    val activeCount = query.types.size +
+        query.sides.size +
+        (if (query.missingSide) 1 else 0) +
+        query.providers.size +
+        (if (query.redistributable != null) 1 else 0) +
+        (if (query.updatesOnly) 1 else 0)
     val anyFilterActive = activeCount > 0
     var filtersExpanded by remember { mutableStateOf(anyFilterActive) }
     LaunchedEffect(anyFilterActive) {
@@ -80,19 +128,11 @@ fun ProjectFilter(
 
     LaunchedEffect(textFieldState.text) {
         val text = textFieldState.text.toString()
-        if (text != model.projectsFilterText) {
-            publish(ModpackMsg.FilterTextChanged(text))
-        }
-    }
-
-    LaunchedEffect(model.wantsFocusProjectsFilter) {
-        if (!model.wantsFocusProjectsFilter) return@LaunchedEffect
-        focusRequester.requestFocus()
-        publish(ModpackMsg.FocusProjectsFilterConsumed)
+        if (text != query.text) onQuery(query.copy(text = text))
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
@@ -105,8 +145,8 @@ fun ProjectFilter(
                 Modifier
                     .weight(1f)
                     .height(32.dp)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { publish(ModpackMsg.ProjectsFilterFocusChanged(it.isFocused)) },
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                    .onFocusChanged { onFocusChanged(it.isFocused) },
                 placeholder = { Text("Search projects...") },
             )
 
@@ -146,12 +186,16 @@ fun ProjectFilter(
                     Link(
                         text = "Clear",
                         onClick = {
-                            publish(ModpackMsg.FilterSidesChanged(emptySet()))
-                            publish(ModpackMsg.FilterMissingSideChanged(false))
-                            publish(ModpackMsg.FilterTypesChanged(emptySet()))
-                            publish(ModpackMsg.FilterProvidersChanged(emptySet()))
-                            publish(ModpackMsg.FilterRedistributableChanged(null))
-                            publish(ModpackMsg.FilterUpdatesOnlyChanged(false))
+                            onQuery(
+                                query.copy(
+                                    types = emptySet(),
+                                    sides = emptySet(),
+                                    missingSide = false,
+                                    providers = emptySet(),
+                                    redistributable = null,
+                                    updatesOnly = false,
+                                ),
+                            )
                         },
                     )
                 }
@@ -165,86 +209,69 @@ fun ProjectFilter(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
             ProjectType.entries.forEach { type ->
-                val active = type in model.filterTypes
+                val active = type in query.types
                 FilterToggle(
                     label = type.prettyName,
                     active = active,
                     onClick = {
-                        val next = if (active) model.filterTypes - type else model.filterTypes + type
-                        publish(ModpackMsg.FilterTypesChanged(next))
+                        val next = if (active) query.types - type else query.types + type
+                        onQuery(query.copy(types = next))
                     },
                 )
             }
 
             ProjectSide.entries.forEach { side ->
-                val active = side in model.filterSides
+                val active = side in query.sides
                 FilterToggle(
                     label = side.prettyName.replaceFirstChar { it.titlecase() },
                     active = active,
                     onClick = {
-                        val next = if (active) model.filterSides - side else model.filterSides + side
-                        publish(ModpackMsg.FilterSidesChanged(next))
+                        val next = if (active) query.sides - side else query.sides + side
+                        onQuery(query.copy(sides = next))
                     },
                 )
             }
             FilterToggle(
                 label = "No side",
-                active = model.filterMissingSide,
-                onClick = {
-                    publish(ModpackMsg.FilterMissingSideChanged(!model.filterMissingSide))
-                },
+                active = query.missingSide,
+                onClick = { onQuery(query.copy(missingSide = !query.missingSide)) },
             )
 
             filterProviders.forEach { provider ->
                 val serial = provider.serialName
-                val active = serial in model.filterProviders
+                val active = serial in query.providers
                 FilterToggle(
                     label = provider.name,
                     active = active,
                     icon = { ProviderIcon(provider, Modifier.size(14.dp)) },
                     onClick = {
-                        val next = if (active) {
-                            model.filterProviders - serial
-                        } else {
-                            model.filterProviders + serial
-                        }
-                        publish(ModpackMsg.FilterProvidersChanged(next))
+                        val next = if (active) query.providers - serial else query.providers + serial
+                        onQuery(query.copy(providers = next))
                     },
                 )
             }
 
             FilterToggle(
                 label = "Redistributable",
-                active = model.filterRedistributable == true,
+                active = query.redistributable == true,
                 onClick = {
-                    publish(
-                        ModpackMsg.FilterRedistributableChanged(
-                            if (model.filterRedistributable == true) null else true,
-                        ),
-                    )
+                    onQuery(query.copy(redistributable = if (query.redistributable == true) null else true))
                 },
             )
             FilterToggle(
                 label = "Not redistributable",
-                active = model.filterRedistributable == false,
+                active = query.redistributable == false,
                 onClick = {
-                    publish(
-                        ModpackMsg.FilterRedistributableChanged(
-                            if (model.filterRedistributable == false) null else false,
-                        ),
-                    )
+                    onQuery(query.copy(redistributable = if (query.redistributable == false) null else false))
                 },
             )
 
-            if (model.updatePreviews != null) {
-                val busy = model.actionName != null
+            if (showUpdates) {
                 FilterToggle(
                     label = "Has update",
-                    active = model.filterUpdatesOnly,
-                    enabled = !busy,
-                    onClick = {
-                        publish(ModpackMsg.FilterUpdatesOnlyChanged(!model.filterUpdatesOnly))
-                    },
+                    active = query.updatesOnly,
+                    enabled = updatesEnabled,
+                    onClick = { onQuery(query.copy(updatesOnly = !query.updatesOnly)) },
                 )
             }
             }

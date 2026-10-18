@@ -118,6 +118,7 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
+    implementation(libs.reorderable)
 
     // File Kit (native dialogs — required on Tao; no AWT JFileChooser)
     implementation(libs.filekit.core)

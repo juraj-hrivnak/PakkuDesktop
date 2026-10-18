@@ -12,6 +12,7 @@ filekit = "0.15.0"
 klogging = "0.11.8"
 coroutines = "1.11.0"
 collections-immutable = "0.4.0"
+reorderable = "3.1.0"
 
 [libraries]
 jewel-foundation = { module = "org.jetbrains.jewel:jewel-foundation", version.ref = "jewel" }
@@ -46,6 +47,7 @@ klogging = { module = "io.klogging:klogging-jvm", version.ref = "klogging" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "collections-immutable" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

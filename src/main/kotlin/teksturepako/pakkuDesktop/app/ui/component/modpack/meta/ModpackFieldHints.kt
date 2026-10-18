@@ -9,12 +9,12 @@ import teksturepako.pakku.api.projects.ProjectType
 /** Cards of the Overview form, in display order. */
 enum class ModpackIsland(val title: String, val description: String, val wide: Boolean = false)
 {
-    Identity("Identity", "How the modpack presents itself in exports."),
+    General("General", "Name, version, author, and description."),
     Minecraft("Minecraft", "Target platform, game versions, and loaders, stored in pakku-lock.json."),
     Export("Export", "What goes into exported modpacks."),
     Paths("Paths", "Where each project type is installed, relative to the modpack folder."),
-    Parent("Parent modpack", "The modpack this one is forked from."),
-    Projects("Projects", "Per-project overrides. Add one from a project's properties.", wide = true),
+    Projects("Project Overrides", "Properties overridden for individual projects.", wide = true),
+    Parent("Parent modpack", "The modpack this one is forked from.", wide = true),
     Other("Other", "Settings without a dedicated layout yet."),
     RawJson("Raw JSON", "Keys Pakku Desktop doesn't recognize, edited as JSON.", wide = true),
 }
@@ -64,6 +64,10 @@ data class FieldHint(
     val excluded: Boolean = false,
     /** Object-map entries are projects and use the Projects-tab card. */
     val projectCard: Boolean = false,
+    /** A value can be cleared back to the default. */
+    val resettable: Boolean = true,
+    /** [FieldWidget.StringMap] entries are pills with an add chip, rather than labelled rows. */
+    val chips: Boolean = false,
 )
 
 /**
@@ -73,20 +77,34 @@ data class FieldHint(
 object ModpackFieldHints
 {
     private val config: Map<String, FieldHint> = mapOf(
-        "name" to FieldHint(label = "Name", title = true, required = true, emptyText = "Untitled modpack"),
+        "name" to FieldHint(
+            label = "Name",
+            title = true,
+            required = true,
+            emptyText = "Untitled modpack",
+            resettable = false,
+        ),
         "version" to FieldHint(
             label = "Version",
-            island = ModpackIsland.Identity,
+            island = ModpackIsland.General,
             order = 0,
             summary = true,
             placeholder = "e.g. 1.0.0",
+            resettable = false,
         ),
-        "author" to FieldHint(label = "Author", island = ModpackIsland.Identity, order = 1, summary = true),
+        "author" to FieldHint(
+            label = "Author",
+            island = ModpackIsland.General,
+            order = 1,
+            summary = true,
+            resettable = false,
+        ),
         "description" to FieldHint(
             label = "Description",
-            island = ModpackIsland.Identity,
+            island = ModpackIsland.General,
             order = 2,
             widget = FieldWidget.Multiline,
+            resettable = false,
         ),
 
         "export_server_side_projects_to_client" to FieldHint(
@@ -130,17 +148,20 @@ object ModpackFieldHints
         ),
 
         "parent" to FieldHint(
-            label = "Source",
-            description = "Needs a repository id.",
+            label = "",
+            description = "Set a repository to link it.",
             island = ModpackIsland.Parent,
             order = 0,
-            widget = FieldWidget.RawJson,
-            emptyText = "Not forked",
         ),
-        "parent.type" to FieldHint(label = "Type"),
-        "parent.id" to FieldHint(label = "Repository"),
-        "parent.ref_type" to FieldHint(label = "Ref type"),
-        "parent.remote_name" to FieldHint(label = "Remote"),
+        "parent.type" to FieldHint(label = "Type", placeholder = "git"),
+        "parent.id" to FieldHint(label = "Repository", placeholder = "owner/name or git URL"),
+        "parent.version" to FieldHint(label = "Version"),
+        "parent.ref" to FieldHint(label = "Ref", placeholder = "main"),
+        "parent.ref_type" to FieldHint(
+            label = "Ref type",
+            optionLabels = mapOf("BRANCH" to "Branch", "TAG" to "Tag", "COMMIT" to "Commit"),
+        ),
+        "parent.remote_name" to FieldHint(label = "Remote", placeholder = "origin"),
         "excludes" to FieldHint(
             label = "Excludes",
             description = "Parent projects left out of this modpack.",
@@ -153,14 +174,20 @@ object ModpackFieldHints
         "parent_config_hash" to FieldHint(excluded = true),
 
         "projects" to FieldHint(
-            label = "Project overrides",
+            label = "",
             island = ModpackIsland.Projects,
+            order = 0,
             placeholder = "Project slug, name, or Pakku ID",
             emptyText = "None",
             projectCard = true,
         ),
-        "projects.update_strategy" to FieldHint(label = "Update strategy"),
-        "projects.aliases" to FieldHint(placeholder = "Alias"),
+        "projects.type" to FieldHint(label = "Type:"),
+        "projects.side" to FieldHint(label = "Side:"),
+        "projects.update_strategy" to FieldHint(label = "Update Strategy:"),
+        "projects.redistributable" to FieldHint(label = "Redistributable:"),
+        "projects.subpath" to FieldHint(label = "Subpath:"),
+        "projects.aliases" to FieldHint(label = "Aliases:", placeholder = "Alias"),
+        "projects.export" to FieldHint(label = "Export:"),
     )
 
     private val lock: Map<String, FieldHint> = mapOf(
@@ -186,6 +213,7 @@ object ModpackFieldHints
             options = ModpackFieldOptions.LOADERS,
             placeholder = "Version",
             summary = true,
+            chips = true,
         ),
         // Managed by add / remove / update and by Pakku migrations.
         "projects" to FieldHint(excluded = true),

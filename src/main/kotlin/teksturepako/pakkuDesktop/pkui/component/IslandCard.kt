@@ -4,7 +4,6 @@
 
 package teksturepako.pakkuDesktop.pkui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,13 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
 
-/** Self-contained card in the project-card style: rounded, outlined, lightly tinted. */
+/** Outlined card, same resting chrome as a project card: border only, no fill. */
 @Composable
 fun IslandCard(
     title: String,
@@ -40,7 +37,6 @@ fun IslandCard(
     Column(
         modifier = modifier
             .clip(shape)
-            .background(JewelTheme.contentColor.copy(alpha = PakkuDesktopConstants.islandTintAlpha))
             .border(PakkuDesktopConstants.cardBorderWidth, PakkuDesktopConstants.cardBorderColor, shape)
             .padding(PakkuDesktopConstants.cardPadding),
         verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.cardContentSpacing),
@@ -62,7 +58,6 @@ fun IslandCard(
             }
             trailing()
         }
-        Divider(Orientation.Horizontal)
         content()
     }
 }

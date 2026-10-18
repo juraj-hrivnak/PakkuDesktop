@@ -21,6 +21,9 @@ import kotlin.io.path.relativeTo
 /** Same names Pakku's detectProjects skips when they appear in a project-type directory path. */
 private val managedFolderIgnoredNames = listOf("saves", "screenshots")
 
+/** Gradle output. Not a modpack folder; jars under it are not projects. */
+private const val BuildDirName = "build"
+
 /**
  * Mirrors Pakku's detectProjects folder rules (DetectProjects.kt, pakku 1.5.0.343):
  * project types except worlds, skip missing dirs and any dir whose path contains
@@ -38,7 +41,9 @@ internal fun walkManagedFiles(
     val excluded = excludeAbsolute.map { absolutePathKey(Path(it)) }.toSet()
     return managedTypeDirs(root, configFile).flatMap { dir ->
         val listed = runCatching {
-            dir.toFile().walkTopDown().mapNotNull { file ->
+            dir.toFile().walkTopDown().onEnter { file ->
+                file.toPath() == dir || file.name != BuildDirName
+            }.mapNotNull { file ->
                 val candidate = file.toPath()
                 if (candidate == dir || candidate.isDirectory()) return@mapNotNull null
                 val text = candidate.invariantSeparatorsPathString
@@ -89,8 +94,10 @@ private fun managedTypeDirs(root: Path, configFile: ConfigFile?): List<Path> =
         .mapNotNull { type ->
             val dir = root.resolve(type.getPathString(configFile)).normalize()
             if (!dir.isDirectory()) return@mapNotNull null
-            val relative = dir.relativeDisplay(root) ?: dir.invariantSeparatorsPathString
-            if (managedFolderIgnoredNames.any { it in relative }) return@mapNotNull null
+            val relative = dir.relativeDisplay(root) ?: return@mapNotNull null
+            if (relative.isEmpty() || relative == ".") return@mapNotNull null
+            if (managedFolderIgnoredNames.any { it in relative.split('/') }) return@mapNotNull null
+            if (BuildDirName in relative.split('/')) return@mapNotNull null
             dir
         }
 

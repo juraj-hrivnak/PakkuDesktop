@@ -17,7 +17,6 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.json
 import teksturepako.pakku.api.projects.ProjectType
-import teksturepako.pakkuDesktop.app.git.DiffType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -225,64 +224,5 @@ class ModpackConfigFieldsTest {
         ProjectType.entries.forEach { type ->
             assertEquals(type.getPathString(null), paths.hint.optionPlaceholders[type.serialName])
         }
-    }
-}
-
-class LineDiffTest {
-    private fun types(old: String, new: String) =
-        LineDiff.unified(old, new, "pakku.json").hunks.flatMap { hunk -> hunk.lines.map { it.type } }
-
-    @Test
-    fun `equal texts have no hunks`() {
-        assertTrue(LineDiff.unified("a\nb\n", "a\nb\n", "pakku.json").hunks.isEmpty())
-        assertTrue(LineDiff.unified("", "", "pakku.json").hunks.isEmpty())
-    }
-
-    @Test
-    fun `an added line is an addition inside context`() {
-        val hunk = LineDiff.unified("a\nb\n", "a\nadded\nb\n", "pakku.json").hunks.single()
-
-        assertEquals(listOf(DiffType.UNCHANGED, DiffType.ADDED, DiffType.UNCHANGED), hunk.lines.map { it.type })
-        assertEquals("added", hunk.lines[1].content)
-        assertEquals(2, hunk.lines[1].number.new)
-        assertNull(hunk.lines[1].number.old)
-    }
-
-    @Test
-    fun `a removed line is a deletion`() {
-        assertEquals(
-            listOf(DiffType.UNCHANGED, DiffType.DELETED, DiffType.UNCHANGED),
-            types("a\ngone\nb\n", "a\nb\n"),
-        )
-    }
-
-    @Test
-    fun `a changed line is a deletion followed by an addition`() {
-        val hunk = LineDiff.unified("a\nold\nb\n", "a\nnew\nb\n", "pakku.json").hunks.single()
-
-        assertEquals(listOf(DiffType.UNCHANGED, DiffType.DELETED, DiffType.ADDED, DiffType.UNCHANGED), hunk.lines.map { it.type })
-        assertEquals("old", hunk.lines[1].content)
-        assertEquals("new", hunk.lines[2].content)
-    }
-
-    @Test
-    fun `a moved block is removed in one place and added in another`() {
-        val diff = LineDiff.unified("a\nb\nc\nd\ne\nf\n", "a\nd\ne\nb\nc\nf\n", "pakku.json")
-
-        val deleted = diff.hunks.flatMap { it.lines }.filter { it.type == DiffType.DELETED }.map { it.content }
-        val added = diff.hunks.flatMap { it.lines }.filter { it.type == DiffType.ADDED }.map { it.content }
-        assertEquals(listOf("b", "c"), deleted)
-        assertEquals(listOf("b", "c"), added)
-    }
-
-    @Test
-    fun `unchanged lines between distant changes are not repeated`() {
-        val old = (1..20).joinToString("\n") { "line $it" }
-        val new = old.replace("line 1\n", "first\n").replace("line 20", "last")
-
-        val unchanged = LineDiff.unified(old, new, "pakku.json").hunks.flatMap { it.lines }
-            .filter { it.type == DiffType.UNCHANGED }
-
-        assertTrue(unchanged.size < 20)
     }
 }

@@ -70,7 +70,7 @@ class ModpackField internal constructor(
 
     /** False for `pakku set` fields, which always hold a value. */
     val resettable: Boolean
-        get() = binding?.resettable ?: true
+        get() = (binding?.resettable ?: true) && hint.resettable
 
     override fun toString() = "ModpackField($key)"
 }
@@ -355,6 +355,17 @@ fun JsonElement.withChild(name: String, value: JsonElement?): JsonObject
 {
     val current = this as? JsonObject ?: JsonObject(emptyMap())
     return JsonObject(if (value == null || value is JsonNull) current - name else current + (name to value))
+}
+
+fun JsonElement.child(name: String): JsonElement = (this as? JsonObject)?.get(name) ?: JsonNull
+
+/** A stored property, as opposed to null or blank. `false` and `0` count. */
+fun JsonElement.isOverride(): Boolean = when (this)
+{
+    is JsonNull -> false
+    is JsonArray -> any { it.isOverride() }
+    is JsonObject -> values.any { it.isOverride() }
+    is JsonPrimitive -> !isString || content.isNotBlank()
 }
 
 // -- Reads --

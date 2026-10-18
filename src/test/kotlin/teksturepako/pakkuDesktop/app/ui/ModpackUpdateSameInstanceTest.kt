@@ -31,7 +31,6 @@ class ModpackUpdateSameInstanceTest {
 
     @Test
     fun writeCompletedWhenAlreadyCleared() {
-        assertNoOp(ModpackModel(), ModpackMsg.PropertyWriteCompleted)
         assertNoOp(ModpackModel(), ModpackMsg.MetaWriteCompleted)
         assertNoOp(
             ModpackModel(),
@@ -230,8 +229,8 @@ class ModpackUpdateSameInstanceTest {
 
     @Test
     fun tabAndSelectionUnchanged() {
-        assertNoOp(ModpackModel(), ModpackMsg.TabSelected(SelectedTab.PROJECTS))
-        assertNoOp(ModpackModel(), ModpackMsg.GitDropdown(GitDropdownMsg.TabSelected(SelectedTab.PROJECTS)))
+        assertNoOp(ModpackModel(), ModpackMsg.TabSelected(SelectedTab.MODPACK))
+        assertNoOp(ModpackModel(), ModpackMsg.GitDropdown(GitDropdownMsg.TabSelected(SelectedTab.MODPACK)))
         assertNoOp(ModpackModel(), ModpackMsg.ProjectSelected(null))
         assertNoOp(ModpackModel(), ModpackMsg.ProjectEditing(false))
         assertNoOp(ModpackModel(), ModpackMsg.OverviewModeChanged(OverviewMode.Form))

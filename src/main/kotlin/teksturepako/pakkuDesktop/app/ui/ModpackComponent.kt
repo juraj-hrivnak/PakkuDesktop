@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.Modifier
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.get
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
@@ -97,13 +98,8 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
 
     ModpackMsg.Reset -> ModpackModel()
 
-    // Entering the Overview starts a new JSON diff session.
     is ModpackMsg.TabSelected        ->
-        if (model.selectedTab == msg.tab) model
-        else model.copy(
-            selectedTab = msg.tab,
-            configBaselineText = if (msg.tab == SelectedTab.MODPACK) null else model.configBaselineText,
-        )
+        if (model.selectedTab == msg.tab) model else model.copy(selectedTab = msg.tab)
     is ModpackMsg.ProjectSelected    ->
         if (model.selectedProject == msg.project && !model.editingProject) model
         else model.copy(selectedProject = msg.project, editingProject = false)
@@ -622,10 +618,6 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.DismissLockError -> model.copy(lockErrorDismissed = true)
     ModpackMsg.DismissConfigError -> model.copy(configErrorDismissed = true)
 
-    is ModpackMsg.PropertyWriteRequested -> model.copy(pendingPropertyWrite = msg.request)
-    ModpackMsg.PropertyWriteCompleted    ->
-        if (model.pendingPropertyWrite == null) model else model.copy(pendingPropertyWrite = null)
-
     is ModpackMsg.MetaWriteRequested -> {
         val lock = model.lockFile?.get() ?: return@modpackUpdate model
         val config = model.configFile?.get() ?: return@modpackUpdate model
@@ -634,9 +626,12 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (errors.isNotEmpty()) {
             model.copy(modpackMetaErrors = model.modpackMetaErrors.put(fieldKey, errors.toPersistentList()))
         } else {
+            // Show a renamed pack immediately. The write replaces this with the re-read file.
+            val renamed = msg.request.replaceConfig?.invoke(config)?.takeIf { it.getName() != config.getName() }
             model.copy(
                 pendingMetaWrites = model.pendingMetaWrites.add(msg.request),
                 modpackMetaErrors = model.modpackMetaErrors.remove(fieldKey),
+                configFile = if (renamed != null) Ok(renamed) else model.configFile,
             )
         }
     }
@@ -669,11 +664,10 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         )
     is ModpackMsg.OverviewDiffToggled ->
         if (model.overviewShowDiff == msg.showDiff) model else model.copy(overviewShowDiff = msg.showDiff)
-    is ModpackMsg.ConfigTextLoaded -> {
-        val baseline = model.configBaselineText ?: msg.text?.text
-        if (msg.text == model.configText && baseline == model.configBaselineText) model
-        else model.copy(configText = msg.text, configBaselineText = baseline)
-    }
+    is ModpackMsg.ConfigTextLoaded ->
+        if (msg.text == model.configText) model else model.copy(configText = msg.text)
+    is ModpackMsg.ConfigDiffLoaded ->
+        if (msg.diff == model.configDiff) model else model.copy(configDiff = msg.diff)
     ModpackMsg.ConfigReloadCompleted ->
         if (!model.wantsConfigReload) model else model.copy(wantsConfigReload = false)
 

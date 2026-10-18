@@ -172,7 +172,7 @@ data class ModpackModel(
     val configFile: Result<ConfigFile, ActionError>? = null,
     val loaded: Boolean = false,
 
-    val selectedTab: SelectedTab = SelectedTab.PROJECTS,
+    val selectedTab: SelectedTab = SelectedTab.MODPACK,
 
     val selectedProject: Project? = null,
     val editingProject: Boolean = false,
@@ -270,8 +270,6 @@ data class ModpackModel(
     /** oldest first; at most [MAX_TOASTS], enforced in update */
     val toasts: PersistentList<ToastData> = persistentListOf(),
 
-    /** cleared by projectEditDriver when done */
-    val pendingPropertyWrite: PropertyWrite? = null,
     /** Validated metadata writes, oldest first; projectEditDriver writes the head, then drops it. */
     val pendingMetaWrites: PersistentList<MetaWrite> = persistentListOf(),
     /** Inline validation / write failures on the Modpack tab, keyed by field key. */
@@ -279,12 +277,12 @@ data class ModpackModel(
 
     // -- Overview (Modpack) tab --
     val overviewMode: OverviewMode = OverviewMode.Form,
-    /** JSON view shows the session diff instead of the file. */
+    /** JSON view shows `git diff` of `pakku.json` instead of the file. */
     val overviewShowDiff: Boolean = false,
-    /** Last read of `pakku.json` while the Overview tab was open. */
+    /** Last read of `pakku.json` from disk. */
     val configText: ConfigFileText? = null,
-    /** `pakku.json` text when the Overview tab was entered; the JSON diff compares against it. */
-    val configBaselineText: String? = null,
+    /** `git diff HEAD -- pakku.json`, for the JSON diff view. */
+    val configDiff: DiffContent? = null,
     /** Set when the Overview leaves the JSON view; modpackDiskDriver re-reads both files. */
     val wantsConfigReload: Boolean = false,
 

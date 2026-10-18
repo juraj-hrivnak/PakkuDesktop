@@ -8,37 +8,64 @@ import com.github.michaelbull.result.get
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
+import teksturepako.pakku.api.projects.ProjectSide
+import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.model.ProjectsTabModel
 import teksturepako.pakkuDesktop.app.ui.model.SortOrder
 
-fun Project.matchesProjectsListFilters(
-    model: ProjectsTabModel,
-    ignoreUpdatesOnly: Boolean = false,
-): Boolean {
-    val textOk = model.projectsFilterText.isEmpty() ||
-        name.values.any { model.projectsFilterText.lowercase() in it.lowercase() } ||
-        model.projectsFilterText in this
+/** Search text and filter toggles shared by the Projects list and the override picker. */
+data class ProjectListQuery(
+    val text: String = "",
+    val types: Set<ProjectType> = emptySet(),
+    val sides: Set<ProjectSide> = emptySet(),
+    val missingSide: Boolean = false,
+    val providers: Set<String> = emptySet(),
+    val redistributable: Boolean? = null,
+    val updatesOnly: Boolean = false,
+)
 
-    val updatesOk = ignoreUpdatesOnly ||
-        !model.filterUpdatesOnly ||
-        model.updatePreviews?.containsKey(uiKey()) == true
+fun ProjectsTabModel.projectListQuery(ignoreUpdatesOnly: Boolean = false) = ProjectListQuery(
+    text = projectsFilterText,
+    types = filterTypes,
+    sides = filterSides,
+    missingSide = filterMissingSide,
+    providers = filterProviders,
+    redistributable = filterRedistributable,
+    updatesOnly = !ignoreUpdatesOnly && filterUpdatesOnly,
+)
 
-    val typeOk = model.filterTypes.isEmpty() || type in model.filterTypes
+fun Project.matchesProjectListQuery(query: ProjectListQuery, hasUpdate: Boolean = false): Boolean {
+    val needle = query.text
+    val textOk = needle.isEmpty() ||
+        name.values.any { needle.lowercase() in it.lowercase() } ||
+        needle in this
 
-    val sideFilterActive = model.filterSides.isNotEmpty() || model.filterMissingSide
+    val updatesOk = !query.updatesOnly || hasUpdate
+
+    val typeOk = query.types.isEmpty() || type in query.types
+
+    val sideFilterActive = query.sides.isNotEmpty() || query.missingSide
     val sideOk = !sideFilterActive ||
-        (side != null && side in model.filterSides) ||
-        (side == null && model.filterMissingSide)
+        (side != null && side in query.sides) ||
+        (side == null && query.missingSide)
 
-    val providerOk = model.filterProviders.isEmpty() ||
-        getProviders().any { it.serialName in model.filterProviders }
+    val providerOk = query.providers.isEmpty() ||
+        getProviders().any { it.serialName in query.providers }
 
-    val redistributableOk = model.filterRedistributable == null ||
-        redistributable == model.filterRedistributable
+    val redistributableOk = query.redistributable == null ||
+        redistributable == query.redistributable
 
     return textOk && updatesOk && typeOk && sideOk && providerOk && redistributableOk
 }
+
+fun Project.matchesProjectsListFilters(
+    model: ProjectsTabModel,
+    ignoreUpdatesOnly: Boolean = false,
+): Boolean = matchesProjectListQuery(
+    model.projectListQuery(ignoreUpdatesOnly),
+    hasUpdate = model.updatePreviews?.containsKey(uiKey()) == true,
+)
 
 /** Identity of every input [filteredAndSortedProjects] reads. Used to reuse a list built off the UI thread. */
 fun ProjectsTabModel.projectsListPrepKey(): Any = listOf(

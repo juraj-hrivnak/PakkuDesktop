@@ -144,7 +144,7 @@ data class ModpackTabModel(
     val overviewMode: OverviewMode,
     val overviewShowDiff: Boolean,
     val configText: ConfigFileText?,
-    val configBaselineText: String?,
+    val configDiff: DiffContent?,
 )
 
 fun ModpackModel.modpackTab() = ModpackTabModel(
@@ -154,7 +154,7 @@ fun ModpackModel.modpackTab() = ModpackTabModel(
     overviewMode = overviewMode,
     overviewShowDiff = overviewShowDiff,
     configText = configText,
-    configBaselineText = configBaselineText,
+    configDiff = configDiff,
 )
 
 fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =

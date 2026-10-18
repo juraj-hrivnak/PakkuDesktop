@@ -45,9 +45,7 @@ object PakkuDesktopConstants
     val cardTitleSize: TextUnit = 14.sp
     val cardCaptionSize: TextUnit = 12.sp
 
-    /** Island background: content color at this alpha over the panel. */
-    const val islandTintAlpha = 0.03f
-    val islandSpacing = 12.dp
+    val islandSpacing = 8.dp
 
     /** Gap between a section title and its fields, and between fields. */
     val cardContentSpacing = 8.dp
@@ -66,9 +64,6 @@ object PakkuDesktopConstants
 
     /** Typing in an inline editor writes to disk after this pause. */
     const val inlineEditDebounceMillis = 400L
-
-    /** JSON diff viewer height in the Overview tab. */
-    val jsonDiffHeight = 480.dp
 
     /** Edit / remove / reset buttons next to a property value. */
     val inlineIconButtonSize = 25.dp
