@@ -61,7 +61,9 @@ fun MenuScope.pkUiSubmenu(
     submenu: MenuScope.() -> Unit,
     content: @Composable () -> Unit,
 ) {
-    passiveItem { PkUiSubmenuItem(enabled, iconKey, submenu, content) }
+    selectableItem(selected = false, enabled = enabled, onClick = { }) {
+        PkUiSubmenuItem(enabled, iconKey, submenu, content)
+    }
 }
 
 @OptIn(ExperimentalComposeUiApi::class, InternalJewelApi::class)
@@ -217,7 +219,7 @@ private class SubmenuPositionProvider(
         } else {
             anchorBounds.left - offsetX - popupContentSize.width
         }
-        val y = anchorBounds.top + offsetY
+        val y = anchorBounds.top + offsetY + 4
 
         IntOffset(
             x.coerceIn(bounds.left, (bounds.right - popupContentSize.width).coerceAtLeast(bounds.left)),
