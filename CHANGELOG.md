@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.11
+
+- Added a way to remove project overrides when they don't match any project
+- Unified modpack info badges in title bar and home view, based on modpack overview header badges
+
 ## v1.0.0-alpha.10
 
 - Added release channels for auto-updates
