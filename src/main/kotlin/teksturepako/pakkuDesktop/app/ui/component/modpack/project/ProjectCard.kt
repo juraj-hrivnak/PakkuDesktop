@@ -28,6 +28,7 @@ import org.jetbrains.jewel.ui.theme.badgeStyle
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
@@ -191,7 +192,7 @@ fun ProjectCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    key = AllIconsKeys.General.ExclMark,
+                    key = PakkuDesktopIcons.exclamationTriangle,
                     contentDescription = "Warning",
                     tint = PakkuDesktopConstants.amber,
                     modifier = Modifier.size(14.dp),

@@ -22,6 +22,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 
 @Composable
 fun ProjectRowCompact(
@@ -62,7 +63,7 @@ fun ProjectRowCompact(
         )
         if (!continuation && project.hasProviderVersionMismatch()) {
             Icon(
-                key = AllIconsKeys.General.ExclMark,
+                key = PakkuDesktopIcons.exclamationTriangle,
                 contentDescription = "Versions differ across providers",
                 tint = PakkuDesktopConstants.amber,
                 modifier = Modifier.size(14.dp),

@@ -42,6 +42,7 @@ import teksturepako.pakkuDesktop.app.actions.RemovalEntry
 import teksturepako.pakkuDesktop.app.actions.fingerprint
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectRef
 import teksturepako.pakkuDesktop.pkui.component.PkUiChip
@@ -459,7 +460,7 @@ private fun WarningLine(text: String, color: Color, modifier: Modifier) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(AllIconsKeys.General.Warning, contentDescription = null, modifier = Modifier.size(12.dp))
+        Icon(PakkuDesktopIcons.exclamationTriangle, contentDescription = null, modifier = Modifier.size(12.dp))
         Text(text, color = color, fontSize = 11.sp)
     }
 }

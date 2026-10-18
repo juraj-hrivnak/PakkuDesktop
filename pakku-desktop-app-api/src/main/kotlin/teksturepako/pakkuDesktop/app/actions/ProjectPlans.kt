@@ -35,10 +35,11 @@ fun Project.identityKey(): String {
 
 /**
  * Unique key for one row in a lazy list. [uiKey] can collide when the lock file holds
- * multiple entries with the same provider identity; [pakkuId] disambiguates those rows.
+ * multiple entries with the same provider identity; [pakkuId] disambiguates those rows,
+ * but the index is always appended to guarantee uniqueness even when pakkuId collides.
  */
 fun Project.listItemKey(fallbackIndex: Int): String =
-    pakkuId ?: "${uiKey()}#$fallbackIndex"
+    "${pakkuId ?: uiKey()}#$fallbackIndex"
 
 /**
  * Dependency preview node (from Pakku [requestDependencies] + optional [createAdditionRequest]).

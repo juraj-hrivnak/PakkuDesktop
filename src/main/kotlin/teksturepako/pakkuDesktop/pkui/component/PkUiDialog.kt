@@ -40,6 +40,7 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 
 /** Dialog widths; always clamped to the window. */
 enum class PkUiDialogSize(val width: Dp) {
@@ -288,7 +289,7 @@ fun PkUiDialogNotice(
 ) {
     val (icon, accent) = when (kind) {
         PkUiNoticeKind.Info -> AllIconsKeys.General.Information to JewelTheme.contentColor
-        PkUiNoticeKind.Warning -> AllIconsKeys.General.Warning to PakkuDesktopConstants.amber
+        PkUiNoticeKind.Warning -> PakkuDesktopIcons.exclamationTriangle to PakkuDesktopConstants.amber
         PkUiNoticeKind.Error -> AllIconsKeys.General.Error to PakkuDesktopConstants.coral
     }
     Row(
