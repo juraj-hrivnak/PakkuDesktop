@@ -7,6 +7,7 @@ package teksturepako.pakkuDesktop.app.ui.application.titlebar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -16,13 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -41,30 +40,28 @@ fun PakkuApplicationScope.MainTitleBar(
     endContent: @Composable RowScope.() -> Unit = { },
 ) {
     val borderColor = animatedColor(JewelTheme.globalColors.borders.normal)
-    val layout = rememberTitleBarLayout()
+    val tier = rememberTitleBarWidthTier()
     Column {
         Row {
             CompositionLocalProvider(
-                LocalTitleBarWidthTier provides layout.tier,
-                LocalTitleBarStartSlotMaxWidth provides layout.startSlotMaxWidth,
-                LocalTitleBarStartClusterMaxWidth provides layout.startClusterMaxWidth,
+                LocalTitleBarWidthTier provides tier,
             ) {
                 this@MainTitleBar.decoratedWindowScope.JewelTitleBar(
                     modifier.newFullscreenControls(),
                 ) {
-                    AlignedTitleBarContent(modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {
+                    AlignedTitleBarContent(Modifier.padding(horizontal = 8.dp), alignment = Alignment.End) {
                         themeTrailingActions()
-                        if (layout.tier == TitleBarWidthTier.Comfortable) {
+                        if (tier == TitleBarWidthTier.Comfortable) {
                             AlphaLabel()
                         }
                     }
 
-                    AlignedTitleBarContent(alignment = Alignment.Start) {
-                        TitleBarStartCluster(startContent = startContent)
-                    }
-
                     AlignedTitleBarContent(alignment = Alignment.End) {
                         endContent()
+                    }
+
+                    AlignedTitleBarContent(alignment = Alignment.Start) {
+                        TitleBarStartCluster(startContent = startContent)
                     }
                 }
             }
@@ -75,16 +72,10 @@ fun PakkuApplicationScope.MainTitleBar(
     }
 }
 
-/** Brand icon and view menus share one capped start cluster so Nucleus never drops the icon. */
 @Composable
 private fun TitleBarStartCluster(startContent: @Composable RowScope.() -> Unit) {
-    val clusterMax = LocalTitleBarStartClusterMaxWidth.current
     Row(
-        Modifier
-            .then(
-                if (clusterMax.isUnspecified) Modifier else Modifier.widthIn(max = clusterMax),
-            )
-            .clipToBounds(),
+        Modifier.clipToBounds(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -98,20 +89,17 @@ private fun TitleBarStartCluster(startContent: @Composable RowScope.() -> Unit) 
                 Modifier.size(PakkuDesktopConstants.brandIconSize),
             )
         }
-        Row(
-            Modifier
-                .weight(1f, fill = true)
-                .widthIn(min = 0.dp)
-                .clipToBounds(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            startContent()
+        BoxWithConstraints(Modifier.clipToBounds()) {
+            CompositionLocalProvider(
+                LocalTitleBarStartSlotMaxWidth provides maxWidth,
+            ) {
+                TitleBarStartRow(content = startContent)
+            }
         }
     }
 }
 
-/** Menus and labels inside [TitleBarStartCluster]; truncates within the remaining width after the brand icon. */
+/** Menus and labels inside [TitleBarStartCluster]; truncates within the remaining width. */
 @Composable
 fun TitleBarStartRow(
     modifier: Modifier = Modifier,
@@ -140,6 +128,3 @@ fun dev.nucleusframework.window.TitleBarScope.AlignedTitleBarContent(
         content(this)
     }
 }
-
-private val Dp.isUnspecified: Boolean
-    get() = this == Dp.Unspecified

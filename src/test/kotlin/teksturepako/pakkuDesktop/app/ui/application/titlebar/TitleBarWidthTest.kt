@@ -1,8 +1,7 @@
 package teksturepako.pakkuDesktop.app.ui.application.titlebar
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.nucleusframework.window.utils.linux.LinuxButtonLayout
-import dev.nucleusframework.window.utils.linux.LinuxTitleBarButton
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -21,17 +20,12 @@ class TitleBarWidthTest {
     }
 
     @Test
-    fun startClusterNeverExceedsWindow() {
-        val layout = LinuxButtonLayout(
-            buttons = listOf(
-                LinuxTitleBarButton.CLOSE,
-                LinuxTitleBarButton.MINIMIZE,
-                LinuxTitleBarButton.MAXIMIZE,
-            ),
-            controlsOnRight = true,
-        )
-        val narrow = titleBarStartClusterMaxWidth(320.dp, layout)
-        assertTrue(narrow <= 320.dp)
-        assertTrue(titleBarStartClusterMaxWidth(900.dp, layout) > titleBarStartClusterMaxWidth(500.dp, layout))
+    fun labelMaxWidthFollowsMeasuredSlot() {
+        // Before the first layout pass the slot is unmeasured; labels fall back.
+        assertEquals(200.dp, titleBarLabelMaxWidth(Dp.Unspecified))
+        // Fraction of the measured slot.
+        assertEquals(160.dp, titleBarLabelMaxWidth(400.dp, fraction = 0.4f))
+        // But never less than the slot itself on very narrow windows.
+        assertEquals(40.dp, titleBarLabelMaxWidth(40.dp, fraction = 0.4f))
     }
 }
