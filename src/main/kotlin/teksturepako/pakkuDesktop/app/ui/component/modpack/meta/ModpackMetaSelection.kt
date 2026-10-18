@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -888,26 +889,7 @@ private fun ProjectOverrideCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                InlineEditText(
-                    value = entryKey,
-                    onCommit = onRename,
-                    required = true,
-                    textStyle = JewelTheme.defaultTextStyle.copy(
-                        fontSize = PakkuDesktopConstants.cardCaptionSize,
-                        fontWeight = FontWeight.Normal,
-                        fontFamily = FontFamily.Monospace,
-                    ),
-                    editDescription = "Edit override entry",
-                ) {
-                    Text(
-                        entryKey,
-                        fontSize = PakkuDesktopConstants.cardCaptionSize,
-                        fontFamily = FontFamily.Monospace,
-                        color = secondary(),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                InlineEditEntryKey(entryKey, onRename)
                 project?.getProviders()?.groupBy { provider -> project.slug[provider.serialName] }?.forEach { (slug, providers) ->
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
@@ -963,6 +945,102 @@ private fun ProjectOverrideCard(
         }
         if (showBody) {
             content()
+        }
+    }
+}
+
+/**
+ * Entry key input for project overrides — read-only monospace text with a pencil edit button
+ * normally, switches to a TextField with apply/cancel buttons when editing.
+ */
+@Composable
+private fun InlineEditEntryKey(value: String, onCommit: (String) -> Unit) {
+    RecomposeProbe("InlineEditEntryKey")
+    var editing by remember { mutableStateOf(false) }
+
+    if (!editing) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                value,
+                fontSize = PakkuDesktopConstants.cardCaptionSize,
+                fontFamily = FontFamily.Monospace,
+                color = secondary(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            PkUiTooltip({ Text("Edit override entry") }) {
+                IconButton(
+                    onClick = { editing = true },
+                    modifier = Modifier.size(PakkuDesktopConstants.inlineIconButtonSize),
+                ) {
+                    Icon(
+                        AllIconsKeys.Actions.Edit,
+                        "Edit override entry",
+                        tint = JewelTheme.contentColor,
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    val state = rememberTextFieldState(value)
+    var draft by remember { mutableStateOf(value) }
+
+    fun commit() {
+        val next = state.text.toString().trim()
+        if (next.isNotBlank() && next != draft) {
+            onCommit(next)
+            draft = next
+        } else {
+            state.setTextAndPlaceCursorAtEnd(draft)
+        }
+        editing = false
+    }
+
+    fun revert() {
+        state.setTextAndPlaceCursorAtEnd(draft)
+        editing = false
+    }
+
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
+    ) {
+        TextField(
+            state,
+            Modifier.weight(1f).onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.Enter, Key.NumPadEnter -> { commit(); true }
+                    Key.Escape -> { revert(); true }
+                    else -> false
+                }
+            },
+            textStyle = JewelTheme.defaultTextStyle.copy(
+                fontSize = PakkuDesktopConstants.cardCaptionSize,
+                fontWeight = FontWeight.Normal,
+                fontFamily = FontFamily.Monospace,
+            ),
+            placeholder = {
+                Text(
+                    "Entry key",
+                    fontSize = PakkuDesktopConstants.cardCaptionSize,
+                    fontFamily = FontFamily.Monospace,
+                    color = secondary(),
+                )
+            },
+        )
+        PkUiTooltip({ Text("Apply") }) {
+            IconButton(onClick = ::commit, modifier = Modifier.size(20.dp)) {
+                Icon(AllIconsKeys.Actions.Checked, "Apply", tint = JewelTheme.contentColor)
+            }
+        }
+        PkUiTooltip({ Text("Cancel") }) {
+            IconButton(onClick = ::revert, modifier = Modifier.size(20.dp)) {
+                Icon(AllIconsKeys.General.Close, "Cancel", tint = JewelTheme.contentColor)
+            }
         }
     }
 }
