@@ -10,13 +10,13 @@ import teksturepako.pakku.api.projects.ProjectType
 enum class ModpackIsland(val title: String, val description: String, val wide: Boolean = false)
 {
     General("General", "Name, version, author, and description."),
+    RawJson("Raw JSON", "Keys Pakku Desktop doesn't recognize, edited as JSON."),
     Minecraft("Minecraft", "Target platform, game versions, and loaders, stored in pakku-lock.json."),
     Export("Export", "What goes into exported modpacks."),
     Paths("Paths", "Where each project type is installed, relative to the modpack folder."),
     Projects("Project Overrides", "Properties overridden for individual projects.", wide = true),
     Parent("Parent modpack", "The modpack this one is forked from."),
     Other("Other", "Settings without a dedicated layout yet."),
-    RawJson("Raw JSON", "Keys Pakku Desktop doesn't recognize, edited as JSON.", wide = true),
 }
 
 /** Editor a field is rendered with. */

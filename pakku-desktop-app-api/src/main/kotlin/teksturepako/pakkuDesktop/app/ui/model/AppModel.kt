@@ -309,6 +309,15 @@ data class ModpackModel(
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
     val gitDropdown: GitDropdownModel = GitDropdownModel(),
+
+    // -- Project Overrides tab --
+    val overridesFilterText: String = "",
+    val overridesFilterTypes: PersistentSet<ProjectType> = persistentSetOf(),
+    val overridesFilterSides: PersistentSet<ProjectSide> = persistentSetOf(),
+    val overridesFilterMissingSide: Boolean = false,
+    val overridesFilterProviders: PersistentSet<String> = persistentSetOf(),
+    val overridesFilterRedistributable: Boolean? = null,
+    val showOverridesAddDialog: Boolean = false,
 )
 
 // -- Enums / sealed --

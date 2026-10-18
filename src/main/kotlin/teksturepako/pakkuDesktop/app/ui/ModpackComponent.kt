@@ -907,6 +907,30 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             }
         }
     }
+
+    // -- Project Overrides tab --
+
+    is ModpackMsg.OverridesFilterTextChanged ->
+        model.copy(overridesFilterText = msg.text)
+    is ModpackMsg.OverridesFilterTypesChanged ->
+        if (model.overridesFilterTypes == msg.types) model
+        else model.copy(overridesFilterTypes = msg.types.toPersistentSet())
+    is ModpackMsg.OverridesFilterSidesChanged ->
+        if (model.overridesFilterSides == msg.sides) model
+        else model.copy(overridesFilterSides = msg.sides.toPersistentSet())
+    is ModpackMsg.OverridesFilterMissingSideChanged ->
+        if (model.overridesFilterMissingSide == msg.enabled) model
+        else model.copy(overridesFilterMissingSide = msg.enabled)
+    is ModpackMsg.OverridesFilterProvidersChanged ->
+        if (model.overridesFilterProviders == msg.providers) model
+        else model.copy(overridesFilterProviders = msg.providers.toPersistentSet())
+    is ModpackMsg.OverridesFilterRedistributableChanged ->
+        if (model.overridesFilterRedistributable == msg.value) model
+        else model.copy(overridesFilterRedistributable = msg.value)
+    ModpackMsg.ShowOverridesAddDialog ->
+        if (model.showOverridesAddDialog) model else model.copy(showOverridesAddDialog = true)
+    ModpackMsg.HideOverridesAddDialog ->
+        if (!model.showOverridesAddDialog) model else model.copy(showOverridesAddDialog = false)
 }
 
 /** [value] when it differs from [old], else [old] itself, so identity-keyed caches stay valid. */

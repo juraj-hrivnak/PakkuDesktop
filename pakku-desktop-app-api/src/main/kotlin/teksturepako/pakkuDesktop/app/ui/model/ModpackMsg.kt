@@ -522,4 +522,15 @@ sealed interface ModpackMsg {
 
     data class ModpackDropdown(val msg: ModpackDropdownMsg) : ModpackMsg
     data class GitDropdown(val msg: GitDropdownMsg) : ModpackMsg
+
+    // -- Project Overrides tab --
+
+    data class OverridesFilterTextChanged(val text: String) : ModpackMsg
+    data class OverridesFilterTypesChanged(val types: Set<ProjectType>) : ModpackMsg
+    data class OverridesFilterSidesChanged(val sides: Set<ProjectSide>) : ModpackMsg
+    data class OverridesFilterMissingSideChanged(val enabled: Boolean) : ModpackMsg
+    data class OverridesFilterProvidersChanged(val providers: Set<String>) : ModpackMsg
+    data class OverridesFilterRedistributableChanged(val value: Boolean?) : ModpackMsg
+    data object ShowOverridesAddDialog : ModpackMsg
+    data object HideOverridesAddDialog : ModpackMsg
 }

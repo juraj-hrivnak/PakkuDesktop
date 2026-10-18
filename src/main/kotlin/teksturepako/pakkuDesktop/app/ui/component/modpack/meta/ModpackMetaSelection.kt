@@ -830,7 +830,7 @@ private val OverrideCardMetaMaxWidth = 120.dp
  * - Body: properties content when editing.
  */
 @Composable
-private fun ProjectOverrideCard(
+internal fun ProjectOverrideCard(
     entryKey: String,
     project: Project?,
     editing: Boolean,
@@ -1063,7 +1063,7 @@ private fun OverrideActions(
 }
 
 @Composable
-private fun OverrideChild(
+internal fun OverrideChild(
     projectsField: ModpackField,
     child: ModpackField,
     entry: JsonElement,

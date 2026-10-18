@@ -165,6 +165,13 @@ data class ProjectOverridesTabModel(
     val configFile: Result<ConfigFile, ActionError>?,
     val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
     val configText: ConfigFileText?,
+    val overridesFilterText: String,
+    val overridesFilterTypes: PersistentSet<ProjectType>,
+    val overridesFilterSides: PersistentSet<ProjectSide>,
+    val overridesFilterMissingSide: Boolean,
+    val overridesFilterProviders: PersistentSet<String>,
+    val overridesFilterRedistributable: Boolean?,
+    val showOverridesAddDialog: Boolean,
 )
 
 fun ModpackModel.overridesTab() = ProjectOverridesTabModel(
@@ -172,6 +179,13 @@ fun ModpackModel.overridesTab() = ProjectOverridesTabModel(
     configFile = configFile,
     metaErrors = modpackMetaErrors,
     configText = configText,
+    overridesFilterText = overridesFilterText,
+    overridesFilterTypes = overridesFilterTypes,
+    overridesFilterSides = overridesFilterSides,
+    overridesFilterMissingSide = overridesFilterMissingSide,
+    overridesFilterProviders = overridesFilterProviders,
+    overridesFilterRedistributable = overridesFilterRedistributable,
+    showOverridesAddDialog = showOverridesAddDialog,
 )
 
 fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =
