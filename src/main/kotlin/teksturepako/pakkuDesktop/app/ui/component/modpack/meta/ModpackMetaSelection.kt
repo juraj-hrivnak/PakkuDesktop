@@ -986,6 +986,10 @@ private fun InlineEditEntryKey(value: String, onCommit: (String) -> Unit) {
 
     val state = rememberTextFieldState(value)
     var draft by remember { mutableStateOf(value) }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(editing) {
+        if (editing) focusRequester.requestFocus()
+    }
 
     fun commit() {
         val next = state.text.toString().trim()
@@ -1004,13 +1008,12 @@ private fun InlineEditEntryKey(value: String, onCommit: (String) -> Unit) {
     }
 
     Row(
-        Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
     ) {
         TextField(
             state,
-            Modifier.weight(1f).onPreviewKeyEvent { event ->
+            Modifier.width(200.dp).focusRequester(focusRequester).onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
                     Key.Enter, Key.NumPadEnter -> { commit(); true }
