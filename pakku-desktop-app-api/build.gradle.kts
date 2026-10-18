@@ -11,4 +11,5 @@ dependencies {
     api(libs.compose.foundation)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.collections.immutable)
+    api(libs.nucleus.core.runtime)
 }

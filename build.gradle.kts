@@ -203,8 +203,6 @@ nucleus.application {
             bundleID = "teksturepako.pakkuDesktop"
             appCategory = "public.app-category.developer-tools"
             dockName = "Pakku Desktop"
-            packageVersion = nativeVersion
-            packageBuildVersion = nativeVersion
             dmgPackageVersion = nativeVersion
             dmg { title = $$"${productName} ${version}" }
         }
@@ -215,7 +213,6 @@ nucleus.application {
             iconFile.set(project.file("icon.ico"))
             upgradeUuid = "a238db66-2327-4082-87bf-b111cf37289c"
             msi.perMachine = false
-            packageVersion = nativeVersion
             msiPackageVersion = nativeVersion
             exePackageVersion = nativeVersion
             nsis {
