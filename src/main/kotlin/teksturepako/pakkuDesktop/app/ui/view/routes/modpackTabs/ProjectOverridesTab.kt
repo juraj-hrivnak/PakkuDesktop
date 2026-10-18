@@ -260,7 +260,7 @@ private fun OverrideCard(
         },
         showBody = children.isNotEmpty(),
     ) {
-        children.forEach { child -> key(child.serialName) {
+        children.forEach { child -> key("${entryKey}-${child.serialName}") {
             OverrideChild(
                 projectsField = field,
                 child = child,
