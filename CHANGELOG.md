@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.10
+
+- Added release channels for auto-updates
+- Lock file and config file reload from disk on mutation
+- Fixed auto-update mechanism
+
 ## v1.0.0-alpha.9
 
 - Fixed title bar clipping
