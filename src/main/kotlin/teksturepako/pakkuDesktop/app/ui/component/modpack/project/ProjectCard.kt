@@ -144,19 +144,16 @@ fun ProjectCard(
             Column(
                 modifier = Modifier.widthIn(max = ProjectCardMetaMaxWidth),
                 horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
             ) {
-                Text(
-                    text = project.type.prettyName,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                    Text(project.type.prettyName)
+                }
                 published?.let {
                     Text(
                         text = it,
-                        color = Color.Gray.copy(alpha = 0.65f),
-                        fontSize = 11.sp,
+                        color = JewelTheme.contentColor.copy(alpha = 0.65f),
+                        fontSize = PakkuDesktopConstants.cardCaptionSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
