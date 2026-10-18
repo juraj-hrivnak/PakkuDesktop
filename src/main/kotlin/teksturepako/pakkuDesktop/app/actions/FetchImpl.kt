@@ -52,7 +52,7 @@ import kotlin.io.path.pathString
 import kotlin.io.path.relativeTo
 import kotlin.io.path.relativeToOrSelf
 
-private val fetchLogger = logger("FetchImpl")
+private val fetchLogger = logger("teksturepako.pakkuDesktop.app.actions.FetchImpl")
 
 internal fun ManualOverride.toPreview(): FetchOverridePreview = FetchOverridePreview(
     relativeOutputPath = relativeOutputPath.invariantSeparatorsPathString,
@@ -194,7 +194,7 @@ suspend fun fetchApplySuspend(
                 fetchLogger.info { "Synced override ${override.fullOutputPath}" }
                 syncedOverrides += override.relativeOutputPath.pathString
             },
-            syncPrimaryDirectories = true,
+            syncPrimaryDirectories = false,
         ).joinAll()
     }
 
@@ -289,3 +289,4 @@ private suspend fun detectCleanupFiles(
         }
     }.awaitAll().flatten().distinctBy { it.absolutePath }
 }
+
