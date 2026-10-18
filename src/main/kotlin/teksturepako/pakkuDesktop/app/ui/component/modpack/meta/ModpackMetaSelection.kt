@@ -920,26 +920,26 @@ internal fun ProjectOverrideCard(
                 }
             }
         }
-        if (project != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Divider(
-                    orientation = Orientation.Horizontal,
-                    modifier = Modifier.weight(1f).padding(end = PakkuDesktopConstants.controlSpacing).height(1.dp),
-                    color = borderColor,
-                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Divider(
+                orientation = Orientation.Horizontal,
+                modifier = Modifier.weight(1f).padding(end = PakkuDesktopConstants.controlSpacing).height(1.dp),
+                color = borderColor,
+            )
+            if (project != null) {
                 OverrideActions(displayName, editing, onEditingChange)
-                PkUiTooltip({ Text("Remove this override. $displayName stays in the modpack.") }) {
-                    OutlinedSlimButton(onClick = onRemove) {
-                        Icon(
-                            PakkuDesktopIcons.rollback,
-                            contentDescription = null,
-                            tint = JewelTheme.contentColor,
-                            modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
-                        )
-                    }
+            }
+            PkUiTooltip({ Text("Remove this override. $displayName stays in the modpack.") }) {
+                OutlinedSlimButton(onClick = onRemove) {
+                    Icon(
+                        PakkuDesktopIcons.rollback,
+                        contentDescription = null,
+                        tint = JewelTheme.contentColor,
+                        modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
+                    )
                 }
             }
         }
