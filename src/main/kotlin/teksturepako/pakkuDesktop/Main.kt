@@ -116,6 +116,7 @@ fun main() {
                 cloneDriver,
                 heapHistogramDriver,
                 heapFootprintDriver,
+                updateDriver,
             ) + listOfNotNull(debugTickDriver.takeIf { isDebugTickEnabled }) + pluginDrivers(plugins)
         }
         run(rootComponent, drivers = drivers)

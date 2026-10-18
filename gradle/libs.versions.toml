@@ -30,6 +30,7 @@ nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorate
 nucleus-core-runtime = { module = "dev.nucleusframework:nucleus.core-runtime", version.ref = "nucleus" }
 nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
 nucleus-darkmode-detector = { module = "dev.nucleusframework:nucleus.darkmode-detector", version.ref = "nucleus" }
+nucleus-updater-runtime = { module = "dev.nucleusframework:nucleus.updater-runtime", version.ref = "nucleus" }
 
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }

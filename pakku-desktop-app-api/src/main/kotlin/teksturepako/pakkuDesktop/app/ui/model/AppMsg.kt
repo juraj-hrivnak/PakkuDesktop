@@ -68,6 +68,29 @@ sealed interface AppMsg {
     /** after windowDiskDriver save — actually quit */
     data object QuitReady : AppMsg
 
+    // -- Auto-update --
+
+    /** User clicked "Check for updates" in Settings */
+    data object CheckForUpdatesRequested : AppMsg
+
+    /** updateDriver: check completed */
+    data class UpdateCheckFinished(val availableVersion: String? = null, val errorMessage: String? = null) : AppMsg
+
+    /** updateDriver: download progress */
+    data class UpdateDownloadProgress(val progress: Float) : AppMsg
+
+    /** updateDriver: download finished, installer ready */
+    data object UpdateDownloadFinished : AppMsg
+
+    /** User confirmed install and restart */
+    data object UpdateInstallRequested : AppMsg
+
+    /** updateDriver: install started (app will exit) */
+    data object UpdateInstalling : AppMsg
+
+    /** Dismiss update status */
+    data object DismissUpdateStatus : AppMsg
+
     // -- Internal --
 
     /**

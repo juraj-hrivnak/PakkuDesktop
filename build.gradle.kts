@@ -88,6 +88,9 @@ dependencies {
     // Optional: System dark-mode reactive detection
     implementation(libs.nucleus.darkmode.detector)
 
+    // Auto-update (GitHub Releases)
+    implementation(libs.nucleus.updater.runtime)
+
     // Optional, for markdown renderer
     implementation(libs.jewel.markdown.core)
     implementation(libs.jewel.markdown.int.ui.standalone.styling)

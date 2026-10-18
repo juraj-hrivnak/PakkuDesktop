@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
@@ -35,6 +36,7 @@ import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.ListComboBox
+import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -156,6 +158,10 @@ private fun SettingsGeneralTab(
     uiScale: Float,
     scaleIndex: Int,
 ) {
+    val checking = model.wantsCheckForUpdates
+    val downloading = model.updateDownloadProgress != null && !model.updateReadyToInstall
+    val progress = model.updateDownloadProgress ?: 0f
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         GroupHeader("Appearance")
         ThemeButton(publish, model.profile.data.intUiTheme)
@@ -182,6 +188,48 @@ private fun SettingsGeneralTab(
                 modifier = Modifier.fillMaxWidth(),
                 listState = rememberListComboBoxState(uiScaleLabels, scaleIndex),
             )
+        }
+
+        GroupHeader("Updates")
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                DefaultButton(
+                    onClick = { publish(AppMsg.CheckForUpdatesRequested) },
+                    enabled = !checking && !downloading,
+                ) {
+                    Text(if (checking) "Checking…" else "Check for updates")
+                }
+                if (model.updateReadyToInstall) {
+                    DefaultButton(
+                        onClick = { publish(AppMsg.UpdateInstallRequested) },
+                    ) {
+                        Text("Install & Restart")
+                    }
+                }
+            }
+
+            if (downloading) {
+                HorizontalProgressBar(progress, Modifier.fillMaxWidth().width(200.dp))
+            }
+
+            model.updateStatus?.let { status ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(
+                        status,
+                        color = JewelTheme.contentColor.copy(alpha = 0.8f),
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (status.contains("latest version", ignoreCase = true) ||
+                        status.contains("Download complete", ignoreCase = true) ||
+                        status.contains("Failed", ignoreCase = true) ||
+                        status.contains("not supported", ignoreCase = true) ||
+                        status.contains("not available", ignoreCase = true)) {
+                        OutlinedButton(onClick = { publish(AppMsg.DismissUpdateStatus) }) {
+                            Text("Dismiss")
+                        }
+                    }
+                }
+            }
         }
 
         GroupHeader("Credentials")

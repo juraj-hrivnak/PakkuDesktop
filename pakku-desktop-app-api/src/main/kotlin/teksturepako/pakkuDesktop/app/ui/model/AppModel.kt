@@ -87,6 +87,16 @@ data class AppModel(
     val pluginStates: PersistentMap<PluginId, Any?> = persistentMapOf(),
     /** Load failures from startup; strings only (C3). */
     val pluginFailures: PersistentList<PluginLoadState.Failed> = persistentListOf(),
+    /** Auto-update: check for updates requested by the user */
+    val wantsCheckForUpdates: Boolean = false,
+    /** Auto-update: current update status message (null = idle) */
+    val updateStatus: String? = null,
+    /** Auto-update: download progress 0.0–1.0 (null = not downloading) */
+    val updateDownloadProgress: Float? = null,
+    /** Auto-update: a new version is available and ready to install */
+    val updateAvailableVersion: String? = null,
+    /** Auto-update: download finished, waiting for user to confirm install */
+    val updateReadyToInstall: Boolean = false,
 )
 
 enum class SettingsTab { General, Heap, Plugins }

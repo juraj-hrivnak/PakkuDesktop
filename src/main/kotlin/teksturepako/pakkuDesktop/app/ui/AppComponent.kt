@@ -423,6 +423,60 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
     // -- Quit --
     AppMsg.QuitReady                 -> model.copy(wantsQuit = false)
 
+    // -- Auto-update --
+    AppMsg.CheckForUpdatesRequested  -> model.copy(
+        wantsCheckForUpdates = true,
+        updateStatus = null,
+        updateDownloadProgress = null,
+        updateAvailableVersion = null,
+        updateReadyToInstall = false,
+    )
+    is AppMsg.UpdateCheckFinished -> {
+        val base = model.copy(
+            wantsCheckForUpdates = false,
+            updateAvailableVersion = msg.availableVersion,
+            updateStatus = if (msg.errorMessage != null) {
+                msg.errorMessage
+            } else if (msg.availableVersion != null) {
+                "Version ${msg.availableVersion} is available. Downloading..."
+            } else {
+                "You are running the latest version."
+            },
+        )
+        // If no update is available and no error, clear download state
+        if (msg.availableVersion == null && msg.errorMessage == null) {
+            base.copy(updateDownloadProgress = null, updateReadyToInstall = false)
+        } else {
+            base
+        }
+    }
+    is AppMsg.UpdateDownloadProgress -> model.copy(
+        updateDownloadProgress = msg.progress,
+        updateStatus = if (msg.progress >= 1f) {
+            "Download complete."
+        } else {
+            "Downloading update... ${(msg.progress * 100).toInt()}%"
+        },
+    )
+    AppMsg.UpdateDownloadFinished -> model.copy(
+        updateDownloadProgress = null,
+        updateReadyToInstall = true,
+        updateStatus = "Update downloaded. Ready to install and restart.",
+    )
+    AppMsg.UpdateInstallRequested -> model.copy(
+        updateReadyToInstall = true,
+        updateStatus = "Installing update...",
+    )
+    AppMsg.UpdateInstalling -> model.copy(
+        updateStatus = "Installing update. The app will restart.",
+    )
+    AppMsg.DismissUpdateStatus -> model.copy(
+        updateStatus = null,
+        updateDownloadProgress = null,
+        updateAvailableVersion = null,
+        updateReadyToInstall = false,
+    )
+
     // -- Internal (credentials, license) --
     is AppMsg.Internal               -> handleInternalMsg(msg.msg, model)
 
