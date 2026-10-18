@@ -120,12 +120,15 @@ val gitDropdownComponent = component(
                     }
                 },
             ) {
-                Text(
-                    ref.name,
-                    color = menuItemColors.content,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        ref.name,
+                        color = menuItemColors.content,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
             }
         }
 
@@ -216,9 +219,12 @@ val gitDropdownComponent = component(
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
-                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 10.dp, top = 2.dp)
+                                    .clickable {
+                                        publish(GitDropdownMsg.TagsToggled(!model.tagsExpanded))
+                                    },
                             ) {
                                 Icon(
                                     key = if (model.tagsExpanded) AllIconsKeys.General.ChevronDown else AllIconsKeys.General.ChevronRight,
