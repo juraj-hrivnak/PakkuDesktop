@@ -79,12 +79,10 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.Switch
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectConfigProperty
-import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectMapEntryErrorKey
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectPropertyErrorKey
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.removeProjectOverride
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.renameProjectOverride
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProviderIcon
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyDisplay
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
@@ -776,97 +774,39 @@ private fun ObjectMapSelection(
                     field.fields.filter { child -> entry.child(child.serialName).isOverride() }
                 }
                 val project = if (field.hint.projectCard) projectOf(name) else null
-                if (field.hint.projectCard) {
-                    ProjectOverrideCard(
-                        entryKey = name,
-                        project = project,
-                        editing = editingEntry,
-                        onRename = { next -> renameOverride(name, next) },
-                        onEditingChange = { on ->
-                            editing = if (on) editing + name else editing - name
-                            if (!on && name !in onDisk) pending = pending - name
-                        },
-                        onRemove = {
-                            editing = editing - name
-                            pending = pending - name
-                            if (name in onDisk) {
-                                publish(ModpackMsg.MetaWriteRequested(removeProjectOverride(field, name)))
-                            }
-                        },
-                        showBody = children.isNotEmpty(),
-                    ) {
-                        children.forEach { child -> key(child.serialName) {
-                            OverrideChild(
-                                projectsField = field,
-                                child = child,
-                                entry = entry,
-                                name = name,
-                                map = value,
-                                editing = editingEntry,
-                                projectStyle = true,
-                                project = project,
-                                metaErrors = metaErrors,
-                                onEdit = onEdit,
-                                publish = publish,
-                            )
-                        } }
-                    }
-                } else {
-                    IslandCard(
-                        title = name,
-                        modifier = Modifier.fillMaxWidth(),
-                        trailing = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing)) {
-                                OverrideActions(
-                                    name = name,
-                                    editing = editingEntry,
-                                    onEditingChange = { on ->
-                                        editing = if (on) editing + name else editing - name
-                                        if (!on && name !in onDisk) pending = pending - name
-                                    },
-                                )
-                                PkUiTooltip({ Text("Remove this override. $name stays in the modpack.") }) {
-                                    OutlinedSlimButton(onClick = {
-                                        editing = editing - name
-                                        pending = pending - name
-                                        if (name in onDisk) {
-                                            onEdit(value.withChild(name, null))?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
-                                        }
-                                    }) {
-                                        Icon(
-                                            PakkuDesktopIcons.rollback,
-                                            contentDescription = null,
-                                            tint = JewelTheme.contentColor,
-                                            modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                    ) {
-                        if (children.isEmpty()) {
-                            Text(
-                                "No overrides",
-                                color = secondary(),
-                                fontSize = PakkuDesktopConstants.cardCaptionSize,
-                            )
+                ProjectOverrideCard(
+                    entryKey = name,
+                    project = project,
+                    editing = editingEntry,
+                    onRename = { next -> renameOverride(name, next) },
+                    onEditingChange = { on ->
+                        editing = if (on) editing + name else editing - name
+                        if (!on && name !in onDisk) pending = pending - name
+                    },
+                    onRemove = {
+                        editing = editing - name
+                        pending = pending - name
+                        if (name in onDisk) {
+                            publish(ModpackMsg.MetaWriteRequested(removeProjectOverride(field, name)))
                         }
-                        children.forEach { child -> key(child.serialName) {
-                            OverrideChild(
-                                projectsField = field,
-                                child = child,
-                                entry = entry,
-                                name = name,
-                                map = value,
-                                editing = editingEntry,
-                                projectStyle = false,
-                                project = null,
-                                metaErrors = metaErrors,
-                                onEdit = onEdit,
-                                publish = publish,
-                            )
-                        } }
-                    }
+                    },
+                    showBody = children.isNotEmpty(),
+                ) {
+                    children.forEach { child -> key(child.serialName) {
+                        OverrideChild(
+                            projectsField = field,
+                            child = child,
+                            entry = entry,
+                            name = name,
+                            map = value,
+                            editing = editingEntry,
+                            projectStyle = field.hint.projectCard,
+                            project = project,
+                            metaErrors = metaErrors,
+                            onEdit = onEdit,
+                            publish = publish,
+                        )
+                    } }
                 }
             } }
             FieldErrors(errors)
@@ -998,24 +938,26 @@ private fun ProjectOverrideCard(
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Divider(
-                orientation = Orientation.Horizontal,
-                modifier = Modifier.weight(1f).padding(end = PakkuDesktopConstants.controlSpacing).height(1.dp),
-                color = borderColor,
-            )
-            OverrideActions(displayName, editing, onEditingChange)
-            PkUiTooltip({ Text("Remove this override. $displayName stays in the modpack.") }) {
-                OutlinedSlimButton(onClick = onRemove) {
-                    Icon(
-                        PakkuDesktopIcons.rollback,
-                        contentDescription = null,
-                        tint = JewelTheme.contentColor,
-                        modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
-                    )
+        if (project != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Divider(
+                    orientation = Orientation.Horizontal,
+                    modifier = Modifier.weight(1f).padding(end = PakkuDesktopConstants.controlSpacing).height(1.dp),
+                    color = borderColor,
+                )
+                OverrideActions(displayName, editing, onEditingChange)
+                PkUiTooltip({ Text("Remove this override. $displayName stays in the modpack.") }) {
+                    OutlinedSlimButton(onClick = onRemove) {
+                        Icon(
+                            PakkuDesktopIcons.rollback,
+                            contentDescription = null,
+                            tint = JewelTheme.contentColor,
+                            modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
+                        )
+                    }
                 }
             }
         }
@@ -1053,32 +995,17 @@ private fun OverrideChild(
     onEdit: (JsonElement?) -> MetaWrite?,
     publish: (ModpackMsg) -> Unit,
 ) {
+    val p = project
+    if (p == null) return
     val override = entry.child(child.serialName)
-    if (projectStyle && project != null) {
-        ProjectConfigProperty(
-            project = project,
-            field = child,
-            override = override,
-            editing = editing,
-            fieldErrors = metaErrors[projectPropertyErrorKey(project, child)].orEmpty(),
-            publish = publish,
-        )
-        return
-    }
-    val display = override
-    val fieldErrors = metaErrors[projectMapEntryErrorKey(name, child)].orEmpty()
-    if (editing) {
-        ModpackFieldSelection(
-            field = child,
-            value = display,
-            errors = fieldErrors,
-            onEdit = { next -> onEdit(map.withChild(name, entry.withChild(child.serialName, next))) },
-            publish = publish,
-            metaErrors = metaErrors,
-        )
-    } else {
-        OverrideValue(child, display)
-    }
+    ProjectConfigProperty(
+        project = p,
+        field = child,
+        override = override,
+        editing = editing,
+        fieldErrors = metaErrors[projectPropertyErrorKey(p, child)].orEmpty(),
+        publish = publish,
+    )
 }
 
 // -- Raw JSON --
@@ -1130,22 +1057,6 @@ private fun RawJsonSelection(
 
 // -- Chrome --
 
-/** Read-only label and value for one overridden property. */
-@Composable
-private fun OverrideValue(field: ModpackField, value: JsonElement) {
-    RecomposeProbe("ModpackOverrideValue")
-    val text = projectPropertyDisplay(field, value)
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            field.label,
-            modifier = Modifier.width(PakkuDesktopConstants.settingLabelWidth),
-            color = secondary(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(text.ifBlank { EmptyValue }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
 
 /** [name] replaced, or removed when [value] is null. */
 private fun mapEntries(entries: List<Pair<String, String>>, name: String, value: String?): List<Pair<String, String>> =
