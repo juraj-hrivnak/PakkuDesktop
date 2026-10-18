@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
@@ -72,6 +74,7 @@ fun PkUiDropdown(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     menuModifier: Modifier = Modifier,
+    maxHeight: Dp = 480.dp,
     outline: Outline = Outline.None,
     style: DropdownStyle = JewelTheme.dropdownStyle,
     menuContent: MenuScope.() -> Unit,
@@ -236,7 +239,8 @@ fun PkUiDropdown(
                     popupProperties = PopupProperties(focusable = false),
                     modifier = menuModifier
                         .zIndex(1f)
-                        .defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
+                        .defaultMinSize(minWidth = with(density) { componentWidth.toDp() })
+                        .heightIn(max = maxHeight),
                     horizontalAlignment = Alignment.Start,
                     content = menuContent,
                 )
