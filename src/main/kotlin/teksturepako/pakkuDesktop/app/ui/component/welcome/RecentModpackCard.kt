@@ -4,9 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.welcome
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,13 +13,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.theme.badgeStyle
 import teksturepako.pakkuDesktop.app.data.Profile
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.HoverablePanel
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.prettyLoaderName
 import teksturepako.pakkuDesktop.app.ui.model.ModpackSummary
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -67,13 +66,23 @@ fun RecentModpackCard(
                 ) {
                     summary.mcVersions.firstOrNull()?.let { mc ->
                         val more = summary.mcVersions.size - 1
-                        InfoChip(if (more > 0) "MC $mc +$more" else "MC $mc")
+                        Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                            Text(if (more > 0) "$mc +$more" else mc)
+                        }
                     }
                     summary.loaders.forEach { (loader, version) ->
-                        InfoChip("${prettyLoaderName(loader)} $version".trim())
+                        Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                            Text(if (version.isNotBlank()) "$loader $version" else loader)
+                        }
                     }
-                    summary.target?.let { InfoChip(it) }
-                    summary.projectCount?.let { InfoChip(if (it == 1) "1 project" else "$it projects") }
+                    summary.target?.let {
+                        Badge(style = JewelTheme.badgeStyle.graySecondary) { Text(it) }
+                    }
+                    summary.projectCount?.let {
+                        Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                            Text(if (it == 1) "1 project" else "$it projects")
+                        }
+                    }
                 }
                 ModpackSummary.State.NotInitialized -> WarningLine("Not a Pakku modpack yet")
                 ModpackSummary.State.Unreadable     -> WarningLine("Lock file could not be read")
@@ -92,24 +101,6 @@ fun RecentModpackCard(
                 Text(openedAgo(profile), color = Color.Gray, fontSize = 12.sp)
             }
         }
-    }
-}
-
-@Composable
-private fun InfoChip(text: String) {
-    val shape = RoundedCornerShape(6.dp)
-    val border = JewelTheme.contentColor.copy(alpha = 0.22f)
-    Box(
-        Modifier
-            .border(1.dp, border, shape)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
-    ) {
-        Text(
-            text,
-            color = JewelTheme.contentColor.copy(alpha = 0.75f),
-            fontSize = 12.sp,
-            maxLines = 1,
-        )
     }
 }
 

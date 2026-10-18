@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.view.routes
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -14,10 +15,12 @@ import androidx.compose.ui.unit.dp
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticalSplitLayout
+import org.jetbrains.jewel.ui.theme.badgeStyle
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakkuDesktop.app.actions.AppToastContent
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
@@ -173,16 +176,27 @@ fun ModpackTitleBarStart(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun McLoaderLabel(model: ModpackModel)
-{
+private fun McLoaderLabel(model: ModpackModel) {
     val lockFile = model.lockFile?.get() ?: return
-    val mc = lockFile.getFirstMcVersion() ?: return
-    val loader = lockFile.getLoaders().firstOrNull()
-    val label = if (loader != null) "MC $mc · $loader" else "MC $mc"
-    Text(
-        label,
-        color = JewelTheme.contentColor.copy(alpha = 0.7f),
-        modifier = Modifier.padding(horizontal = 8.dp),
-    )
+    val mcVersions = lockFile.getMcVersions()
+    val loaders = lockFile.getLoadersWithVersions()
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        mcVersions.firstOrNull()?.let { mc ->
+            val more = mcVersions.size - 1
+            Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                Text(if (more > 0) "$mc +$more" else mc)
+            }
+        }
+        loaders.forEach { (loader, version) ->
+            Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                Text(if (version.isNotBlank()) "$loader $version" else loader)
+            }
+        }
+    }
 }
