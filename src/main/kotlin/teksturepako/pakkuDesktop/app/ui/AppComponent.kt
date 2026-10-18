@@ -255,14 +255,14 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
 
         is ModpackMsg.FilesDropped -> {
             val withModpack = model.commitModpack(newModpack, persistListPrefs)
-            val directories = child.paths.filter { java.nio.file.Files.isDirectory(java.nio.file.Path.of(it)) }
+            val directories = child.paths.filter { java.nio.file.Files.isDirectory(Path.of(it)) }
             val firstDir = directories.firstOrNull()
             if (firstDir != null) {
                 handleDirectoryPicked(firstDir, withModpack)
             } else {
                 // Treat dropped file names as add query hints (slug-like basenames).
                 val query = child.paths
-                    .map { java.nio.file.Path.of(it).fileName.toString().substringBeforeLast('.') }
+                    .map { Path.of(it).fileName.toString().substringBeforeLast('.') }
                     .filter { it.isNotBlank() }
                     .joinToString(" ")
                 if (query.isNotBlank()) {

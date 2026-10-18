@@ -206,7 +206,7 @@ data class ModpackModel(
     val filterSides: PersistentSet<ProjectSide> = persistentSetOf(),
     /** Include projects with [teksturepako.pakku.api.projects.Project.side] == null. */
     val filterMissingSide: Boolean = false,
-    /** Empty = no provider filter; values are provider [serialName]s. */
+    /** Empty = no provider filter; values are provider `serialName`s. */
     val filterProviders: PersistentSet<String> = persistentSetOf(),
     /**
      * null = no redistributable filter;
@@ -282,7 +282,7 @@ data class ModpackModel(
     /** oldest first; at most [MAX_TOASTS], enforced in update */
     val toasts: PersistentList<ToastData> = persistentListOf(),
 
-    /** Cleared by [projectEditDriver] after [ConfigFile.setProjectConfig]. */
+    /** Cleared by `projectEditDriver` after [ConfigFile.setProjectConfig]. */
     val pendingPropertyWrite: PropertyWrite? = null,
     val pendingPropertyWriteProjectKey: String? = null,
     val pendingPropertyWriteErrorKey: String? = null,
