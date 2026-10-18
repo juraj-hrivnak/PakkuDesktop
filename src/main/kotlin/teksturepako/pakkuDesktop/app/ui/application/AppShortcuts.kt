@@ -275,6 +275,8 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         }
         true
     }
+    // The subpath field cancels its own draft. Let that handler see Esc.
+    model.modpack.subpathFieldFocused -> false
     // The Overview has no inspector; its inline editors cancel on Esc.
     model.screen == AppScreen.Modpack && model.modpack.selectedTab != SelectedTab.MODPACK &&
         model.modpack.selectedProject != null ->

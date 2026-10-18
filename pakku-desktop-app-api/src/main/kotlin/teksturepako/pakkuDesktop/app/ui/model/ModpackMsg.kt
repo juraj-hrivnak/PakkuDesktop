@@ -33,6 +33,11 @@ import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitOp
 
+/** Projects-tab property edit; [projectEditDriver] applies via [ConfigFile.setProjectConfig]. */
+data class PropertyWrite(
+    val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
+)
+
 /**
  * pack metadata mutation; projectEditDriver applies + writes.
  * [replaceConfig] runs before [mutate], for `pakku.json` fields [ConfigFile] has no setter for.
@@ -345,6 +350,7 @@ sealed interface ModpackMsg {
     data object FocusProjectsFilterRequested : ModpackMsg
     data object FocusProjectsFilterConsumed : ModpackMsg
     data class ProjectsFilterFocusChanged(val focused: Boolean) : ModpackMsg
+    data class SubpathFieldFocusChanged(val focused: Boolean) : ModpackMsg
 
     /** Add projects dialog (FAB) */
     data object ShowAddDialog : ModpackMsg
@@ -445,6 +451,15 @@ sealed interface ModpackMsg {
     data object DismissConfigError : ModpackMsg
 
     // -- pakku.json writes (Overview overrides and Projects properties) --
+
+    /** Lock-file project to update; [projectEditDriver] uses Pakku [ConfigFile.setProjectConfig]. */
+    data class PropertyWriteRequested(
+        val projectUiKey: String,
+        val request: PropertyWrite,
+        /** [ModpackModel.modpackMetaErrors] key when [setProjectConfig] fails. */
+        val errorFieldKey: String? = null,
+    ) : ModpackMsg
+    data object PropertyWriteCompleted : ModpackMsg
 
     /** Modpack tab metadata write; queued behind writes still in flight */
     data class MetaWriteRequested(val request: MetaWrite) : ModpackMsg

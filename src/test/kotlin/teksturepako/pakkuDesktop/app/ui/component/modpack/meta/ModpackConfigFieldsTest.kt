@@ -8,6 +8,7 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.JsonObject
@@ -20,7 +21,9 @@ import kotlinx.serialization.json.put
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.json
+import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectType
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyUiValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -178,31 +181,59 @@ class ModpackConfigFieldsTest {
     }
 
     @Test
-    fun `project override writes patch the config they are applied to`() {
-        val projectsField = ModpackFieldSchema.fields.first { it.serialName == "projects" }
-        val side = writeProjectOverride(projectsField, "jei", "side", JsonPrimitive("CLIENT"))
-        val subpath = writeProjectOverride(projectsField, "jei", "subpath", JsonPrimitive("libs"))
+    fun `projectConfigMapKey prefers existing projects entry`() {
+        val project = Project(
+            type = ProjectType.MOD,
+            slug = mutableMapOf("modrinth" to "jei"),
+            name = mutableMapOf(),
+            id = mutableMapOf(),
+            files = mutableSetOf(),
+            aliases = mutableSetOf("just-enough-items"),
+        )
+        val config = config {
+            projects["just-enough-items"] = ConfigFile.ProjectConfig(subpath = "lib")
+        }
+        assertEquals("just-enough-items", projectConfigMapKey(project, config))
+    }
 
-        // Both writes were built before either was applied; neither drops the other.
-        val both = subpath.replaceConfig!!(side.replaceConfig!!(config()))
-        assertEquals("libs", both.projects["jei"]?.subpath)
-        assertNotNull(both.projects["jei"]?.side)
+    @Test
+    fun `propertyWriteForField maps UI values to ProjectConfig`() {
+        val subpathField = modpackProjectConfigFields.first { it.serialName == "subpath" }
+        val entry = ConfigFile.ProjectConfig()
+        propertyWriteForField(subpathField, JsonPrimitive("libs")).write(entry, "jei")
+        assertEquals("libs", entry.subpath)
+        propertyWriteForField(subpathField, null).write(entry, "jei")
+        assertNull(entry.subpath)
+        propertyWriteForField(subpathField, JsonPrimitive(".")).write(entry, "jei")
+        assertEquals(".", entry.subpath)
+    }
 
-        val reset = writeProjectOverride(projectsField, "jei", "side", null, dropEmpty = true)
-        val cleared = writeProjectOverride(projectsField, "jei", "subpath", null, dropEmpty = true)
-        assertTrue("jei" !in cleared.replaceConfig!!(reset.replaceConfig!!(both)).projects)
+    @Test
+    fun `unset project subpath is not a dot`() {
+        val project = Project(
+            type = ProjectType.MOD,
+            slug = mutableMapOf("modrinth" to "jei"),
+            name = mutableMapOf(),
+            id = mutableMapOf(),
+            files = mutableSetOf(),
+        )
+        assertNull(project.getSubpathOrNull())
+        val field = modpackProjectConfigFields.first { it.serialName == "subpath" }
+        assertEquals("", projectPropertyUiValue(project, field, JsonNull).text)
+    }
 
-        val invalid = writeProjectOverride(projectsField, "jei", "subpath", JsonPrimitive(".."))
-        assertTrue(invalid.validate(config(), LockFile()).isNotEmpty())
-
-        val renamed = renameProjectOverride(projectsField, "jei", "just-enough-items")
-            .replaceConfig!!(both)
+    @Test
+    fun `projects map rename and remove patch config`() {
+        val projectsField = modpackProjectsField
+        val withEntry = config().withJsonField(
+            "projects",
+            buildJsonObject { put("jei", buildJsonObject { put("subpath", JsonPrimitive("libs")) }) },
+        )
+        val renamed = renameProjectOverride(projectsField, "jei", "just-enough-items").replaceConfig!!(withEntry)
         assertTrue("jei" !in renamed.projects)
         assertEquals("libs", renamed.projects["just-enough-items"]?.subpath)
-
         val removed = removeProjectOverride(projectsField, "just-enough-items").replaceConfig!!(renamed)
         assertTrue("just-enough-items" !in removed.projects)
-        assertEquals("libs", both.projects["jei"]?.subpath)
     }
 
     @Test

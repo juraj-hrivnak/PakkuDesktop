@@ -250,6 +250,8 @@ data class ModpackModel(
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
     val projectsFilterFocused: Boolean = false,
+    /** Subpath editor has focus, so Esc cancels the draft instead of closing the inspector. */
+    val subpathFieldFocused: Boolean = false,
     val addDialog: AddDialogModel = AddDialogModel(),
     val removeDialog: RemoveDialogModel = RemoveDialogModel(),
     /** DnD / auto add query */
@@ -270,6 +272,10 @@ data class ModpackModel(
     /** oldest first; at most [MAX_TOASTS], enforced in update */
     val toasts: PersistentList<ToastData> = persistentListOf(),
 
+    /** Cleared by [projectEditDriver] after [ConfigFile.setProjectConfig]. */
+    val pendingPropertyWrite: PropertyWrite? = null,
+    val pendingPropertyWriteProjectKey: String? = null,
+    val pendingPropertyWriteErrorKey: String? = null,
     /** Validated metadata writes, oldest first; projectEditDriver writes the head, then drops it. */
     val pendingMetaWrites: PersistentList<MetaWrite> = persistentListOf(),
     /** Inline validation / write failures on the Modpack tab, keyed by field key. */

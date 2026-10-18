@@ -101,10 +101,14 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.TabSelected        ->
         if (model.selectedTab == msg.tab) model else model.copy(selectedTab = msg.tab)
     is ModpackMsg.ProjectSelected    ->
-        if (model.selectedProject == msg.project && !model.editingProject) model
-        else model.copy(selectedProject = msg.project, editingProject = false)
+        if (model.selectedProject == msg.project && !model.editingProject && !model.subpathFieldFocused) model
+        else model.copy(selectedProject = msg.project, editingProject = false, subpathFieldFocused = false)
     is ModpackMsg.ProjectEditing     ->
-        if (model.editingProject == msg.editing) model else model.copy(editingProject = msg.editing)
+        if (model.editingProject == msg.editing && (msg.editing || !model.subpathFieldFocused)) model
+        else model.copy(
+            editingProject = msg.editing,
+            subpathFieldFocused = msg.editing && model.subpathFieldFocused,
+        )
     is ModpackMsg.ProjectsSelected   ->
         if (model.selectedProjectKeys.containsAll(msg.keys)) model
         else model.copy(selectedProjectKeys = model.selectedProjectKeys.addAll(msg.keys))
@@ -233,6 +237,8 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (!model.wantsFocusProjectsFilter) model else model.copy(wantsFocusProjectsFilter = false)
     is ModpackMsg.ProjectsFilterFocusChanged ->
         if (model.projectsFilterFocused == msg.focused) model else model.copy(projectsFilterFocused = msg.focused)
+    is ModpackMsg.SubpathFieldFocusChanged ->
+        if (model.subpathFieldFocused == msg.focused) model else model.copy(subpathFieldFocused = msg.focused)
 
     ModpackMsg.ShowAddDialog -> model.copy(
         addDialog = AddDialogModel(visible = true),
@@ -617,6 +623,24 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         )
     ModpackMsg.DismissLockError -> model.copy(lockErrorDismissed = true)
     ModpackMsg.DismissConfigError -> model.copy(configErrorDismissed = true)
+
+    is ModpackMsg.PropertyWriteRequested ->
+        model.copy(
+            pendingPropertyWrite = msg.request,
+            pendingPropertyWriteProjectKey = msg.projectUiKey,
+            pendingPropertyWriteErrorKey = msg.errorFieldKey,
+        )
+    ModpackMsg.PropertyWriteCompleted ->
+        if (model.pendingPropertyWrite == null) model
+        else {
+            val errorKey = model.pendingPropertyWriteErrorKey
+            model.copy(
+                pendingPropertyWrite = null,
+                pendingPropertyWriteProjectKey = null,
+                pendingPropertyWriteErrorKey = null,
+                modpackMetaErrors = errorKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
+            )
+        }
 
     is ModpackMsg.MetaWriteRequested -> {
         val lock = model.lockFile?.get() ?: return@modpackUpdate model

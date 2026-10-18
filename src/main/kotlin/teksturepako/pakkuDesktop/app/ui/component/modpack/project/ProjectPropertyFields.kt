@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,6 +18,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -43,16 +53,12 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.json
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.isOverride
-import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectOverrideCommitErrors
-import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.subpathEditorText
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.SegmentedControl
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.component.SegmentedControlButtonData
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -78,12 +84,6 @@ import teksturepako.pakkuDesktop.pkui.component.PkUiTooltip
 
 private const val EmptyValue = "Not set"
 
-/** Properties of one `pakku.json` project override. */
-val modpackProjectConfigFields: List<ModpackField>
-    get() = teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackFieldSchema.fields
-        .first { it.serialName == "projects" }
-        .fields
-
 @OptIn(ExperimentalSerializationApi::class)
 private val projectConfigJson = Json(json) {
     encodeDefaults = true
@@ -101,22 +101,23 @@ fun projectEffectiveConfigField(project: Project, field: ModpackField): JsonElem
 
 /** Stored override when present; otherwise the effective lock-file default (for editors and read-only). */
 fun projectPropertyUiValue(project: Project, field: ModpackField, override: JsonElement): JsonElement {
+    // Same source as file paths: [Project.getSubpath], after config inheritance.
+    if (field.serialName == "subpath") {
+        val subpath = project.getSubpathOrNull()?.takeUnless { it.isBlank() }
+        return if (subpath == null) JsonNull else JsonPrimitive(subpath)
+    }
     // An explicit aliases array, including empty, replaces the lock-file aliases.
     if (field.serialName == "aliases" && override is JsonArray) return override
     val chosen = if (override.isOverride()) override else projectEffectiveConfigField(project, field)
-    return if (field.serialName == "subpath" && chosen.text.trim() == ".") JsonNull else chosen
+    return chosen
 }
 
 fun showProjectPropertyReadOnly(project: Project, field: ModpackField, override: JsonElement): Boolean {
-    if (field.serialName == "subpath" && override.text.trim() == ".") return false
     if (field.serialName == "aliases" && override is JsonArray) return override.strings.isNotEmpty()
     if (override.isOverride()) return true
     return when (field.serialName) {
         "type", "side", "update_strategy", "redistributable" -> true
-        "subpath" -> {
-            val subpath = project.getSubpathOrNull()
-            !subpath.isNullOrBlank() && subpath != "."
-        }
+        "subpath" -> !project.getSubpathOrNull().isNullOrBlank()
         "aliases" -> !project.aliases.isNullOrEmpty()
         "export" -> true
         else -> false
@@ -131,7 +132,7 @@ private fun projectToProjectConfig(project: Project) = ConfigFile.ProjectConfig(
     side = project.side,
     updateStrategy = project.updateStrategy,
     redistributable = project.redistributable,
-    subpath = project.getSubpathOrNull()?.takeUnless { it.isBlank() || it == "." },
+    subpath = project.getSubpathOrNull()?.takeUnless { it.isBlank() },
     aliases = project.aliases?.takeIf { it.isNotEmpty() },
     export = projectExportEffective(project),
 )
@@ -167,6 +168,7 @@ fun ProjectPropertyEditor(
     field: ModpackField,
     value: JsonElement,
     errors: List<ActionError> = emptyList(),
+    onSubpathFocus: (Boolean) -> Unit = {},
     write: (JsonElement?) -> Unit,
 ) {
     when (field.widget) {
@@ -175,7 +177,7 @@ fun ProjectPropertyEditor(
             JsonPrimitive(it.toBoolean())
         }
         FieldWidget.Text ->
-            if (field.serialName == "subpath") ProjectSubpathField(field, value, errors, write)
+            if (field.serialName == "subpath") ProjectSubpathField(field, value, errors, onSubpathFocus, write)
             else ProjectPropertyText(field, value, write)
         FieldWidget.StringList -> ProjectPropertyStringList(field, value, write)
         else -> Unit
@@ -289,55 +291,56 @@ private fun ProjectPropertyText(
 }
 
 /**
- * The characters in the field are only a draft. Nothing is written while it is focused,
- * so a legal prefix like `.` is not saved on the way to `..`.
- * On a real focus loss the current text is checked once: invalid input stays on screen and is not saved.
+ * The characters in the field are a draft. Check or Enter writes them.
+ * X or Esc restores the last saved subpath. An invalid path is not written.
  */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalCoroutinesApi::class)
 @Composable
 private fun ProjectSubpathField(
     field: ModpackField,
     value: JsonElement,
     errors: List<ActionError>,
+    onFocus: (Boolean) -> Unit,
     write: (JsonElement?) -> Unit,
 ) {
     RecomposeProbe("ProjectSubpathField")
-    val state = rememberTextFieldState(subpathEditorText(value.text))
-    val saved = rememberUpdatedState(subpathEditorText(value.text))
+    val external = value.text.trim()
+    val savedExternal = rememberUpdatedState(external)
+    val state = rememberTextFieldState(external)
     var focused by remember { mutableStateOf(false) }
     var localErrors by remember { mutableStateOf<List<ActionError>>(emptyList()) }
-    var skipCommit by remember { mutableStateOf(false) }
+    val onFocusChanged = rememberUpdatedState(onFocus)
 
-    LaunchedEffect(saved.value) {
-        if (!focused && localErrors.isEmpty() && state.text.toString() != saved.value) {
-            state.setTextAndPlaceCursorAtEnd(saved.value)
+    fun revertDraft() {
+        localErrors = emptyList()
+        if (state.text.toString().trim() != savedExternal.value) {
+            state.setTextAndPlaceCursorAtEnd(savedExternal.value)
         }
     }
-    LaunchedEffect(Unit) {
-        snapshotFlow { focused to state.text.toString() }
-            .collectLatest { (isFocused, raw) ->
-                val typed = raw.trim()
-                val typedErrors = projectOverrideCommitErrors(field, typed)
-                if (isFocused) {
-                    localErrors = typedErrors
-                    return@collectLatest
-                }
-                if (skipCommit) {
-                    skipCommit = false
-                    return@collectLatest
-                }
-                delay(150)
-                if (focused || skipCommit) return@collectLatest
-                val next = subpathEditorText(state.text.toString())
-                val commitErrors = projectOverrideCommitErrors(field, state.text.toString())
-                if (commitErrors.isNotEmpty()) {
-                    localErrors = commitErrors
-                    return@collectLatest
-                }
-                localErrors = emptyList()
-                if (next == saved.value) return@collectLatest
-                write(if (next.isEmpty()) null else field.textValue(next))
-            }
+
+    fun commitDraft() {
+        val next = state.text.toString().trim()
+        val commitErrors = projectOverrideCommitErrors(field, next)
+        if (commitErrors.isNotEmpty()) {
+            localErrors = commitErrors
+            return
+        }
+        localErrors = emptyList()
+        if (next == savedExternal.value) return
+        write(if (next.isEmpty()) null else field.textValue(next))
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { onFocusChanged.value(false) }
+    }
+    LaunchedEffect(external) {
+        if (!focused && localErrors.isEmpty() && state.text.toString().trim() != external) {
+            state.setTextAndPlaceCursorAtEnd(external)
+        }
+    }
+    LaunchedEffect(focused, state.text.toString()) {
+        if (focused) {
+            localErrors = projectOverrideCommitErrors(field, state.text.toString().trim())
+        }
     }
     val shownErrors = localErrors.ifEmpty { errors }
     ProjectPropertyTextRow(
@@ -345,12 +348,45 @@ private fun ProjectSubpathField(
         state = state,
         write = write,
         errors = shownErrors,
-        textFieldModifier = Modifier.onFocusChanged { focused = it.isFocused },
-        onReset = {
-            skipCommit = true
-            localErrors = emptyList()
+        textFieldModifier = Modifier
+            .onFocusChanged { change ->
+                focused = change.isFocused
+                onFocus(change.isFocused)
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.Enter, Key.NumPadEnter -> {
+                        commitDraft()
+                        true
+                    }
+                    Key.Escape -> {
+                        revertDraft()
+                        true
+                    }
+                    else -> false
+                }
+            },
+        onReset = { localErrors = emptyList() },
+        trailing = { height ->
+            SubpathActionButton(height, AllIconsKeys.Actions.Checked, "Apply", ::commitDraft)
+            SubpathActionButton(height, AllIconsKeys.General.Close, "Cancel", ::revertDraft)
         },
     )
+}
+
+@Composable
+private fun RowScope.SubpathActionButton(
+    size: Dp,
+    icon: IconKey,
+    description: String,
+    onClick: () -> Unit,
+) {
+    PkUiTooltip({ Text(description) }) {
+        IconButton(onClick = onClick, focusable = false, modifier = Modifier.size(size)) {
+            Icon(icon, description, tint = JewelTheme.contentColor)
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -362,6 +398,7 @@ private fun ProjectPropertyTextRow(
     errors: List<ActionError> = emptyList(),
     textFieldModifier: Modifier = Modifier,
     onReset: () -> Unit = {},
+    trailing: (@Composable RowScope.(Dp) -> Unit)? = null,
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.Top) {
@@ -389,8 +426,33 @@ private fun ProjectPropertyTextRow(
                     }
                 }
             }
-            Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing)) {
-                TextField(state, textFieldModifier, placeholder = { Text(field.hint.placeholder) })
+            Column(
+                Modifier
+                    .then(if (trailing != null) Modifier.weight(1f) else Modifier)
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
+            ) {
+                if (trailing == null) {
+                    TextField(state, textFieldModifier, placeholder = { Text(field.hint.placeholder) })
+                } else {
+                    val density = LocalDensity.current
+                    var inputHeight by remember { mutableStateOf(0.dp) }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
+                    ) {
+                        TextField(
+                            state,
+                            Modifier
+                                .weight(1f)
+                                .onSizeChanged { inputHeight = with(density) { it.height.toDp() } }
+                                .then(textFieldModifier),
+                            placeholder = { Text(field.hint.placeholder) },
+                        )
+                        if (inputHeight > 0.dp) trailing(inputHeight)
+                    }
+                }
                 if (errors.isNotEmpty()) {
                     errors.forEach { ActionErrorContent(it) }
                 }

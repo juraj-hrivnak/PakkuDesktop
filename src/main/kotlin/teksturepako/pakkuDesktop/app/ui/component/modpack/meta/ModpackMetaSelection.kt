@@ -74,12 +74,13 @@ import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
 import teksturepako.pakkuDesktop.app.ui.component.Switch
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectPropertyEditor
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectPropertyReadOnly
+import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectConfigProperty
+import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectMapEntryErrorKey
+import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectPropertyErrorKey
+import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.removeProjectOverride
+import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.renameProjectOverride
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProviderIcon
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyDisplay
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.projectPropertyUiValue
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.showProjectPropertyReadOnly
 import teksturepako.pakkuDesktop.app.ui.model.MetaWrite
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
 import teksturepako.pakkuDesktop.elm.RecomposeProbe
@@ -1014,52 +1015,28 @@ private fun OverrideChild(
     publish: (ModpackMsg) -> Unit,
 ) {
     val override = entry.child(child.serialName)
-    val display = if (projectStyle && project != null) {
-        projectPropertyUiValue(project, child, override)
-    } else if (child.serialName == "subpath" && override.text.trim() == ".") {
-        JsonNull
-    } else {
-        override
+    if (projectStyle && project != null) {
+        ProjectConfigProperty(
+            project = project,
+            field = child,
+            override = override,
+            editing = editing,
+            fieldErrors = metaErrors[projectPropertyErrorKey(project, child)].orEmpty(),
+            publish = publish,
+        )
+        return
     }
-    if (projectStyle && child.serialName == "subpath" && override.text.trim() == ".") {
-        LaunchedEffect(name) {
-            publish(ModpackMsg.MetaWriteRequested(writeProjectOverride(projectsField, name, child.serialName, null)))
-        }
-    }
-    val fieldErrors = metaErrors[projectOverrideErrorKey(projectsField, name, child.serialName)].orEmpty()
-    val write: (JsonElement?) -> Unit = { next ->
-        if (projectStyle) {
-            publish(ModpackMsg.MetaWriteRequested(writeProjectOverride(projectsField, name, child.serialName, next)))
-        } else {
-            onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
-                ?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
-        }
-    }
-    val listed = projectStyle && child.widget in setOf(
-        FieldWidget.Choice,
-        FieldWidget.Boolean,
-        FieldWidget.Text,
-        FieldWidget.StringList,
-    )
-    if (editing && listed) {
-        ProjectPropertyEditor(child, display, fieldErrors, write)
-    } else if (editing) {
+    val display = override
+    val fieldErrors = metaErrors[projectMapEntryErrorKey(name, child)].orEmpty()
+    if (editing) {
         ModpackFieldSelection(
             field = child,
             value = display,
             errors = fieldErrors,
-            onEdit = { next ->
-                if (projectStyle) {
-                    writeProjectOverride(projectsField, name, child.serialName, next)
-                } else {
-                    onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
-                }
-            },
+            onEdit = { next -> onEdit(map.withChild(name, entry.withChild(child.serialName, next))) },
             publish = publish,
             metaErrors = metaErrors,
         )
-    } else if (projectStyle && project != null) {
-        if (showProjectPropertyReadOnly(project, child, override)) ProjectPropertyReadOnly(child, display)
     } else {
         OverrideValue(child, display)
     }

@@ -303,8 +303,10 @@ private fun handleModpackMsg(msg: AppMsg.Modpack, model: AppModel): AppModel {
         else -> model.commitModpack(newModpack, persistListPrefs)
     }
     return when (msg.msg) {
+        is ModpackMsg.PropertyWriteRequested,
         is ModpackMsg.MetaWriteRequested,
         is ModpackMsg.Loaded,
+        is ModpackMsg.PropertyWriteCompleted,
         is ModpackMsg.MetaWriteFailed -> updated.reflectModpackName()
         else -> updated
     }
