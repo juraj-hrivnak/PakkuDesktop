@@ -13,10 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -100,7 +96,6 @@ private fun PkUiSubmenuItem(
     val itemMetrics = style.metrics.itemMetrics
     val itemColors = style.colors.itemColors
     val itemState = MenuItemState.of(selected = open, enabled = enabled, hovered = rowHovered)
-    val background by itemColors.backgroundFor(itemState)
     val contentColor by itemColors.contentFor(itemState)
     val iconTint by itemColors.iconTintFor(itemState)
 
@@ -127,21 +122,6 @@ private fun PkUiSubmenuItem(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = itemMetrics.minHeight)
-                    .drawBehind {
-                        val outer = itemMetrics.outerPadding
-                        val left = outer.calculateLeftPadding(layoutDirection).toPx()
-                        val top = outer.calculateTopPadding().toPx()
-                        val corner = itemMetrics.selectionCornerSize.toPx(size, this)
-                        drawRoundRect(
-                            color = background,
-                            topLeft = Offset(left, top),
-                            size = Size(
-                                size.width - left - outer.calculateRightPadding(layoutDirection).toPx(),
-                                size.height - top - outer.calculateBottomPadding().toPx(),
-                            ),
-                            cornerRadius = CornerRadius(corner, corner),
-                        )
-                    }
                     .padding(itemMetrics.contentPadding),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,

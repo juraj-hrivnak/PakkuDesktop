@@ -88,18 +88,12 @@ val gitDropdownComponent = component(
                     }
                 },
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        branch.name,
-                        color = menuItemColors.content,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (branch.isCurrent && gitState.upstream != null) {
-                        Text("→ ${gitState.upstream}", color = muted, maxLines = 1)
-                    }
-                }
+                Text(
+                    branch.name,
+                    color = menuItemColors.content,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -120,15 +114,12 @@ val gitDropdownComponent = component(
                     }
                 },
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        ref.name,
-                        color = menuItemColors.content,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                }
+                Text(
+                    ref.name,
+                    color = menuItemColors.content,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
