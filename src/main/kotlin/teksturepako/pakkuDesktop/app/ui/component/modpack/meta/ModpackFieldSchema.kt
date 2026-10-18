@@ -94,7 +94,6 @@ class ModpackFieldValues(
 }
 
 /** Reads every key, defaults and nulls included, so a field always has a value to show. */
-@OptIn(ExperimentalSerializationApi::class)
 private val valuesJson = Json(json) {
     encodeDefaults = true
     explicitNulls = true

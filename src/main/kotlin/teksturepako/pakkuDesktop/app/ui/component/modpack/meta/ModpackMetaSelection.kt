@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.ui.component.modpack.meta
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
@@ -53,6 +55,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.OutlinedButton
@@ -67,13 +70,13 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.badgeStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
-import teksturepako.pakkuDesktop.app.ui.component.Switch
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectConfigProperty
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectMapEntryErrorKey
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectPropertyErrorKey
@@ -859,9 +862,19 @@ private fun ObjectMapSelection(
     }
 }
 
+/** Type + actions column max width in the override card header. */
+private val OverrideCardMetaMaxWidth = 120.dp
+
 /**
  * An overview card for one project override. Same information as a Projects-tab card — name, type,
  * providers — laid out in the overview card chrome, not that card itself.
+ * 
+ * Layout:
+ * - Header row: display name (title) + entry key (subtitle) on the left, type badge on the right.
+ * - Provider row: provider icons with slugs.
+ * - Actions row: Edit and Clear buttons aligned to the right.
+ * - Divider line separating header from body.
+ * - Body: properties content when editing.
  */
 @Composable
 private fun ProjectOverrideCard(
@@ -877,11 +890,20 @@ private fun ProjectOverrideCard(
     RecomposeProbe("ProjectOverrideCard")
     val shape = RoundedCornerShape(PakkuDesktopConstants.cardCornerRadius)
     val displayName = project?.name?.values?.firstOrNull() ?: project?.pakkuId ?: entryKey
+    val borderColor = if (editing) {
+        PakkuDesktopConstants.highlightColor.copy(alpha = 0.7f)
+    } else {
+        PakkuDesktopConstants.cardBorderColor
+    }
     Column(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .border(PakkuDesktopConstants.cardBorderWidth, PakkuDesktopConstants.cardBorderColor, shape)
+            .then(
+                if (editing) Modifier.background(PakkuDesktopConstants.highlightColor.copy(alpha = 0.06f))
+                else Modifier
+            )
+            .border(if (editing) 1.5.dp else PakkuDesktopConstants.cardBorderWidth, borderColor, shape)
             .padding(PakkuDesktopConstants.cardPadding),
         verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.cardContentSpacing),
     ) {
@@ -894,35 +916,42 @@ private fun ProjectOverrideCard(
                 Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
             ) {
-                InlineEditText(
-                    value = entryKey,
-                    onCommit = onRename,
-                    required = true,
-                    textStyle = JewelTheme.defaultTextStyle.copy(
-                        fontSize = PakkuDesktopConstants.cardTitleSize,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    editDescription = "Edit override entry",
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (project == null) {
+                        Icon(
+                            key = AllIconsKeys.General.ExclMark,
+                            contentDescription = "Warning",
+                            tint = PakkuDesktopConstants.amber,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                     Text(
-                        entryKey,
+                        displayName,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = PakkuDesktopConstants.cardTitleSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (project == null) {
-                    Text(
-                        "Not a project in this modpack",
-                        color = secondary(),
+                InlineEditText(
+                    value = entryKey,
+                    onCommit = onRename,
+                    required = true,
+                    textStyle = JewelTheme.defaultTextStyle.copy(
                         fontSize = PakkuDesktopConstants.cardCaptionSize,
-                    )
-                } else if (displayName != entryKey) {
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                    editDescription = "Edit override entry",
+                ) {
                     Text(
-                        displayName,
-                        color = secondary(),
+                        entryKey,
                         fontSize = PakkuDesktopConstants.cardCaptionSize,
+                        fontFamily = FontFamily.Monospace,
+                        color = secondary(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -946,23 +975,29 @@ private fun ProjectOverrideCard(
                 }
             }
             Column(
+                modifier = Modifier.widthIn(max = OverrideCardMetaMaxWidth),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
             ) {
                 if (project != null) {
-                    Text(
-                        project.type.prettyName,
-                        color = secondary(),
-                        fontSize = PakkuDesktopConstants.cardCaptionSize,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                        Text(project.type.prettyName)
+                    }
                 }
-                OverrideActions(displayName, editing, onEditingChange, onRemove)
             }
         }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            OverrideActions(displayName, editing, onEditingChange, onRemove)
+        }
+        Divider(
+            orientation = Orientation.Horizontal,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(1.dp),
+            color = borderColor,
+        )
         if (showBody) {
-            Divider(Orientation.Horizontal)
             content()
         }
     }
@@ -979,22 +1014,26 @@ private fun OverrideActions(
         horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Edit", color = secondary(), fontSize = PakkuDesktopConstants.cardCaptionSize)
-        Switch(checked = editing, onCheckedChange = onEditingChange)
+        PkUiTooltip({ Text("Toggle editing for this override") }) {
+            IconButton(
+                onClick = { onEditingChange(!editing) },
+                modifier = Modifier.size(PakkuDesktopConstants.inlineIconButtonSize),
+            ) {
+                Icon(
+                    key = AllIconsKeys.Actions.Edit,
+                    contentDescription = "Toggle edit",
+                    tint = if (editing) PakkuDesktopConstants.highlightColor else JewelTheme.contentColor,
+                )
+            }
+        }
         PkUiTooltip({ Text("Remove this override. $name stays in the modpack.") }) {
             OutlinedSlimButton(onClick = onRemove) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        PakkuDesktopIcons.rollback,
-                        contentDescription = null,
-                        tint = JewelTheme.contentColor,
-                        modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
-                    )
-                    Text("Clear override")
-                }
+                Icon(
+                    PakkuDesktopIcons.rollback,
+                    contentDescription = null,
+                    tint = JewelTheme.contentColor,
+                    modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
+                )
             }
         }
     }
