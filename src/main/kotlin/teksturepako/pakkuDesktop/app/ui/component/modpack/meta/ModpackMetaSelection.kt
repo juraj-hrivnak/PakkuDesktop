@@ -736,6 +736,10 @@ private fun ObjectMapSelection(
             pending = pending.map { if (it == from) next else it }
             return
         }
+        if (field.hint.projectCard) {
+            publish(ModpackMsg.MetaWriteRequested(renameProjectOverride(field, from, next)))
+            return
+        }
         val obj = value as? JsonObject ?: return
         val renamed = JsonObject(
             obj.entries.associate { (key, element) -> (if (key == from) next else key) to element },
@@ -759,7 +763,7 @@ private fun ObjectMapSelection(
                     fontSize = PakkuDesktopConstants.cardCaptionSize,
                 )
             }
-            rows.forEach { (name, entry) ->
+            rows.forEach { (name, entry) -> key(name) {
                 val editingEntry = name in editing
                 val children = if (editingEntry) {
                     field.fields
@@ -781,12 +785,12 @@ private fun ObjectMapSelection(
                             editing = editing - name
                             pending = pending - name
                             if (name in onDisk) {
-                                onEdit(value.withChild(name, null))?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
+                                publish(ModpackMsg.MetaWriteRequested(removeProjectOverride(field, name)))
                             }
                         },
                         showBody = children.isNotEmpty(),
                     ) {
-                        children.forEach { child ->
+                        children.forEach { child -> key(child.serialName) {
                             OverrideChild(
                                 projectsField = field,
                                 child = child,
@@ -800,7 +804,7 @@ private fun ObjectMapSelection(
                                 onEdit = onEdit,
                                 publish = publish,
                             )
-                        }
+                        } }
                     }
                 } else {
                     IslandCard(
@@ -831,7 +835,7 @@ private fun ObjectMapSelection(
                                 fontSize = PakkuDesktopConstants.cardCaptionSize,
                             )
                         }
-                        children.forEach { child ->
+                        children.forEach { child -> key(child.serialName) {
                             OverrideChild(
                                 projectsField = field,
                                 child = child,
@@ -845,10 +849,10 @@ private fun ObjectMapSelection(
                                 onEdit = onEdit,
                                 publish = publish,
                             )
-                        }
+                        } }
                     }
                 }
-            }
+            } }
             FieldErrors(errors)
         }
     }
@@ -1019,36 +1023,13 @@ private fun OverrideChild(
     }
     if (projectStyle && child.serialName == "subpath" && override.text.trim() == ".") {
         LaunchedEffect(name) {
-            publish(
-                ModpackMsg.MetaWriteRequested(
-                    writeProjectOverride(
-                        projectsField,
-                        map,
-                        name,
-                        creating = false,
-                        childName = child.serialName,
-                        next = null,
-                    ),
-                ),
-            )
+            publish(ModpackMsg.MetaWriteRequested(writeProjectOverride(projectsField, name, child.serialName, null)))
         }
     }
     val fieldErrors = metaErrors[projectOverrideErrorKey(projectsField, name, child.serialName)].orEmpty()
-    val mapObject = map as? JsonObject ?: JsonObject(emptyMap())
     val write: (JsonElement?) -> Unit = { next ->
         if (projectStyle) {
-            publish(
-                ModpackMsg.MetaWriteRequested(
-                    writeProjectOverride(
-                        projectsField,
-                        map,
-                        name,
-                        creating = name !in mapObject,
-                        childName = child.serialName,
-                        next = next,
-                    ),
-                ),
-            )
+            publish(ModpackMsg.MetaWriteRequested(writeProjectOverride(projectsField, name, child.serialName, next)))
         } else {
             onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
                 ?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
@@ -1069,14 +1050,7 @@ private fun OverrideChild(
             errors = fieldErrors,
             onEdit = { next ->
                 if (projectStyle) {
-                    writeProjectOverride(
-                        projectsField,
-                        map,
-                        name,
-                        creating = name !in mapObject,
-                        childName = child.serialName,
-                        next = next,
-                    )
+                    writeProjectOverride(projectsField, name, child.serialName, next)
                 } else {
                     onEdit(map.withChild(name, entry.withChild(child.serialName, next)))
                 }
@@ -1084,10 +1058,10 @@ private fun OverrideChild(
             publish = publish,
             metaErrors = metaErrors,
         )
-    } else if (projectStyle && project != null && showProjectPropertyReadOnly(project, child, override)) {
-        ProjectPropertyReadOnly(child, display)
-    } else if (!projectStyle) {
-        OverrideValue(child, override)
+    } else if (projectStyle && project != null) {
+        if (showProjectPropertyReadOnly(project, child, override)) ProjectPropertyReadOnly(child, display)
+    } else {
+        OverrideValue(child, display)
     }
 }
 

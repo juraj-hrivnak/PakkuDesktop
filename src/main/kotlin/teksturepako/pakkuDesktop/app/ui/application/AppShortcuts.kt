@@ -63,6 +63,7 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             {
                 if (!filterFocused &&
                     !model.hasModalOverlay() &&
+                    !model.modpack.editingProject &&
                     model.modpack.selectedProjectKeys.isNotEmpty() &&
                     model.modpack.actionName == null
                 ) {

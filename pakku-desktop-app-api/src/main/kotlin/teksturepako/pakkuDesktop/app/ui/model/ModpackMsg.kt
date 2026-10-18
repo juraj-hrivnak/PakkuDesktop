@@ -50,7 +50,10 @@ data class MetaWrite(
     val fieldKey: String? = null,
     /** Runs on the current on-disk state before [mutate]; blocks the write when non-empty. */
     val validate: (ConfigFile, LockFile) -> List<ActionError> = { _, _ -> emptyList() },
+    /** Changes `pakku-lock.json` in place; set [writesLock] so the lock is written. */
     val mutate: (ConfigFile, LockFile) -> Unit = { _, _ -> },
+    /** Writes `pakku-lock.json`. Implied by [replaceLock]. Config-only writes leave the lock untouched. */
+    val writesLock: Boolean = false,
 )
 
 /** `pakku init` inputs */

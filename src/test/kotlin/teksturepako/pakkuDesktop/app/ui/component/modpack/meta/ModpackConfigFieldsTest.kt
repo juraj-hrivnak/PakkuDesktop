@@ -178,6 +178,34 @@ class ModpackConfigFieldsTest {
     }
 
     @Test
+    fun `project override writes patch the config they are applied to`() {
+        val projectsField = ModpackFieldSchema.fields.first { it.serialName == "projects" }
+        val side = writeProjectOverride(projectsField, "jei", "side", JsonPrimitive("CLIENT"))
+        val subpath = writeProjectOverride(projectsField, "jei", "subpath", JsonPrimitive("libs"))
+
+        // Both writes were built before either was applied; neither drops the other.
+        val both = subpath.replaceConfig!!(side.replaceConfig!!(config()))
+        assertEquals("libs", both.projects["jei"]?.subpath)
+        assertNotNull(both.projects["jei"]?.side)
+
+        val reset = writeProjectOverride(projectsField, "jei", "side", null, dropEmpty = true)
+        val cleared = writeProjectOverride(projectsField, "jei", "subpath", null, dropEmpty = true)
+        assertTrue("jei" !in cleared.replaceConfig!!(reset.replaceConfig!!(both)).projects)
+
+        val invalid = writeProjectOverride(projectsField, "jei", "subpath", JsonPrimitive(".."))
+        assertTrue(invalid.validate(config(), LockFile()).isNotEmpty())
+
+        val renamed = renameProjectOverride(projectsField, "jei", "just-enough-items")
+            .replaceConfig!!(both)
+        assertTrue("jei" !in renamed.projects)
+        assertEquals("libs", renamed.projects["just-enough-items"]?.subpath)
+
+        val removed = removeProjectOverride(projectsField, "just-enough-items").replaceConfig!!(renamed)
+        assertTrue("just-enough-items" !in removed.projects)
+        assertEquals("libs", both.projects["jei"]?.subpath)
+    }
+
+    @Test
     fun `project subpath overrides use filterPath`() {
         assertTrue(projectSubpathOverrideErrors("libs/mods").isEmpty())
         assertTrue(projectSubpathOverrideErrors(null).isEmpty())

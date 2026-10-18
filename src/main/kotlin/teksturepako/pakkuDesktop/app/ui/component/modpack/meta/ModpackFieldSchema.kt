@@ -152,6 +152,7 @@ internal sealed interface FieldBinding
                 if (value == null) listOf(PackMetaSettingError("'$name' cannot be reset.")) else validate(lock, value)
             },
             mutate = { _, lock -> if (value != null) set(lock, value) },
+            writesLock = true,
         )
     }
 }

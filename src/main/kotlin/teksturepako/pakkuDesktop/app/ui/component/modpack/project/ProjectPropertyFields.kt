@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -307,6 +308,11 @@ private fun ProjectSubpathField(
     var localErrors by remember { mutableStateOf<List<ActionError>>(emptyList()) }
     var skipCommit by remember { mutableStateOf(false) }
 
+    LaunchedEffect(saved.value) {
+        if (!focused && localErrors.isEmpty() && state.text.toString() != saved.value) {
+            state.setTextAndPlaceCursorAtEnd(saved.value)
+        }
+    }
     LaunchedEffect(Unit) {
         snapshotFlow { focused to state.text.toString() }
             .collectLatest { (isFocused, raw) ->
