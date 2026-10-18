@@ -103,7 +103,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         withContext(Dispatchers.IO) { data.save() }
     }
 
-    LaunchedEffect(model.profile.data.theme, model.profile.data.uiScale, model.profile.loaded) {
+    LaunchedEffect(model.profile.data.theme, model.profile.data.uiScale, model.profile.data.updateChannel, model.profile.loaded) {
         if (!model.profile.loaded) return@LaunchedEffect
         val data = latestModel.profile.data
         withContext(Dispatchers.IO) {

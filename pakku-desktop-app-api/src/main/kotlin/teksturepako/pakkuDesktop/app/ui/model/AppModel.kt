@@ -96,7 +96,9 @@ data class AppModel(
     /** Auto-update: a new version is available and ready to install */
     val updateAvailableVersion: String? = null,
     /** Auto-update: download finished, waiting for user to confirm install */
-    val updateReadyToInstall: Boolean = false,
+    val updateDownloaded: Boolean = false,
+    /** Auto-update: user clicked "Install & Restart" — driver should install now */
+    val updateUserConfirmedInstall: Boolean = false,
 )
 
 enum class SettingsTab { General, Heap, Plugins }

@@ -110,6 +110,11 @@ private fun handleProfileMsg(msg: AppMsg, model: AppModel): AppModel = when (msg
         model.copy(profile = model.profile.copy(data = newData)).syncDropdownProfileData(newData)
     }
 
+    is AppMsg.UpdateChannelChangeRequested -> {
+        val newData = model.profile.data.copy(updateChannel = msg.channel)
+        model.copy(profile = model.profile.copy(data = newData)).syncDropdownProfileData(newData)
+    }
+
     else -> model
 }
 
@@ -340,7 +345,8 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
     is AppMsg.ProfileCurrentResolved,
     is AppMsg.ThemeChangeRequested,
     is AppMsg.ThemeChanged,
-    is AppMsg.UiScaleChangeRequested -> handleProfileMsg(msg, model)
+    is AppMsg.UiScaleChangeRequested,
+    is AppMsg.UpdateChannelChangeRequested -> handleProfileMsg(msg, model)
 
     // -- Directory picker (app-level) --
     is AppMsg.DirectoryPicked        -> handleDirectoryPicked(msg.path, model)
@@ -429,7 +435,8 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
         updateStatus = null,
         updateDownloadProgress = null,
         updateAvailableVersion = null,
-        updateReadyToInstall = false,
+        updateDownloaded = false,
+        updateUserConfirmedInstall = false,
     )
     is AppMsg.UpdateCheckFinished -> {
         val base = model.copy(
@@ -445,7 +452,7 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
         )
         // If no update is available and no error, clear download state
         if (msg.availableVersion == null && msg.errorMessage == null) {
-            base.copy(updateDownloadProgress = null, updateReadyToInstall = false)
+            base.copy(updateDownloadProgress = null, updateDownloaded = false, updateUserConfirmedInstall = false)
         } else {
             base
         }
@@ -460,11 +467,11 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
     )
     AppMsg.UpdateDownloadFinished -> model.copy(
         updateDownloadProgress = null,
-        updateReadyToInstall = true,
+        updateDownloaded = true,
         updateStatus = "Update downloaded. Ready to install and restart.",
     )
     AppMsg.UpdateInstallRequested -> model.copy(
-        updateReadyToInstall = true,
+        updateUserConfirmedInstall = true,
         updateStatus = "Installing update...",
     )
     AppMsg.UpdateInstalling -> model.copy(
@@ -474,7 +481,8 @@ fun appUpdate(msg: AppMsg, model: AppModel, plugins: PluginRegistry = PluginRegi
         updateStatus = null,
         updateDownloadProgress = null,
         updateAvailableVersion = null,
-        updateReadyToInstall = false,
+        updateDownloaded = false,
+        updateUserConfirmedInstall = false,
     )
 
     // -- Internal (credentials, license) --

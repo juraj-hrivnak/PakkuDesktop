@@ -19,6 +19,30 @@ import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import java.nio.file.Path
 import kotlin.io.path.Path
 
+/**
+ * Update channel. [id] is what generate-update-yml publishes and what
+ * Release.yml classifies: alpha tags -> "alpha", beta/rc tags -> "beta",
+ * stable tags -> "latest". Never introduce an "rc" id — the pipeline
+ * publishes no rc feeds.
+ */
+enum class UpdateChannel(val id: String, val label: String) {
+    ALPHA("alpha", "Alpha (unstable)"),
+    BETA("beta", "Beta"),
+    STABLE("latest", "Stable");
+
+    /** Derives the default channel from the running packaged build's version string. */
+    companion object {
+        fun fromRunningVersion(): UpdateChannel {
+            val version = System.getProperty("jpackage.app-version", "")
+            return when {
+                version.contains("-alpha") -> ALPHA
+                version.contains("-beta") || version.contains("-rc") -> BETA
+                else -> STABLE
+            }
+        }
+    }
+}
+
 @Serializable
 data class ProfileData(
     @SerialName("current_profile") val currentProfile: Profile? = null,
@@ -28,10 +52,24 @@ data class ProfileData(
     val recentProfiles: PersistentList<Profile> = persistentListOf(),
     val theme: String = "Dark",
     @SerialName("ui_scale") val uiScale: Float = UI_SCALE_DEFAULT,
+    /**
+     * Update channel id ("alpha", "beta", "latest"). Stored as a plain String
+     * for forward compatibility. Empty string means "not yet set" — falls back
+     * to the version-derived default via [updateChannelEnum].
+     */
+    @SerialName("update_channel") val updateChannel: String = "",
 
     @Transient val closeDialog: CloseDialogData? = null
-)
-{
+) {
+    /** Resolves the stored channel string to an enum, falling back to the running version's channel. */
+    val updateChannelEnum: UpdateChannel
+        get() = if (updateChannel.isBlank()) {
+            UpdateChannel.fromRunningVersion()
+        } else {
+            UpdateChannel.entries.find { it.id == updateChannel }
+                ?: UpdateChannel.fromRunningVersion()
+        }
+
     val currentProfilePath: Path?
         get() = currentProfile?.let { Path(it.path) }
 

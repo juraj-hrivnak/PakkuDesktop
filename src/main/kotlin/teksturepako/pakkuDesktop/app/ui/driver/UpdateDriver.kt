@@ -17,6 +17,7 @@ import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import teksturepako.pakkuDesktop.app.data.UpdateChannel
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.elm.Driver
@@ -26,8 +27,9 @@ private val logger = logger("UpdateDriver")
 val updateDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     val scope = rememberCoroutineScope()
     var installerFile by remember { mutableStateOf<java.io.File?>(null) }
-    val updater by remember {
-        mutableStateOf(runCatching { createUpdater() }.getOrNull())
+    val channel = model.profile.data.updateChannelEnum
+    val updater by remember(channel) {
+        mutableStateOf(runCatching { createUpdater(channel) }.getOrNull())
     }
 
     // -- Check for updates --
@@ -87,9 +89,9 @@ val updateDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     }
 
     // -- Install and restart --
-    LaunchedEffect(model.updateReadyToInstall && installerFile != null) {
+    LaunchedEffect(model.updateUserConfirmedInstall && installerFile != null) {
         val file = installerFile ?: return@LaunchedEffect
-        if (!model.updateReadyToInstall) return@LaunchedEffect
+        if (!model.updateUserConfirmedInstall) return@LaunchedEffect
         val updater = updater ?: return@LaunchedEffect
 
         logger.info { "Installing update from ${file.path}" }
@@ -105,12 +107,13 @@ val updateDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
     content()
 }
 
-private fun createUpdater(): NucleusUpdater {
+private fun createUpdater(channel: UpdateChannel): NucleusUpdater {
     return NucleusUpdater {
         provider = GitHubProvider(
             owner = "juraj-hrivnak",
             repo = "PakkuDesktop",
         )
         differentialDownload = true
+        this.channel = channel.id
     }
 }

@@ -88,6 +88,9 @@ sealed interface AppMsg {
     /** updateDriver: install started (app will exit) */
     data object UpdateInstalling : AppMsg
 
+    /** User changed the update channel in Settings */
+    data class UpdateChannelChangeRequested(val channel: String) : AppMsg
+
     /** Dismiss update status */
     data object DismissUpdateStatus : AppMsg
 

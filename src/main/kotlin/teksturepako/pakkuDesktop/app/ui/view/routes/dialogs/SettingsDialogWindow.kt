@@ -43,6 +43,7 @@ import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import teksturepako.pakkuDesktop.app.data.ProfileData
+import teksturepako.pakkuDesktop.app.data.UpdateChannel
 import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
 import teksturepako.pakkuDesktop.app.ui.component.button.ThemeButton
@@ -159,7 +160,7 @@ private fun SettingsGeneralTab(
     scaleIndex: Int,
 ) {
     val checking = model.wantsCheckForUpdates
-    val downloading = model.updateDownloadProgress != null && !model.updateReadyToInstall
+    val downloading = model.updateDownloadProgress != null && !model.updateDownloaded
     val progress = model.updateDownloadProgress ?: 0f
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -190,22 +191,45 @@ private fun SettingsGeneralTab(
             )
         }
 
+        val updateSupported = isUpdateSupported()
+        val channel = model.profile.data.updateChannelEnum
+        val channelIndex = UpdateChannel.entries.indexOfFirst { it == channel }
+
         GroupHeader("Updates")
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 DefaultButton(
                     onClick = { publish(AppMsg.CheckForUpdatesRequested) },
-                    enabled = !checking && !downloading,
+                    enabled = updateSupported && !checking && !downloading,
                 ) {
                     Text(if (checking) "Checking…" else "Check for updates")
                 }
-                if (model.updateReadyToInstall) {
+                if (model.updateDownloaded) {
                     DefaultButton(
                         onClick = { publish(AppMsg.UpdateInstallRequested) },
                     ) {
                         Text("Install & Restart")
                     }
                 }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Update channel", color = JewelTheme.contentColor.copy(alpha = 0.75f))
+                ListComboBox(
+                    items = UpdateChannel.entries.map { it.label },
+                    selectedIndex = channelIndex,
+                    onSelectedItemChange = { index ->
+                        if (index == channelIndex) return@ListComboBox
+                        val entry = UpdateChannel.entries.getOrNull(index) ?: return@ListComboBox
+                        publish(AppMsg.UpdateChannelChangeRequested(entry.id))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = updateSupported,
+                    listState = rememberListComboBoxState(
+                        UpdateChannel.entries.map { it.label },
+                        channelIndex
+                    ),
+                )
             }
 
             if (downloading) {
@@ -265,6 +289,13 @@ private fun SettingsGeneralTab(
 
 private val uiScaleLabels = ProfileData.UI_SCALE_PRESETS.map { scale ->
     "${(scale * 100).toInt()}%"
+}
+
+/** Returns false for dev builds and other unsupported build types (pacman, snap, portable). */
+private fun isUpdateSupported(): Boolean {
+    val version = System.getProperty("jpackage.app-version") ?: return false
+    if (version.contains("dev", ignoreCase = true)) return false
+    return true
 }
 
 private fun uiScalePresetIndex(uiScale: Float): Int {
