@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.9
+
+- Fixed title bar clipping
+- Improved style of branches and tags in GitDropdown
+- Fixed padding for tags in GitDropdown
+- Limited PkUiDropdown height when fully extended
+
 ## v1.0.0-alpha.8
 
 - Implemented app auto-updating
