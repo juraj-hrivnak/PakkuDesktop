@@ -77,6 +77,7 @@ import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.ActionErrorContent
+import teksturepako.pakkuDesktop.app.ui.component.Switch
 import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectConfigProperty
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectMapEntryErrorKey
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.projectPropertyErrorKey
@@ -815,21 +816,32 @@ private fun ObjectMapSelection(
                         title = name,
                         modifier = Modifier.fillMaxWidth(),
                         trailing = {
-                            OverrideActions(
-                                name = name,
-                                editing = editingEntry,
-                                onEditingChange = { on ->
-                                    editing = if (on) editing + name else editing - name
-                                    if (!on && name !in onDisk) pending = pending - name
-                                },
-                                onRemove = {
-                                    editing = editing - name
-                                    pending = pending - name
-                                    if (name in onDisk) {
-                                        onEdit(value.withChild(name, null))?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
+                            Row(horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing)) {
+                                OverrideActions(
+                                    name = name,
+                                    editing = editingEntry,
+                                    onEditingChange = { on ->
+                                        editing = if (on) editing + name else editing - name
+                                        if (!on && name !in onDisk) pending = pending - name
+                                    },
+                                )
+                                PkUiTooltip({ Text("Remove this override. $name stays in the modpack.") }) {
+                                    OutlinedSlimButton(onClick = {
+                                        editing = editing - name
+                                        pending = pending - name
+                                        if (name in onDisk) {
+                                            onEdit(value.withChild(name, null))?.let { publish(ModpackMsg.MetaWriteRequested(it)) }
+                                        }
+                                    }) {
+                                        Icon(
+                                            PakkuDesktopIcons.rollback,
+                                            contentDescription = null,
+                                            tint = JewelTheme.contentColor,
+                                            modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
+                                        )
                                     }
-                                },
-                            )
+                                }
+                            }
                         },
                     ) {
                         if (children.isEmpty()) {
@@ -987,16 +999,26 @@ private fun ProjectOverrideCard(
             }
         }
         Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            OverrideActions(displayName, editing, onEditingChange, onRemove)
+            Divider(
+                orientation = Orientation.Horizontal,
+                modifier = Modifier.weight(1f).padding(end = PakkuDesktopConstants.controlSpacing).height(1.dp),
+                color = borderColor,
+            )
+            OverrideActions(displayName, editing, onEditingChange)
+            PkUiTooltip({ Text("Remove this override. $displayName stays in the modpack.") }) {
+                OutlinedSlimButton(onClick = onRemove) {
+                    Icon(
+                        PakkuDesktopIcons.rollback,
+                        contentDescription = null,
+                        tint = JewelTheme.contentColor,
+                        modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
+                    )
+                }
+            }
         }
-        Divider(
-            orientation = Orientation.Horizontal,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).height(1.dp),
-            color = borderColor,
-        )
         if (showBody) {
             content()
         }
@@ -1008,33 +1030,11 @@ private fun OverrideActions(
     name: String,
     editing: Boolean,
     onEditingChange: (Boolean) -> Unit,
-    onRemove: () -> Unit,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Edit: ", fontSize = PakkuDesktopConstants.cardCaptionSize)
         PkUiTooltip({ Text("Toggle editing for this override") }) {
-            IconButton(
-                onClick = { onEditingChange(!editing) },
-                modifier = Modifier.size(PakkuDesktopConstants.inlineIconButtonSize),
-            ) {
-                Icon(
-                    key = AllIconsKeys.Actions.Edit,
-                    contentDescription = "Toggle edit",
-                    tint = if (editing) PakkuDesktopConstants.highlightColor else JewelTheme.contentColor,
-                )
-            }
-        }
-        PkUiTooltip({ Text("Remove this override. $name stays in the modpack.") }) {
-            OutlinedSlimButton(onClick = onRemove) {
-                Icon(
-                    PakkuDesktopIcons.rollback,
-                    contentDescription = null,
-                    tint = JewelTheme.contentColor,
-                    modifier = Modifier.size(PakkuDesktopConstants.cardContentSpacing + PakkuDesktopConstants.controlSpacing),
-                )
-            }
+            Switch(checked = editing, onCheckedChange = onEditingChange)
         }
     }
 }
