@@ -66,22 +66,28 @@ fun ModpackRail(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             RailButton(
+                key = AllIconsKeys.Nodes.HomeFolder,
+                tooltip = "Overview",
+                selected = selectedTab == SelectedTab.MODPACK,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
+            )
+            RailButton(
                 key = AllIconsKeys.Toolwindows.Dependencies,
                 tooltip = "Projects",
                 selected = selectedTab == SelectedTab.PROJECTS,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
             )
             RailButton(
+                key = AllIconsKeys.General.OverridingMethod,
+                tooltip = "Overrides",
+                selected = selectedTab == SelectedTab.PROJECT_OVERRIDES,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECT_OVERRIDES)) },
+            )
+            RailButton(
                 key = AllIconsKeys.Toolwindows.ToolWindowProject,
                 tooltip = "Files",
                 selected = selectedTab == SelectedTab.FILES,
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.FILES)) },
-            )
-            RailButton(
-                key = AllIconsKeys.Actions.Properties,
-                tooltip = "Modpack",
-                selected = selectedTab == SelectedTab.MODPACK,
-                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.MODPACK)) },
             )
             RailButton(
                 key = AllIconsKeys.Toolwindows.ToolWindowCommit,

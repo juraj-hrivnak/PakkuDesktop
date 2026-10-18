@@ -37,6 +37,7 @@ import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.filesTab
 import teksturepako.pakkuDesktop.app.ui.model.gitTab
 import teksturepako.pakkuDesktop.app.ui.model.modpackTab
+import teksturepako.pakkuDesktop.app.ui.model.overridesTab
 import teksturepako.pakkuDesktop.app.ui.model.projectsTab
 import teksturepako.pakkuDesktop.app.ui.modifier.subtractTopHeight
 import teksturepako.pakkuDesktop.app.ui.component.git.log.GitLogView
@@ -44,6 +45,7 @@ import teksturepako.pakkuDesktop.app.ui.model.logTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.FilesTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.GitTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ModpackTab
+import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectOverridesTab
 import teksturepako.pakkuDesktop.app.ui.view.routes.modpackTabs.ProjectsTab
 import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
@@ -82,10 +84,11 @@ fun PakkuApplicationScope.ModpackView(
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.fillMaxSize()) {
                             when (model.selectedTab) {
-                                SelectedTab.PROJECTS -> ProjectsTab(publish, model.projectsTab())
-                                SelectedTab.FILES    -> FilesTab(publish, model.filesTab())
-                                SelectedTab.MODPACK  -> ModpackTab(publish, model.modpackTab())
-                                SelectedTab.COMMIT   -> GitTab(
+                                SelectedTab.PROJECTS  -> ProjectsTab(publish, model.projectsTab())
+                                SelectedTab.PROJECT_OVERRIDES -> ProjectOverridesTab(publish, model.overridesTab())
+                                SelectedTab.FILES     -> FilesTab(publish, model.filesTab())
+                                SelectedTab.MODPACK   -> ModpackTab(publish, model.modpackTab())
+                                SelectedTab.COMMIT    -> GitTab(
                                     publish,
                                     model.gitTab(),
                                     appModel.profile.data.currentProfilePath,

@@ -57,6 +57,7 @@ data class ProjectsTabModel(
     val syncAdded: PersistentList<Project>,
     val syncRemoved: PersistentList<Project>,
     val syncUpdated: PersistentList<Project>,
+    val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
 )
 
 fun ModpackModel.projectsTab() = ProjectsTabModel(
@@ -83,6 +84,7 @@ fun ModpackModel.projectsTab() = ProjectsTabModel(
     syncAdded = syncAdded,
     syncRemoved = syncRemoved,
     syncUpdated = syncUpdated,
+    metaErrors = modpackMetaErrors,
 )
 
 @Immutable
@@ -140,15 +142,50 @@ fun ModpackModel.filesTab() = FilesTabModel(
 data class ModpackTabModel(
     val lockFile: Result<LockFile, ActionError>?,
     val configFile: Result<ConfigFile, ActionError>?,
-    val editingModpack: Boolean,
     val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
+    val overviewMode: OverviewMode,
+    val overviewShowDiff: Boolean,
+    val configText: ConfigFileText?,
+    val configDiff: DiffContent?,
 )
 
 fun ModpackModel.modpackTab() = ModpackTabModel(
     lockFile = lockFile,
     configFile = configFile,
-    editingModpack = editingModpack,
     metaErrors = modpackMetaErrors,
+    overviewMode = overviewMode,
+    overviewShowDiff = overviewShowDiff,
+    configText = configText,
+    configDiff = configDiff,
+)
+
+@Immutable
+data class ProjectOverridesTabModel(
+    val lockFile: Result<LockFile, ActionError>?,
+    val configFile: Result<ConfigFile, ActionError>?,
+    val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
+    val configText: ConfigFileText?,
+    val overridesFilterText: String,
+    val overridesFilterTypes: PersistentSet<ProjectType>,
+    val overridesFilterSides: PersistentSet<ProjectSide>,
+    val overridesFilterMissingSide: Boolean,
+    val overridesFilterProviders: PersistentSet<String>,
+    val overridesFilterRedistributable: Boolean?,
+    val showOverridesAddDialog: Boolean,
+)
+
+fun ModpackModel.overridesTab() = ProjectOverridesTabModel(
+    lockFile = lockFile,
+    configFile = configFile,
+    metaErrors = modpackMetaErrors,
+    configText = configText,
+    overridesFilterText = overridesFilterText,
+    overridesFilterTypes = overridesFilterTypes,
+    overridesFilterSides = overridesFilterSides,
+    overridesFilterMissingSide = overridesFilterMissingSide,
+    overridesFilterProviders = overridesFilterProviders,
+    overridesFilterRedistributable = overridesFilterRedistributable,
+    showOverridesAddDialog = showOverridesAddDialog,
 )
 
 fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =

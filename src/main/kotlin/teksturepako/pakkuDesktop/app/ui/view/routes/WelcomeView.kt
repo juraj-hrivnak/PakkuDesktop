@@ -138,103 +138,103 @@ fun WelcomeView(
             Box(Modifier.fillMaxSize(0.9f).extendTop { extend.extendPx }) {
                 FadeIn {
                     ContentBox(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                        .allowDragAndDrop { paths ->
-                            val firstDir = paths.firstOrNull { Files.isDirectory(it) } ?: return@allowDragAndDrop
-                            appPublish(AppMsg.DirectoryPicked(firstDir.toString()))
-                        },
-                ) {
-                    val scrollState = rememberScrollState()
+                        Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                            .allowDragAndDrop { paths ->
+                                val firstDir = paths.firstOrNull { Files.isDirectory(it) } ?: return@allowDragAndDrop
+                                appPublish(AppMsg.DirectoryPicked(firstDir.toString()))
+                            },
+                    ) {
+                        val scrollState = rememberScrollState()
 
-                    Column {
-                        // Header and Open button
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Header("Modpacks", Modifier.padding(horizontal = 24.dp))
-
+                        Column {
+                            // Header and Open button
                             Row(
-                                Modifier.padding(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                OutlinedButton(onClick = { pickDirectory() }) {
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            key = AllIconsKeys.General.InlineAdd,
-                                            contentDescription = "new modpack icon",
-                                            tint = JewelTheme.contentColor,
-                                            hints = arrayOf(),
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                        Text("New Modpack...")
+                                Header("Modpacks", Modifier.padding(horizontal = 24.dp))
+
+                                Row(
+                                    Modifier.padding(horizontal = 24.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                                ) {
+                                    OutlinedButton(onClick = { pickDirectory() }) {
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                key = AllIconsKeys.General.InlineAdd,
+                                                contentDescription = "new modpack icon",
+                                                tint = JewelTheme.contentColor,
+                                                hints = arrayOf(),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text("New Modpack...")
+                                        }
                                     }
-                                }
-                                OutlinedButton(onClick = { pickDirectory() }) {
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            key = PakkuDesktopIcons.open,
-                                            contentDescription = "Open Icon",
-                                            tint = JewelTheme.contentColor,
-                                            hints = arrayOf(),
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                        Text("Open...")
+                                    OutlinedButton(onClick = { pickDirectory() }) {
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                key = PakkuDesktopIcons.open,
+                                                contentDescription = "Open Icon",
+                                                tint = JewelTheme.contentColor,
+                                                hints = arrayOf(),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text("Open...")
+                                        }
                                     }
-                                }
-                                OutlinedButton(onClick = { appPublish(AppMsg.ShowCloneDialog) }) {
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            key = AllIconsKeys.General.Vcs,
-                                            contentDescription = "Clone Repository Icon",
-                                            tint = JewelTheme.contentColor,
-                                            hints = arrayOf(),
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                        Text("Clone Repository...")
+                                    OutlinedButton(onClick = { appPublish(AppMsg.ShowCloneDialog) }) {
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                key = AllIconsKeys.General.Vcs,
+                                                contentDescription = "Clone Repository Icon",
+                                                tint = JewelTheme.contentColor,
+                                                hints = arrayOf(),
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Text("Clone Repository...")
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        Spacer(
-                            Modifier.padding(vertical = 16.dp)
-                                .background(JewelTheme.globalColors.borders.disabled)
-                                .height(1.dp).fillMaxWidth()
-                        )
-
-                        Box(Modifier.fillMaxSize()) {
-                            FlowRow(
-                                Modifier.fillMaxWidth().verticalScroll(scrollState).padding(end = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                            ) {
-                                profileData.recentProfilesFiltered.forEach { profile ->
-                                    RecentModpackCard(
-                                        profile = profile,
-                                        summary = model.summaries[profile.path],
-                                        onClick = { publish(WelcomeMsg.DirectoryPicked(profile.path)) },
-                                    )
-                                }
-                            }
-
-                            VerticalScrollbar(
-                                scrollState, modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                            Spacer(
+                                Modifier.padding(vertical = 16.dp)
+                                    .background(JewelTheme.globalColors.borders.disabled)
+                                    .height(1.dp).fillMaxWidth()
                             )
+
+                            Box(Modifier.fillMaxSize()) {
+                                FlowRow(
+                                    Modifier.fillMaxWidth().verticalScroll(scrollState).padding(end = 12.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                ) {
+                                    profileData.recentProfilesFiltered.forEach { profile ->
+                                        RecentModpackCard(
+                                            profile = profile,
+                                            summary = model.summaries[profile.path],
+                                            onClick = { publish(WelcomeMsg.DirectoryPicked(profile.path)) },
+                                        )
+                                    }
+                                }
+
+                                VerticalScrollbar(
+                                    scrollState, modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                                )
+                            }
                         }
-                    }
                     }
                 }
             }

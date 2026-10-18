@@ -127,7 +127,7 @@ fun FilesTabModel.packFolderKeys(): List<String> {
             val path = type.getPathString(config)
             if (path.endsWith("/")) path else "$path/"
         }
-    val fromOverrides = manualOverrides.map { folderKeyFromRelative(it.relativeOutputPath) }
+    val fromOverrides = manualOverrides.map { folderKeyFromRelative(it.relativeOutputPath) }.filter { it.isNotBlank() }
     return (fromTypes + fromOverrides).distinct()
 }
 

@@ -57,6 +57,7 @@ import teksturepako.pakkuDesktop.app.git.GitResetMode
 import teksturepako.pakkuDesktop.app.git.GitState
 import teksturepako.pakkuDesktop.app.git.toTreeStatus
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.tree.color
 import teksturepako.pakkuDesktop.app.ui.component.tree.letter
 import teksturepako.pakkuDesktop.app.ui.model.ModpackModel
@@ -238,7 +239,7 @@ private fun GitUpdateDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Uni
                         "These files are changed locally and in the incoming commits, and may conflict:",
                         kind = PkUiNoticeKind.Warning,
                     )
-                    PkUiDialogSectionLabel("May conflict", icon = AllIconsKeys.General.Warning)
+                    PkUiDialogSectionLabel("May conflict", icon = PakkuDesktopIcons.exclamationTriangle)
                     GitFileList(conflictFiles)
                 } else {
                     PkUiDialogNotice("You have uncommitted changes. Git stops if the update would overwrite them; stash them first.")

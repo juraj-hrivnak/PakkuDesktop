@@ -35,4 +35,37 @@ object PakkuDesktopConstants
 
     /** Alpha badge yellow */
     val alphaYellow = Color(0xFFF4D35E)
+
+    // -- Cards (project cards, Overview islands) --
+
+    val cardCornerRadius = 16.dp
+    val cardPadding = 12.dp
+    val cardBorderWidth = 1.dp
+    val cardBorderColor = Color.Gray.copy(alpha = 0.28f)
+    val cardTitleSize: TextUnit = 14.sp
+    val cardCaptionSize: TextUnit = 12.sp
+
+    val islandSpacing = 8.dp
+
+    /** Gap between a section title and its fields, and between fields. */
+    val cardContentSpacing = 8.dp
+
+    /** Gap between a control and the icon button beside it. */
+    val controlSpacing = 4.dp
+
+    /** Map sub-rows (paths, loaders) share this label column so values line up. */
+    val settingLabelWidth = 140.dp
+
+    /** Secondary copy: descriptions, placeholders, empty values. */
+    const val secondaryContentAlpha = 0.62f
+
+    /** Chip fill behind list entries such as override globs. */
+    const val chipBackgroundAlpha = 0.08f
+
+    /** Typing in an inline editor writes to disk after this pause. */
+    const val inlineEditDebounceMillis = 400L
+
+    /** Edit / remove / reset buttons next to a property value. */
+    val inlineIconButtonSize = 25.dp
+    val multilineInputHeight = 120.dp
 }

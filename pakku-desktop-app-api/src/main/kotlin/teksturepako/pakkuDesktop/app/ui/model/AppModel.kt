@@ -172,12 +172,10 @@ data class ModpackModel(
     val configFile: Result<ConfigFile, ActionError>? = null,
     val loaded: Boolean = false,
 
-    val selectedTab: SelectedTab = SelectedTab.PROJECTS,
+    val selectedTab: SelectedTab = SelectedTab.MODPACK,
 
     val selectedProject: Project? = null,
     val editingProject: Boolean = false,
-    /** True while the Modpack tab is in edit mode (auto-saves like project props). */
-    val editingModpack: Boolean = false,
 
     /** [teksturepako.pakkuDesktop.app.actions.uiKey] for each selected project */
     val selectedProjectKeys: PersistentSet<String> = persistentSetOf(),
@@ -252,6 +250,8 @@ data class ModpackModel(
     val wantsUpdate: Boolean = false,
     val wantsFocusProjectsFilter: Boolean = false,
     val projectsFilterFocused: Boolean = false,
+    /** Subpath editor has focus, so Esc cancels the draft instead of closing the inspector. */
+    val subpathFieldFocused: Boolean = false,
     val addDialog: AddDialogModel = AddDialogModel(),
     val removeDialog: RemoveDialogModel = RemoveDialogModel(),
     /** DnD / auto add query */
@@ -272,11 +272,25 @@ data class ModpackModel(
     /** oldest first; at most [MAX_TOASTS], enforced in update */
     val toasts: PersistentList<ToastData> = persistentListOf(),
 
-    /** cleared by projectEditDriver when done */
+    /** Cleared by [projectEditDriver] after [ConfigFile.setProjectConfig]. */
     val pendingPropertyWrite: PropertyWrite? = null,
-    val pendingMetaWrite: MetaWrite? = null,
-    /** Inline validation / write failures on the Modpack tab, keyed by [ModpackMetaField]. */
+    val pendingPropertyWriteProjectKey: String? = null,
+    val pendingPropertyWriteErrorKey: String? = null,
+    /** Validated metadata writes, oldest first; projectEditDriver writes the head, then drops it. */
+    val pendingMetaWrites: PersistentList<MetaWrite> = persistentListOf(),
+    /** Inline validation / write failures on the Modpack tab, keyed by field key. */
     val modpackMetaErrors: PersistentMap<String, PersistentList<ActionError>> = persistentMapOf(),
+
+    // -- Overview (Modpack) tab --
+    val overviewMode: OverviewMode = OverviewMode.Form,
+    /** JSON view shows `git diff` of `pakku.json` instead of the file. */
+    val overviewShowDiff: Boolean = false,
+    /** Last read of `pakku.json` from disk. */
+    val configText: ConfigFileText? = null,
+    /** `git diff HEAD -- pakku.json`, for the JSON diff view. */
+    val configDiff: DiffContent? = null,
+    /** Set when the Overview leaves the JSON view; modpackDiskDriver re-reads both files. */
+    val wantsConfigReload: Boolean = false,
 
     // -- Git (Pro) --
     val git: GitState = GitState(),
@@ -295,12 +309,21 @@ data class ModpackModel(
     // -- Dropdown child models --
     val modpackDropdown: ModpackDropdownModel = ModpackDropdownModel(),
     val gitDropdown: GitDropdownModel = GitDropdownModel(),
+
+    // -- Project Overrides tab --
+    val overridesFilterText: String = "",
+    val overridesFilterTypes: PersistentSet<ProjectType> = persistentSetOf(),
+    val overridesFilterSides: PersistentSet<ProjectSide> = persistentSetOf(),
+    val overridesFilterMissingSide: Boolean = false,
+    val overridesFilterProviders: PersistentSet<String> = persistentSetOf(),
+    val overridesFilterRedistributable: Boolean? = null,
+    val showOverridesAddDialog: Boolean = false,
 )
 
 // -- Enums / sealed --
 
 enum class SelectedTab {
-    MODPACK, PROJECTS, FILES, COMMIT, LOG
+    MODPACK, PROJECTS, PROJECT_OVERRIDES, FILES, COMMIT, LOG
 }
 
 sealed class SortOrder(open val ascending: Boolean) {

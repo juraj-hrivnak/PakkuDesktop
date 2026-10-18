@@ -4,11 +4,14 @@
 
 package teksturepako.pakkuDesktop.app.ui.model
 
+import androidx.compose.runtime.Immutable
 import com.github.michaelbull.result.Result
 import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.serialization.json.JsonElement
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
@@ -30,7 +33,7 @@ import teksturepako.pakkuDesktop.app.git.GitFile
 import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitOp
 
-/** pending project property write for projectEditDriver */
+/** Projects-tab property edit; [projectEditDriver] applies via [ConfigFile.setProjectConfig]. */
 data class PropertyWrite(
     val write: ConfigFile.ProjectConfig.(slug: String) -> Unit,
 )
@@ -41,11 +44,21 @@ data class PropertyWrite(
  */
 data class MetaWrite(
     val replaceConfig: ((ConfigFile) -> ConfigFile)? = null,
+    /** Like [replaceConfig], for `pakku-lock.json` fields [LockFile] has no setter for. */
+    val replaceLock: ((LockFile) -> LockFile)? = null,
+    /**
+     * Top-level `pakku.json` keys [ConfigFile] does not declare. The writer carries every such key
+     * over from disk; an entry here replaces one, and a null value removes it.
+     */
+    val unknownKeys: Map<String, JsonElement?> = emptyMap(),
     /** UI field id for [ModpackModel.modpackMetaErrors]; cleared after a successful write. */
     val fieldKey: String? = null,
     /** Runs on the current on-disk state before [mutate]; blocks the write when non-empty. */
     val validate: (ConfigFile, LockFile) -> List<ActionError> = { _, _ -> emptyList() },
+    /** Changes `pakku-lock.json` in place; set [writesLock] so the lock is written. */
     val mutate: (ConfigFile, LockFile) -> Unit = { _, _ -> },
+    /** Writes `pakku-lock.json`. Implied by [replaceLock]. Config-only writes leave the lock untouched. */
+    val writesLock: Boolean = false,
 )
 
 /** `pakku init` inputs */
@@ -118,6 +131,20 @@ enum class FilesPreviewMode {
     Fetch,
     Sync,
 }
+
+/** Body of the Modpack (Overview) tab. */
+enum class OverviewMode {
+    Form,
+    Json,
+}
+
+/** `pakku.json` as read from disk, for the Overview tab's JSON view. */
+@Immutable
+data class ConfigFileText(
+    val text: String,
+    /** Top-level keys [ConfigFile] does not declare, in file order. */
+    val unknownKeys: PersistentMap<String, JsonElement>,
+)
 
 data class FetchDownloadPreview(
     val project: Project,
@@ -293,8 +320,6 @@ sealed interface ModpackMsg {
 
     data class ProjectSelected(val project: Project?) : ModpackMsg
     data class ProjectEditing(val editing: Boolean) : ModpackMsg
-    /** Modpack tab edit mode */
-    data class ModpackEditing(val editing: Boolean) : ModpackMsg
 
     data class ProjectsSelected(val keys: Set<String>) : ModpackMsg
     data class ProjectsDeselected(val keys: Set<String>) : ModpackMsg
@@ -325,6 +350,7 @@ sealed interface ModpackMsg {
     data object FocusProjectsFilterRequested : ModpackMsg
     data object FocusProjectsFilterConsumed : ModpackMsg
     data class ProjectsFilterFocusChanged(val focused: Boolean) : ModpackMsg
+    data class SubpathFieldFocusChanged(val focused: Boolean) : ModpackMsg
 
     /** Add projects dialog (FAB) */
     data object ShowAddDialog : ModpackMsg
@@ -424,16 +450,33 @@ sealed interface ModpackMsg {
     /** dismiss config error (not FileNotFound) */
     data object DismissConfigError : ModpackMsg
 
-    // -- Project property editing --
+    // -- pakku.json writes (Overview overrides and Projects properties) --
 
-    /** projectEditDriver writes, then Loaded */
-    data class PropertyWriteRequested(val request: PropertyWrite) : ModpackMsg
+    /** Lock-file project to update; [projectEditDriver] uses Pakku [ConfigFile.setProjectConfig]. */
+    data class PropertyWriteRequested(
+        val projectUiKey: String,
+        val request: PropertyWrite,
+        /** [ModpackModel.modpackMetaErrors] key when [setProjectConfig] fails. */
+        val errorFieldKey: String? = null,
+    ) : ModpackMsg
     data object PropertyWriteCompleted : ModpackMsg
 
-    /** Modpack tab metadata write */
+    /** Modpack tab metadata write; queued behind writes still in flight */
     data class MetaWriteRequested(val request: MetaWrite) : ModpackMsg
     data object MetaWriteCompleted : ModpackMsg
     data class MetaWriteFailed(val fieldKey: String?, val errors: List<ActionError>) : ModpackMsg
+
+    // -- Overview tab --
+
+    /** Leaving [OverviewMode.Json] re-reads both files from disk. */
+    data class OverviewModeChanged(val mode: OverviewMode) : ModpackMsg
+    data class OverviewDiffToggled(val showDiff: Boolean) : ModpackMsg
+    /** modpackDiskDriver: `pakku.json` as on disk; null when it cannot be read. */
+    data class ConfigTextLoaded(val text: ConfigFileText?) : ModpackMsg
+    /** modpackDiskDriver: `git diff HEAD -- pakku.json`. */
+    data class ConfigDiffLoaded(val diff: DiffContent?) : ModpackMsg
+    /** modpackDiskDriver after the [ModpackModel.wantsConfigReload] re-read. */
+    data object ConfigReloadCompleted : ModpackMsg
 
     // -- Toasts --
 
@@ -479,4 +522,15 @@ sealed interface ModpackMsg {
 
     data class ModpackDropdown(val msg: ModpackDropdownMsg) : ModpackMsg
     data class GitDropdown(val msg: GitDropdownMsg) : ModpackMsg
+
+    // -- Project Overrides tab --
+
+    data class OverridesFilterTextChanged(val text: String) : ModpackMsg
+    data class OverridesFilterTypesChanged(val types: Set<ProjectType>) : ModpackMsg
+    data class OverridesFilterSidesChanged(val sides: Set<ProjectSide>) : ModpackMsg
+    data class OverridesFilterMissingSideChanged(val enabled: Boolean) : ModpackMsg
+    data class OverridesFilterProvidersChanged(val providers: Set<String>) : ModpackMsg
+    data class OverridesFilterRedistributableChanged(val value: Boolean?) : ModpackMsg
+    data object ShowOverridesAddDialog : ModpackMsg
+    data object HideOverridesAddDialog : ModpackMsg
 }

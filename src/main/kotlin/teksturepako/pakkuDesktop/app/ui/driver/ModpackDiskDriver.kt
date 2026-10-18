@@ -21,6 +21,8 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakkuDesktop.app.actions.buildDiskSnapshot
+import teksturepako.pakkuDesktop.app.git.NativeGit
+import teksturepako.pakkuDesktop.app.actions.readConfigFileText
 import teksturepako.pakkuDesktop.app.actions.toPreview
 import teksturepako.pakkuDesktop.app.actions.uiKey
 import teksturepako.pakkuDesktop.app.actions.walkManagedFiles
@@ -36,11 +38,13 @@ import teksturepako.pakkuDesktop.app.ui.model.AppMsg
 import teksturepako.pakkuDesktop.app.ui.model.AppScreen
 import teksturepako.pakkuDesktop.app.ui.model.FetchOverridePreview
 import teksturepako.pakkuDesktop.app.ui.model.ModpackMsg
+import teksturepako.pakkuDesktop.app.ui.model.OverviewMode
 import teksturepako.pakkuDesktop.app.ui.model.SelectedTab
 import teksturepako.pakkuDesktop.app.ui.model.filesTab
 import teksturepako.pakkuDesktop.app.ui.model.projectsTab
 import teksturepako.pakkuDesktop.app.ui.model.DiskSnapshot
 import teksturepako.pakkuDesktop.elm.Driver
+import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.Path
 
@@ -101,6 +105,43 @@ val modpackDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         if (model.modpack.actionName != null) return@LaunchedEffect
         val lock = model.modpack.lockFile?.get() ?: return@LaunchedEffect
         publishDiskSnapshot(publish, diskSnapshotNow, lock, model.modpack.configFile?.get(), model.modpack.manualOverrides)
+    }
+
+    // pakku.json as stored on disk, after every load and again when the JSON view opens.
+    LaunchedEffect(
+        model.screen,
+        model.modpack.configFile,
+        model.modpack.overviewMode,
+    ) {
+        if (model.screen != AppScreen.Modpack) return@LaunchedEffect
+        val text = withContext(Dispatchers.IO) { readConfigFileText() }
+        publish(AppMsg.Modpack(ModpackMsg.ConfigTextLoaded(text)))
+    }
+
+    // Same diff the Git tab shows: git diff HEAD -- pakku.json.
+    LaunchedEffect(
+        model.screen,
+        model.profile.data.currentProfile?.path,
+        model.modpack.overviewMode,
+        model.modpack.overviewShowDiff,
+        model.modpack.configFile,
+    ) {
+        if (model.screen != AppScreen.Modpack) return@LaunchedEffect
+        if (model.modpack.overviewMode != OverviewMode.Json || !model.modpack.overviewShowDiff) return@LaunchedEffect
+        val path = model.profile.data.currentProfile?.path ?: return@LaunchedEffect
+        val diff = withContext(Dispatchers.IO) {
+            NativeGit.diffWorktree(File(path), ConfigFile.FILE_NAME)
+        }
+        publish(AppMsg.Modpack(ModpackMsg.ConfigDiffLoaded(diff)))
+    }
+
+    LaunchedEffect(model.screen, model.modpack.wantsConfigReload) {
+        if (model.screen != AppScreen.Modpack) return@LaunchedEffect
+        if (!model.modpack.wantsConfigReload) return@LaunchedEffect
+        val lockFile = withContext(Dispatchers.IO) { LockFile.readToResult() }
+        val configFile = withContext(Dispatchers.IO) { ConfigFile.readToResult() }
+        publish(AppMsg.Modpack(ModpackMsg.Loaded(lockFile, configFile)))
+        publish(AppMsg.Modpack(ModpackMsg.ConfigReloadCompleted))
     }
 
     var projectsPrep by remember { mutableStateOf<ProjectsListPrep?>(null) }

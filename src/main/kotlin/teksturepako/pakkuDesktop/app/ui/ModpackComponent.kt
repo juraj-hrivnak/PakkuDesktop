@@ -6,6 +6,7 @@ package teksturepako.pakkuDesktop.app.ui
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.Modifier
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.get
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
@@ -100,12 +101,14 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     is ModpackMsg.TabSelected        ->
         if (model.selectedTab == msg.tab) model else model.copy(selectedTab = msg.tab)
     is ModpackMsg.ProjectSelected    ->
-        if (model.selectedProject == msg.project && !model.editingProject) model
-        else model.copy(selectedProject = msg.project, editingProject = false)
+        if (model.selectedProject == msg.project && !model.editingProject && !model.subpathFieldFocused) model
+        else model.copy(selectedProject = msg.project, editingProject = false, subpathFieldFocused = false)
     is ModpackMsg.ProjectEditing     ->
-        if (model.editingProject == msg.editing) model else model.copy(editingProject = msg.editing)
-    is ModpackMsg.ModpackEditing     ->
-        if (model.editingModpack == msg.editing) model else model.copy(editingModpack = msg.editing)
+        if (model.editingProject == msg.editing && (msg.editing || !model.subpathFieldFocused)) model
+        else model.copy(
+            editingProject = msg.editing,
+            subpathFieldFocused = msg.editing && model.subpathFieldFocused,
+        )
     is ModpackMsg.ProjectsSelected   ->
         if (model.selectedProjectKeys.containsAll(msg.keys)) model
         else model.copy(selectedProjectKeys = model.selectedProjectKeys.addAll(msg.keys))
@@ -234,6 +237,8 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (!model.wantsFocusProjectsFilter) model else model.copy(wantsFocusProjectsFilter = false)
     is ModpackMsg.ProjectsFilterFocusChanged ->
         if (model.projectsFilterFocused == msg.focused) model else model.copy(projectsFilterFocused = msg.focused)
+    is ModpackMsg.SubpathFieldFocusChanged ->
+        if (model.subpathFieldFocused == msg.focused) model else model.copy(subpathFieldFocused = msg.focused)
 
     ModpackMsg.ShowAddDialog -> model.copy(
         addDialog = AddDialogModel(visible = true),
@@ -619,9 +624,23 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
     ModpackMsg.DismissLockError -> model.copy(lockErrorDismissed = true)
     ModpackMsg.DismissConfigError -> model.copy(configErrorDismissed = true)
 
-    is ModpackMsg.PropertyWriteRequested -> model.copy(pendingPropertyWrite = msg.request)
-    ModpackMsg.PropertyWriteCompleted    ->
-        if (model.pendingPropertyWrite == null) model else model.copy(pendingPropertyWrite = null)
+    is ModpackMsg.PropertyWriteRequested ->
+        model.copy(
+            pendingPropertyWrite = msg.request,
+            pendingPropertyWriteProjectKey = msg.projectUiKey,
+            pendingPropertyWriteErrorKey = msg.errorFieldKey,
+        )
+    ModpackMsg.PropertyWriteCompleted ->
+        if (model.pendingPropertyWrite == null) model
+        else {
+            val errorKey = model.pendingPropertyWriteErrorKey
+            model.copy(
+                pendingPropertyWrite = null,
+                pendingPropertyWriteProjectKey = null,
+                pendingPropertyWriteErrorKey = null,
+                modpackMetaErrors = errorKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
+            )
+        }
 
     is ModpackMsg.MetaWriteRequested -> {
         val lock = model.lockFile?.get() ?: return@modpackUpdate model
@@ -631,28 +650,28 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
         if (errors.isNotEmpty()) {
             model.copy(modpackMetaErrors = model.modpackMetaErrors.put(fieldKey, errors.toPersistentList()))
         } else {
+            // Show a renamed pack immediately. The write replaces this with the re-read file.
+            val renamed = msg.request.replaceConfig?.invoke(config)?.takeIf { it.getName() != config.getName() }
             model.copy(
-                pendingMetaWrite = msg.request,
+                pendingMetaWrites = model.pendingMetaWrites.add(msg.request),
                 modpackMetaErrors = model.modpackMetaErrors.remove(fieldKey),
+                configFile = if (renamed != null) Ok(renamed) else model.configFile,
             )
         }
     }
     ModpackMsg.MetaWriteCompleted -> {
-        val fieldKey = model.pendingMetaWrite?.fieldKey
-        if (model.pendingMetaWrite == null) {
-            model
-        } else {
-            model.copy(
-                pendingMetaWrite = null,
-                modpackMetaErrors = fieldKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
-            )
-        }
+        val head = model.pendingMetaWrites.firstOrNull() ?: return@modpackUpdate model
+        model.copy(
+            pendingMetaWrites = model.pendingMetaWrites.removeAt(0),
+            modpackMetaErrors = head.fieldKey?.let { model.modpackMetaErrors.remove(it) } ?: model.modpackMetaErrors,
+        )
     }
     is ModpackMsg.MetaWriteFailed -> {
-        if (msg.errors.isEmpty() && model.pendingMetaWrite == null) return@modpackUpdate model
+        if (msg.errors.isEmpty() && model.pendingMetaWrites.isEmpty()) return@modpackUpdate model
         val fieldKey = msg.fieldKey ?: ModpackMetaField.GENERAL
         model.copy(
-            pendingMetaWrite = null,
+            pendingMetaWrites = if (model.pendingMetaWrites.isEmpty()) model.pendingMetaWrites
+                else model.pendingMetaWrites.removeAt(0),
             modpackMetaErrors = if (msg.errors.isEmpty()) {
                 model.modpackMetaErrors
             } else {
@@ -660,6 +679,21 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             },
         )
     }
+
+    is ModpackMsg.OverviewModeChanged ->
+        if (model.overviewMode == msg.mode) model
+        else model.copy(
+            overviewMode = msg.mode,
+            wantsConfigReload = model.wantsConfigReload || model.overviewMode == OverviewMode.Json,
+        )
+    is ModpackMsg.OverviewDiffToggled ->
+        if (model.overviewShowDiff == msg.showDiff) model else model.copy(overviewShowDiff = msg.showDiff)
+    is ModpackMsg.ConfigTextLoaded ->
+        if (msg.text == model.configText) model else model.copy(configText = msg.text)
+    is ModpackMsg.ConfigDiffLoaded ->
+        if (msg.diff == model.configDiff) model else model.copy(configDiff = msg.diff)
+    ModpackMsg.ConfigReloadCompleted ->
+        if (!model.wantsConfigReload) model else model.copy(wantsConfigReload = false)
 
     is ModpackMsg.ToastAdded     -> model.copy(
         toasts = model.toasts.mutate { toasts ->
@@ -873,6 +907,30 @@ fun modpackUpdate(msg: ModpackMsg, model: ModpackModel): ModpackModel = when (ms
             }
         }
     }
+
+    // -- Project Overrides tab --
+
+    is ModpackMsg.OverridesFilterTextChanged ->
+        model.copy(overridesFilterText = msg.text)
+    is ModpackMsg.OverridesFilterTypesChanged ->
+        if (model.overridesFilterTypes == msg.types) model
+        else model.copy(overridesFilterTypes = msg.types.toPersistentSet())
+    is ModpackMsg.OverridesFilterSidesChanged ->
+        if (model.overridesFilterSides == msg.sides) model
+        else model.copy(overridesFilterSides = msg.sides.toPersistentSet())
+    is ModpackMsg.OverridesFilterMissingSideChanged ->
+        if (model.overridesFilterMissingSide == msg.enabled) model
+        else model.copy(overridesFilterMissingSide = msg.enabled)
+    is ModpackMsg.OverridesFilterProvidersChanged ->
+        if (model.overridesFilterProviders == msg.providers) model
+        else model.copy(overridesFilterProviders = msg.providers.toPersistentSet())
+    is ModpackMsg.OverridesFilterRedistributableChanged ->
+        if (model.overridesFilterRedistributable == msg.value) model
+        else model.copy(overridesFilterRedistributable = msg.value)
+    ModpackMsg.ShowOverridesAddDialog ->
+        if (model.showOverridesAddDialog) model else model.copy(showOverridesAddDialog = true)
+    ModpackMsg.HideOverridesAddDialog ->
+        if (!model.showOverridesAddDialog) model else model.copy(showOverridesAddDialog = false)
 }
 
 /** [value] when it differs from [old], else [old] itself, so identity-keyed caches stay valid. */

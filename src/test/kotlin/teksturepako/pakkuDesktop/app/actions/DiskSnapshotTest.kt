@@ -24,6 +24,9 @@ class DiskSnapshotTest {
             root.resolve("mods/readme.txt").writeBytes(byteArrayOf(3))
             root.resolve("saves").createDirectories()
             root.resolve("saves/x.jar").writeBytes(byteArrayOf(4))
+            root.resolve("mods/build").createDirectories()
+            root.resolve("mods/build/leak.jar").writeBytes(byteArrayOf(5))
+            root.resolve("mods/sodium-build.jar").writeBytes(byteArrayOf(6))
 
             val expected = mapOf(
                 pathKey("mods/a.jar") to "mods/a.jar",
@@ -33,9 +36,9 @@ class DiskSnapshotTest {
             val snapshot = buildDiskSnapshot(root, expected, walked, folders = listOf("mods/"))
 
             assertEquals(setOf(pathKey("mods/a.jar")), snapshot.present)
-            assertEquals(listOf("mods/sub/b.jar"), snapshot.untracked)
+            assertEquals(listOf("mods/sodium-build.jar", "mods/sub/b.jar"), snapshot.untracked)
             assertEquals(setOf("mods/"), snapshot.existingFolders)
-            assertTrue(snapshot.untracked.none { "readme.txt" in it || it.startsWith("saves/") })
+            assertTrue(snapshot.untracked.none { "readme.txt" in it || it.startsWith("saves/") || "/build/" in it })
         } finally {
             root.toFile().deleteRecursively()
         }

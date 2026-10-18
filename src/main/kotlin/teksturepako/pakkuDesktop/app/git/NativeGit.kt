@@ -650,6 +650,34 @@ object NativeGit
         }
     }
 
+    /** `git diff HEAD -- [path]`, the same text the Git tab shows for a working-tree file. */
+    suspend fun diffWorktree(workDir: File, path: String): DiffContent
+    {
+        val root = workDir.canonicalFile
+        if (run(root, "cat-file", "-e", "HEAD:$path") == null) return untrackedAsNewFile(workDir, path)
+        val onDisk = File(root, path)
+        if (onDisk.isFile && onDisk.length() > MAX_FILE_BYTES) return tooLargeDiff(path, onDisk.length())
+        val blobBytes = run(root, "cat-file", "-s", "HEAD:$path")?.trim()?.toLongOrNull()
+        if (blobBytes != null && blobBytes > MAX_FILE_BYTES) return tooLargeDiff(path, blobBytes)
+        val captured = try
+        {
+            requireInside(root, path)
+            command(root, listOf("diff", "HEAD", "--", path), readOnly = true)
+                .redirectError(ProcessBuilder.Redirect.DISCARD).runCapturingCapped(MAX_FILE_BYTES.toInt())
+        }
+        catch (e: CancellationException)
+        {
+            throw e
+        }
+        catch (_: Exception)
+        {
+            return placeholderDiffContent(path, "Diff not available.")
+        }
+        if (captured.truncated) return tooLargeDiff(path, captured.text.length.toLong())
+        val parsed = UnifiedDiffParser.parse(captured.text, path)
+        return if (parsed.hunks.isEmpty()) placeholderDiffContent(path, "No content changes.") else parsed
+    }
+
     /** One file of commit [hash] against [parent] (its first parent; null for a root commit). */
     suspend fun computeCommitDiff(workDir: File, hash: String, parent: String?, change: GitCommitChange): DiffContent
     {

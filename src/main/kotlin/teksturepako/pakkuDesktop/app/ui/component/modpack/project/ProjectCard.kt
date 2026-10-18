@@ -28,6 +28,7 @@ import org.jetbrains.jewel.ui.theme.badgeStyle
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
+import teksturepako.pakkuDesktop.app.ui.PakkuDesktopIcons
 import teksturepako.pakkuDesktop.app.ui.component.text.SelectableText
 import teksturepako.pakkuDesktop.app.ui.model.ProjectUpdateInfo
 import teksturepako.pakkuDesktop.app.ui.model.SyncKind
@@ -144,19 +145,16 @@ fun ProjectCard(
             Column(
                 modifier = Modifier.widthIn(max = ProjectCardMetaMaxWidth),
                 horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.controlSpacing),
             ) {
-                Text(
-                    text = project.type.prettyName,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Badge(style = JewelTheme.badgeStyle.graySecondary) {
+                    Text(project.type.prettyName)
+                }
                 published?.let {
                     Text(
                         text = it,
-                        color = Color.Gray.copy(alpha = 0.65f),
-                        fontSize = 11.sp,
+                        color = JewelTheme.contentColor.copy(alpha = 0.65f),
+                        fontSize = PakkuDesktopConstants.cardCaptionSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -194,7 +192,7 @@ fun ProjectCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    key = AllIconsKeys.General.ExclMark,
+                    key = PakkuDesktopIcons.exclamationTriangle,
                     contentDescription = "Warning",
                     tint = PakkuDesktopConstants.amber,
                     modifier = Modifier.size(14.dp),

@@ -7,10 +7,16 @@ package teksturepako.pakkuDesktop.app.ui.view.routes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.painter.hints.Size
+import teksturepako.pakkuDesktop.app.integration.revealInFileManager
 import teksturepako.pakkuDesktop.app.ui.application.PakkuApplicationScope
 import teksturepako.pakkuDesktop.app.ui.application.appName
 import teksturepako.pakkuDesktop.app.ui.application.titlebar.TITLE_BAR_BASE_HEIGHT_DP
@@ -81,6 +87,22 @@ fun PakkuApplicationScope.AppFrame(
                 }
             },
             endContent = {
+                // Open modpack folder — only on the Modpack screen.
+                if (model.screen == AppScreen.Modpack) {
+                    val modpackPath = model.profile.data.currentProfile?.path
+                    if (modpackPath != null) {
+                        IconButton(
+                            onClick = { revealInFileManager(java.nio.file.Paths.get(modpackPath)) },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                key = AllIconsKeys.General.OpenDisk,
+                                contentDescription = "Open modpack folder",
+                                hints = arrayOf(Size(16)),
+                            )
+                        }
+                    }
+                }
                 // Same control on Welcome and Modpack; only its presence changes.
                 val endKey = if (model.screen == AppScreen.Activation) "none" else "settings"
                 animatedRoute(endKey, Modifier) {

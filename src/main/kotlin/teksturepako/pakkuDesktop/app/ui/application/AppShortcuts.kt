@@ -63,6 +63,7 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             {
                 if (!filterFocused &&
                     !model.hasModalOverlay() &&
+                    !model.modpack.editingProject &&
                     model.modpack.selectedProjectKeys.isNotEmpty() &&
                     model.modpack.actionName == null
                 ) {
@@ -73,7 +74,10 @@ fun handleAppShortcut(event: KeyEvent, model: AppModel, publish: (AppMsg) -> Uni
             }
             Key.Enter, Key.NumPadEnter ->
             {
-                if (!filterFocused && !model.hasModalOverlay()) {
+                if (!filterFocused &&
+                    !model.hasModalOverlay() &&
+                    !model.modpack.editingProject
+                ) {
                     publish(AppMsg.Modpack(ModpackMsg.ActivateLastProjectsFab))
                     return true
                 }
@@ -271,7 +275,11 @@ private fun handleEscape(model: AppModel, publish: (AppMsg) -> Unit): Boolean = 
         }
         true
     }
-    model.screen == AppScreen.Modpack && model.modpack.selectedProject != null ->
+    // The subpath field cancels its own draft. Let that handler see Esc.
+    model.modpack.subpathFieldFocused -> false
+    // The Overview has no inspector; its inline editors cancel on Esc.
+    model.screen == AppScreen.Modpack && model.modpack.selectedTab != SelectedTab.MODPACK &&
+        model.modpack.selectedProject != null ->
     {
         publish(AppMsg.Modpack(ModpackMsg.ProjectSelected(null)))
         true

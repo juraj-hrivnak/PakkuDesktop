@@ -39,6 +39,7 @@ import teksturepako.pakkuDesktop.app.ui.model.FetchDownloadPreview
 import teksturepako.pakkuDesktop.app.ui.model.FetchOverridePreview
 import teksturepako.pakkuDesktop.pkui.component.toast.ToastData
 import java.io.File
+import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.deleteIfExists
@@ -48,9 +49,10 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.io.path.notExists
 import kotlin.io.path.pathString
+import kotlin.io.path.relativeTo
 import kotlin.io.path.relativeToOrSelf
 
-private val fetchLogger = logger("FetchImpl")
+private val fetchLogger = logger("teksturepako.pakkuDesktop.app.actions.FetchImpl")
 
 internal fun ManualOverride.toPreview(): FetchOverridePreview = FetchOverridePreview(
     relativeOutputPath = relativeOutputPath.invariantSeparatorsPathString,
@@ -59,6 +61,29 @@ internal fun ManualOverride.toPreview(): FetchOverridePreview = FetchOverridePre
 )
 
 private val DefaultIgnoredPaths = listOf("saves", "screenshots")
+private const val BuildDirName = "build"
+
+/** Type dir is the working directory, or a path Pakku ignores, or Gradle `build`. */
+private fun ignoredManagedDir(dir: Path): Boolean {
+    if (DefaultIgnoredPaths.any { it in dir.pathString }) return true
+    val relative = relativeToWorkingPath(dir) ?: return false
+    return relative.isEmpty() || relative == "." || BuildDirName in relative.split('/')
+}
+
+private fun ignoredManagedPath(path: Path): Boolean {
+    if (DefaultIgnoredPaths.any { it in path.pathString }) return true
+    val relative = relativeToWorkingPath(path) ?: return false
+    return BuildDirName in relative.split('/')
+}
+
+private fun relativeToWorkingPath(path: Path): String? =
+    try {
+        path.toAbsolutePath().normalize()
+            .relativeTo(kotlin.io.path.Path(workingPath).toAbsolutePath().normalize())
+            .invariantSeparatorsPathString
+    } catch (_: IllegalArgumentException) {
+        null
+    }
 private val CleanupExtensions = listOf(".jar", ".zip", ".jar.meta")
 
 /**
@@ -169,7 +194,7 @@ suspend fun fetchApplySuspend(
                 fetchLogger.info { "Synced override ${override.fullOutputPath}" }
                 syncedOverrides += override.relativeOutputPath.pathString
             },
-            syncPrimaryDirectories = true,
+            syncPrimaryDirectories = false,
         ).joinAll()
     }
 
@@ -232,20 +257,22 @@ private suspend fun detectCleanupFiles(
         .filterNot { it == ProjectType.WORLD }
         .mapNotNull { projectType ->
             val dir = Path(workingPath, projectType.getPathString(configFile))
-            if (dir.notExists() || DefaultIgnoredPaths.any { it in dir.pathString }) return@mapNotNull null
+            if (dir.notExists() || ignoredManagedDir(dir)) return@mapNotNull null
             dir
         }
 
     dirs.map { dir ->
         async {
             val paths = dir.tryOrNull { path ->
-                path.toFile().walkBottomUp().mapNotNull { file: File ->
+                path.toFile().walkBottomUp().onEnter { file ->
+                    file.toPath() == dir || file.name != BuildDirName
+                }.mapNotNull { file: File ->
                     file.toPath().takeIf { it != dir }
                 }.toList()
             }.orEmpty()
 
             paths.mapNotNull { path ->
-                if (DefaultIgnoredPaths.any { ignored -> ignored in path.pathString }) return@mapNotNull null
+                if (ignoredManagedPath(path)) return@mapNotNull null
                 // Subpath folders (and other dirs) are not leftover downloads; CLI delete
                 // only succeeds when they are empty. Do not preview them as Delete.
                 if (path.isDirectory()) return@mapNotNull null
@@ -262,3 +289,4 @@ private suspend fun detectCleanupFiles(
         }
     }.awaitAll().flatten().distinctBy { it.absolutePath }
 }
+

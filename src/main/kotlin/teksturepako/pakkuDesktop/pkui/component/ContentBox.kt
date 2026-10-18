@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import teksturepako.pakkuDesktop.elm.animatedColor
@@ -26,20 +27,34 @@ fun ContentBox(
     color: Color = JewelTheme.globalColors.borders.disabled,
     shape: Shape = RoundedCornerShape(JewelTheme.tooltipStyle.metrics.cornerSize),
     contentPadding: PaddingValues = JewelTheme.tooltipStyle.metrics.contentPadding,
+    elevation: Dp = JewelTheme.tooltipStyle.metrics.shadowSize,
+    ambientShadowColor: Color? = null,
+    spotShadowColor: Color? = null,
     content: @Composable BoxScope.() -> Unit,
 )
 {
     val background = animatedColor(JewelTheme.globalColors.panelBackground)
     val border = animatedColor(color)
+    val customShadow = ambientShadowColor ?: spotShadowColor
+    val shadowModifier = if (customShadow != null) {
+        Modifier.shadow(
+            elevation = elevation,
+            shape = shape,
+            clip = false,
+            ambientColor = ambientShadowColor ?: customShadow,
+            spotColor = spotShadowColor ?: customShadow,
+        )
+    } else {
+        Modifier.shadow(
+            elevation = elevation,
+            shape = shape,
+            ambientColor = border,
+            clip = false,
+        )
+    }
 
     Box(
-        modifier
-            .shadow(
-                elevation = JewelTheme.tooltipStyle.metrics.shadowSize,
-                shape = shape,
-                ambientColor = border,
-                clip = false,
-            )
+        modifier.then(shadowModifier)
             .background(
                 color = background,
                 shape = shape,
