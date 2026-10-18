@@ -23,10 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,15 +33,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.github.michaelbull.result.get
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.SplitLayoutState
-import org.jetbrains.jewel.ui.component.Checkbox
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.SegmentedControl
@@ -57,10 +51,6 @@ import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakkuDesktop.app.ui.PakkuDesktopConstants
 import teksturepako.pakkuDesktop.app.ui.component.git.diff.DiffViewer
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.ProjectFilterBar
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.FloatingActionIcon
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.ProjectListQuery
-import teksturepako.pakkuDesktop.app.ui.component.modpack.project.list.matchesProjectListQuery
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackField
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackFieldSchema
 import teksturepako.pakkuDesktop.app.ui.component.modpack.meta.ModpackIsland
@@ -80,8 +70,6 @@ import teksturepako.pakkuDesktop.elm.animatedDividerStyle
 import teksturepako.pakkuDesktop.pkui.component.DropdownHost
 import teksturepako.pakkuDesktop.pkui.component.InlineEditText
 import teksturepako.pakkuDesktop.pkui.component.IslandCard
-import teksturepako.pakkuDesktop.pkui.component.PkUiDialog
-import teksturepako.pakkuDesktop.pkui.component.PkUiDialogSize
 
 @Composable
 fun ModpackTab(publish: (ModpackMsg) -> Unit, model: ModpackTabModel) {
@@ -124,7 +112,7 @@ private fun ModpackTabBody(publish: (ModpackMsg) -> Unit, model: ModpackTabModel
             if (model.overviewMode == OverviewMode.Json) {
                 OverviewJson(model)
             } else {
-                OverviewIslands(publish, model, values, lock.getAllProjects()) { key -> lock.getProject(key) }
+                OverviewIslands(publish, model, values) { key -> lock.getProject(key) }
             }
         }
     }
@@ -219,13 +207,11 @@ private fun OverviewIslands(
     publish: (ModpackMsg) -> Unit,
     model: ModpackTabModel,
     values: ModpackFieldValues,
-    projects: List<Project>,
     projectOf: (String) -> Project?,
 ) {
     RecomposeProbe("OverviewIslands")
-    var pickingOverrides by remember { mutableStateOf(false) }
     val unknown = model.configText?.unknownKeys.orEmpty().map { (name, _) -> ModpackFieldSchema.unknownField(name) }
-    val islands = (ModpackFieldSchema.fields.filterNot { it.hint.title } + unknown)
+    val islands = (ModpackFieldSchema.fields.filterNot { it.hint.title || it.hint.projectCard } + unknown)
         .groupBy { it.island }
         .toSortedMap()
         .toList()
@@ -233,7 +219,7 @@ private fun OverviewIslands(
     val listed = islands.filter { it.first.wide }
     val settings = islands.filter { !it.first.wide }
     if (listed.isEmpty() || settings.isEmpty()) {
-        IslandColumn(islands, values, model, publish, projectOf) { pickingOverrides = true }
+        IslandColumn(islands, values, model, publish, projectOf)
     } else {
         val splitState = remember { SplitLayoutState(0.58f) }
         val draggableWidth = 16.dp
@@ -242,12 +228,12 @@ private fun OverviewIslands(
             dividerStyle = animatedDividerStyle(),
             first = {
                 Box(Modifier.fillMaxSize().padding(end = draggableWidth / 2)) {
-                    IslandColumn(listed, values, model, publish, projectOf) { pickingOverrides = true }
+                    IslandColumn(listed, values, model, publish, projectOf)
                 }
             },
             second = {
                 Box(Modifier.fillMaxSize().padding(start = draggableWidth / 2)) {
-                    IslandColumn(settings, values, model, publish, projectOf) { pickingOverrides = true }
+                    IslandColumn(settings, values, model, publish, projectOf)
                 }
             },
             modifier = Modifier.fillMaxSize(),
@@ -255,114 +241,6 @@ private fun OverviewIslands(
             secondPaneMinWidth = 300.dp,
             draggableWidth = draggableWidth,
         )
-    }
-    val overrides = islands.firstNotNullOfOrNull { (_, fields) -> fields.firstOrNull { it.hint.projectCard } }
-    if (pickingOverrides && overrides != null) {
-        AddOverrideDialog(
-            projects = projects,
-            already = (values[overrides] as? JsonObject)?.keys.orEmpty(),
-            onDismiss = { pickingOverrides = false },
-            onAdd = { keys ->
-                val current = values[overrides] as? JsonObject ?: JsonObject(emptyMap())
-                val ordered = linkedMapOf<String, JsonElement>()
-                for (key in keys) {
-                    if (key !in current) ordered[key] = JsonObject(emptyMap())
-                }
-                for ((key, value) in current) {
-                    if (key !in ordered) ordered[key] = value
-                }
-                publish(ModpackMsg.MetaWriteRequested(overrides.write(JsonObject(ordered))))
-                pickingOverrides = false
-            },
-        )
-    }
-}
-
-@Composable
-private fun AddOverrideDialog(
-    projects: List<Project>,
-    already: Set<String>,
-    onDismiss: () -> Unit,
-    onAdd: (List<String>) -> Unit,
-) {
-    RecomposeProbe("AddOverrideDialog")
-    val available = projects.mapNotNull { project ->
-        val key = project.slug.values.firstOrNull() ?: project.pakkuId ?: project.name.values.firstOrNull()
-        if (key == null || already.any { it in project }) null else key to project
-    }
-    var query by remember { mutableStateOf(ProjectListQuery()) }
-    val visible = available.filter { (_, project) -> project.matchesProjectListQuery(query) }
-    var chosen by remember { mutableStateOf(listOf<String>()) }
-    val searchFocus = remember { FocusRequester() }
-    PkUiDialog(
-        onDismiss = onDismiss,
-        title = "Add project override",
-        subtitle = "Pick projects already in this modpack. They stay installed; this only adds a property override.",
-        icon = AllIconsKeys.General.Add,
-        size = PkUiDialogSize.Large,
-        scrollable = false,
-        initialFocus = searchFocus,
-        onConfirm = if (chosen.isEmpty()) null else { { onAdd(chosen) } },
-        footer = {
-            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
-            DefaultButton(onClick = { onAdd(chosen) }, enabled = chosen.isNotEmpty()) { Text("Add") }
-        },
-    ) {
-        ProjectFilterBar(
-            query = query,
-            onQuery = { query = it },
-            focusRequester = searchFocus,
-        )
-        when {
-            available.isEmpty() -> Text(
-                "Every project already has an override.",
-                color = JewelTheme.contentColor.copy(alpha = PakkuDesktopConstants.secondaryContentAlpha),
-            )
-            visible.isEmpty() -> Text(
-                "No projects match.",
-                color = JewelTheme.contentColor.copy(alpha = PakkuDesktopConstants.secondaryContentAlpha),
-            )
-            else -> {
-                val listScroll = rememberScrollState()
-                Box(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(listScroll)
-                            .padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.cardContentSpacing),
-                    ) {
-                        visible.forEach { (key, project) ->
-                            val checked = key in chosen
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.cardContentSpacing),
-                            ) {
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = { on ->
-                                        chosen = if (on) listOf(key) + (chosen - key) else chosen - key
-                                    },
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text(project.name.values.firstOrNull() ?: key, fontWeight = FontWeight.Medium)
-                                    Text(
-                                        project.type.prettyName,
-                                        color = JewelTheme.contentColor.copy(alpha = PakkuDesktopConstants.secondaryContentAlpha),
-                                        fontSize = PakkuDesktopConstants.cardCaptionSize,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    VerticalScrollbar(
-                        listScroll,
-                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -374,7 +252,6 @@ private fun IslandColumn(
     model: ModpackTabModel,
     publish: (ModpackMsg) -> Unit,
     projectOf: (String) -> Project?,
-    onPickOverrides: () -> Unit,
 ) {
     RecomposeProbe("OverviewIslandColumn")
     val scrollState = rememberScrollState()
@@ -387,30 +264,10 @@ private fun IslandColumn(
             verticalArrangement = Arrangement.spacedBy(PakkuDesktopConstants.islandSpacing),
         ) {
             islands.forEach { (island, fields) ->
-                val overrides = fields.firstOrNull { it.hint.projectCard }
                 IslandCard(
                     title = island.title,
                     description = island.description,
                     modifier = Modifier.fillMaxWidth(),
-                    trailing = {
-                        if (overrides != null) {
-                            FloatingActionIcon(
-                                onClick = onPickOverrides,
-                                enabled = true,
-                                buttonSize = 36.dp,
-                                accent = PakkuDesktopConstants.highlightColor,
-                                tooltip = "Add project override",
-                            ) { hovered ->
-                                Icon(
-                                    key = AllIconsKeys.General.Add,
-                                    contentDescription = "Add project override",
-                                    tint = if (hovered) PakkuDesktopConstants.highlightColor else JewelTheme.contentColor,
-                                    hints = arrayOf(Size(18)),
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    },
                 ) {
                     fields.forEach { field ->
                         ModpackFieldSelection(

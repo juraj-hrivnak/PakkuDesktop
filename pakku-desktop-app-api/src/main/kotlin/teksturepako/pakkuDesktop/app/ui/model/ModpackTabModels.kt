@@ -159,6 +159,21 @@ fun ModpackModel.modpackTab() = ModpackTabModel(
     configDiff = configDiff,
 )
 
+@Immutable
+data class ProjectOverridesTabModel(
+    val lockFile: Result<LockFile, ActionError>?,
+    val configFile: Result<ConfigFile, ActionError>?,
+    val metaErrors: PersistentMap<String, PersistentList<ActionError>>,
+    val configText: ConfigFileText?,
+)
+
+fun ModpackModel.overridesTab() = ProjectOverridesTabModel(
+    lockFile = lockFile,
+    configFile = configFile,
+    metaErrors = modpackMetaErrors,
+    configText = configText,
+)
+
 fun ModpackTabModel.metaFieldErrors(field: String): List<ActionError> =
     metaErrors[field]?.orEmpty() ?: emptyList()
 

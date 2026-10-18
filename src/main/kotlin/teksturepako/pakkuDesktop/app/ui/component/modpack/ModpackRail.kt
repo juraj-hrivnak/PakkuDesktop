@@ -78,6 +78,12 @@ fun ModpackRail(
                 onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECTS)) },
             )
             RailButton(
+                key = AllIconsKeys.General.Gear,
+                tooltip = "Overrides",
+                selected = selectedTab == SelectedTab.PROJECT_OVERRIDES,
+                onClick = { publish(ModpackMsg.TabSelected(SelectedTab.PROJECT_OVERRIDES)) },
+            )
+            RailButton(
                 key = AllIconsKeys.Toolwindows.ToolWindowProject,
                 tooltip = "Files",
                 selected = selectedTab == SelectedTab.FILES,

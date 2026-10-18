@@ -314,7 +314,7 @@ data class ModpackModel(
 // -- Enums / sealed --
 
 enum class SelectedTab {
-    MODPACK, PROJECTS, FILES, COMMIT, LOG
+    MODPACK, PROJECTS, PROJECT_OVERRIDES, FILES, COMMIT, LOG
 }
 
 sealed class SortOrder(open val ascending: Boolean) {
