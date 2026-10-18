@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.8
+
+- Implemented app auto-updating
+- Implemented modpack overview tab with project overrides support
+- Added open modpack folder button to titlebar
+- Added project overrides to modpack model with dedicated tab
+- Improved modpack overview and project property overrides UI
+- Improved slug editing in ModpackMetaSelection
+- Improved style of ProjectOverrideCard and ProjectCard
+- Fixed crash in ListImpl and lazy column
+- Fixed empty label in Files tab filter
+- Fixed project property overrides handling
+- Fixed race condition when writing to pakku.json
+- Disabled `syncPrimaryDirectories` in FetchImpl.kt
+
 ## v1.0.0-alpha.7
 
 - Implemented Git init workflow
