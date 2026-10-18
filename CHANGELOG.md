@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.7
+
+- Implemented Git init workflow
+- Implemented Git log tab with split panes and scroll bars
+- Added search/filter for Git changelist tree
+- Added tag support: show tag names in commits, order by creation date, reveal toggle in dropdown
+- Added close button to Git log tab diff viewer
+- Added success feedback for push operations
+- Improved tag handling and modal texts
+- Improved main view transitions with AppFrame.kt
+- Fixed git hunk header still showing code snippets
+- Fixed tag-only push not working
+- Warn about update conflicts
+- Push deleted remote tags
+- Log git commands
+
 ## v1.0.0-alpha.6
 
 - Improved git proformance & clean up code
