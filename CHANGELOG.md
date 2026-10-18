@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.12
+
+- Fix auto updater
+
 ## v1.0.0-alpha.11
 
 - Added a way to remove project overrides when they don't match any project
