@@ -82,17 +82,6 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
     val updateFabAccent = if (showCheckIcon) checkAccent else updateAccent
     val lastFab = model.lastProjectsFab
 
-    val spinTransition = rememberInfiniteTransition(label = "checkUpdatesSpin")
-    val spinDegrees by spinTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "checkUpdatesRotation",
-    )
-
     Row(
         modifier = Modifier
             .align(Alignment.BottomEnd)
@@ -141,22 +130,21 @@ fun BoxScope.ListFloatingActions(publish: (ModpackMsg) -> Unit, model: ProjectsT
         ) { hovered ->
             val accentHot = hovered || lastFab == ProjectsFabAction.Update || checking
             if (showCheckIcon) {
-                Icon(
-                    key = AllIconsKeys.Actions.Refresh,
-                    contentDescription = if (checking) "Checking for updates" else "Check for updates",
-                    tint = when {
-                        checking -> checkAccent
-                        busy -> Color.Gray
-                        accentHot -> checkAccent
-                        else -> JewelTheme.contentColor
-                    },
-                    hints = arrayOf(),
-                    modifier = Modifier
-                        .size(20.dp)
-                        .graphicsLayer {
-                            rotationZ = if (checking) -spinDegrees else 0f
+                if (checking) {
+                    SpinningRefreshIcon(tint = checkAccent)
+                } else {
+                    Icon(
+                        key = AllIconsKeys.Actions.Refresh,
+                        contentDescription = "Check for updates",
+                        tint = when {
+                            busy -> Color.Gray
+                            accentHot -> checkAccent
+                            else -> JewelTheme.contentColor
                         },
-                )
+                        hints = arrayOf(),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             } else {
                 Icon(
                     key = AllIconsKeys.Actions.CheckOut,
@@ -360,4 +348,27 @@ private fun FloatingActionIconBody(
     ) {
         content(showAccentOutline)
     }
+}
+
+@Composable
+private fun SpinningRefreshIcon(tint: Color) {
+    val spinTransition = rememberInfiniteTransition(label = "checkUpdatesSpin")
+    val spinDegrees by spinTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "checkUpdatesRotation",
+    )
+    Icon(
+        key = AllIconsKeys.Actions.Refresh,
+        contentDescription = "Checking for updates",
+        tint = tint,
+        hints = arrayOf(),
+        modifier = Modifier
+            .size(20.dp)
+            .graphicsLayer { rotationZ = -spinDegrees },
+    )
 }
