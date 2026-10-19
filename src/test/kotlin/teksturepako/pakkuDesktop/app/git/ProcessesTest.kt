@@ -4,6 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.git
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
@@ -20,10 +21,19 @@ class ProcessesTest {
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .start()
-        val job = launch(Dispatchers.IO) { proc.awaitOrDestroy() }
-        assertTrue(proc.isAlive)
-        job.cancelAndJoin()
-        assertTrue(proc.waitFor(3, TimeUnit.SECONDS))
-        assertFalse(proc.isAlive)
+        try {
+            val started = CompletableDeferred<Unit>()
+            val job = launch(Dispatchers.IO) {
+                started.complete(Unit)
+                proc.awaitOrDestroy()
+            }
+            assertTrue(proc.isAlive)
+            started.await()
+            job.cancelAndJoin()
+            assertTrue(proc.waitFor(3, TimeUnit.SECONDS))
+            assertFalse(proc.isAlive)
+        } finally {
+            proc.destroyForcibly()
+        }
     }
 }
