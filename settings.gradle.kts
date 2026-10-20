@@ -1,5 +1,3 @@
-import java.util.Properties
-
 pluginManagement {
     includeBuild("build-logic")
     repositories {
@@ -10,15 +8,16 @@ pluginManagement {
     }
 }
 
-/**
- * Create `github.properties` in root project folder file with:
- * ```properties
- * gpr.usr=GITHUB_USER_ID
- * gpr.key=PERSONAL_ACCESS_TOKEN
- * ```
- **/
-val githubProperties = Properties().apply {
-    rootDir.resolve("github.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+if (!rootDir.resolve("pakku/settings.gradle.kts").isFile) {
+    throw GradleException(
+        "Pakku submodule is missing. Run: git submodule update --init --recursive"
+    )
+}
+
+includeBuild("pakku") {
+    dependencySubstitution {
+        substitute(module("teksturepako.pakku:pakku")).using(project(":pakku-core"))
+    }
 }
 
 dependencyResolutionManagement {
@@ -29,15 +28,6 @@ dependencyResolutionManagement {
         mavenCentral()
 
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-
-        // Pakku
-        maven {
-            url = uri("https://maven.pkg.github.com/juraj-hrivnak/Pakku")
-            credentials {
-                username = githubProperties["gpr.usr"] as String? ?: System.getenv("GITHUB_ACTOR")
-                password = githubProperties["gpr.key"] as String? ?: System.getenv("GITHUB_TOKEN")
-            }
-        }
 
         google()
     }

@@ -12,6 +12,13 @@
                   <project path="$PROJECT_DIR$/build-logic" />
                 </projects>
               </build>
+              <build path="$PROJECT_DIR$/pakku" name="pakku">
+                <projects>
+                  <project path="$PROJECT_DIR$/pakku" />
+                  <project path="$PROJECT_DIR$/pakku/pakku-cli" />
+                  <project path="$PROJECT_DIR$/pakku/pakku-core" />
+                </projects>
+              </build>
             </builds>
           </compositeBuild>
         </compositeConfiguration>
@@ -21,13 +28,17 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/build-logic" />
+            <option value="$PROJECT_DIR$/pakku" />
             <option value="$PROJECT_DIR$/pakku-desktop-api" />
             <option value="$PROJECT_DIR$/pakku-desktop-app-api" />
+            <option value="$PROJECT_DIR$/pakku/pakku-cli" />
+            <option value="$PROJECT_DIR$/pakku/pakku-core" />
             <option value="$PROJECT_DIR$/plugins/pakku-pro-plugin" />
             <option value="$PROJECT_DIR$/plugins/sample-plugin" />
           </set>
         </option>
       </GradleProjectSettings>
     </option>
+    <option name="offlineMode" value="true" />
   </component>
 </project>

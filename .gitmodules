@@ -1,0 +1,4 @@
+[submodule "pakku"]
+	path = pakku
+	url = https://github.com/juraj-hrivnak/Pakku.git
+	branch = main

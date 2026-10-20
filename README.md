@@ -67,12 +67,18 @@ The modpack format and the Pakku CLI are documented in the [Pakku documentation]
 
 ## Build from source
 
-You will need a JDK; the exact toolchain is defined by the Gradle build.
+You will need a JDK; the exact toolchain is defined by the Gradle build. The project uses a git submodule for the Pakku dependency, so clone recursively:
 
 ```bash
-git clone https://github.com/juraj-hrivnak/PakkuDesktop.git
+git clone --recursive https://github.com/juraj-hrivnak/PakkuDesktop.git
 cd PakkuDesktop
 ./gradlew build
+```
+
+If you've already cloned without `--recursive`, initialize the submodule first:
+
+```bash
+git submodule update --init --recursive
 ```
 
 On Windows, use `gradlew.bat` instead. If you use Nix, a dev shell with the required native libraries is provided (`nix develop`).
