@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/3f2548fc-4312-4e9d-9560-7fb1ef1cd919" alt="Pakku Desktop" width="840" />
+<p align="center">
+  <img src="site/images/home-dark-v1.0.0-alpha.11.png#gh-light-mode-only" alt="..." width="840">
+  <img src="site/images/home-light-v1.0.0-alpha.11.png#gh-dark-mode-only" alt="..." width="840">
+</p>
 
 # Pakku Desktop
 
