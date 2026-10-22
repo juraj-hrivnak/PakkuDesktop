@@ -62,8 +62,6 @@ Some workflows still live in the CLI, which remains fully supported:
 - `pakku remote` to install a modpack straight from a Git URL.
 - Automation: the same project runs headless in scripts and CI/CD pipelines, on servers or anywhere without a display.
 
-Use it alongside the launcher of your choice. Use Pakku Desktop to develop the modpack and your launcher to play it.
-
 ## Documentation
 
 The modpack format and the Pakku CLI are documented in the [Pakku documentation](https://juraj-hrivnak.github.io/Pakku/).
