@@ -1,8 +1,8 @@
 <div align="center">
 
 <p align="center">
-  <img src="site/images/home-dark-v1.0.0-alpha.11.png#gh-light-mode-only" alt="..." width="840">
-  <img src="site/images/home-light-v1.0.0-alpha.11.png#gh-dark-mode-only" alt="..." width="840">
+  <img src="site/images/home-light-v1.0.0-alpha.11.png#gh-light-mode-only" alt="..." width="840">
+  <img src="site/images/home-dark-v1.0.0-alpha.11.png#gh-dark-mode-only" alt="..." width="840">
 </p>
 
 # Pakku Desktop
