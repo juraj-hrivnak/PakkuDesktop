@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.13
+
+- Added `pakku` as a Git submodule and updated Gradle build and workflows
+- Fixed check for updates spinner performance
+- Updated README
+
 ## v1.0.0-alpha.12
 
 - Fix auto updater
