@@ -38,6 +38,10 @@ fun main() {
         throwable.printStackTrace()
     }
 
+    if (System.getProperty("os.name").lowercase().contains("win")) {
+        System.setProperty("skiko.renderApi", "OPENGL")
+    }
+
     println(System.getenv("LD_LIBRARY_PATH"))
 
     loggingConfiguration {
