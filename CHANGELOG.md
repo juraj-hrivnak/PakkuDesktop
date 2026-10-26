@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v1.0.0-alpha.14
+
+- Updated Pakku submodule
+- Added JVM flags and configured Skiko
+  - OpenGL rendering is preferred on WindowsX64
+- Implemented `AppInfo.VERSION`, which also fixes wrong app version comparison for auto updates.
+- Log `GraphicsApi` in main
+
 ## v1.0.0-alpha.13
 
 - Added `pakku` as a Git submodule and updated Gradle build and workflows
