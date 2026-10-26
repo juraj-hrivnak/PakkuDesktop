@@ -17,6 +17,7 @@ import io.klogging.config.loggingConfiguration
 import io.klogging.rendering.RenderPattern
 import io.klogging.sending.STDOUT
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.skiko.SkikoProperties.renderApi
 import teksturepako.pakku.api.CredentialsFile
 import teksturepako.pakku.api.pakku
 import teksturepako.pakku.debug
@@ -38,11 +39,8 @@ fun main() {
         throwable.printStackTrace()
     }
 
-    if (System.getProperty("os.name").lowercase().contains("win")) {
-        System.setProperty("skiko.renderApi", "OPENGL")
-    }
-
     println(System.getenv("LD_LIBRARY_PATH"))
+    println("GraphicsApi: $renderApi")
 
     loggingConfiguration {
         ANSI_INFO()
