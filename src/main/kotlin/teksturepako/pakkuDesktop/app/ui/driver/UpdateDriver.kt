@@ -17,6 +17,7 @@ import io.klogging.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import teksturepako.pakkuDesktop.app.data.AppInfo
 import teksturepako.pakkuDesktop.app.data.UpdateChannel
 import teksturepako.pakkuDesktop.app.ui.model.AppModel
 import teksturepako.pakkuDesktop.app.ui.model.AppMsg
@@ -113,6 +114,7 @@ private fun createUpdater(channel: UpdateChannel): NucleusUpdater {
             owner = "juraj-hrivnak",
             repo = "PakkuDesktop",
         )
+        currentVersion = AppInfo.VERSION
         differentialDownload = true
         this.channel = channel.id
     }

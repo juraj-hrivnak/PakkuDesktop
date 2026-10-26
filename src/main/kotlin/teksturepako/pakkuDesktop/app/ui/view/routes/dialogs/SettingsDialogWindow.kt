@@ -42,6 +42,7 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import teksturepako.pakkuDesktop.app.data.AppInfo
 import teksturepako.pakkuDesktop.app.data.ProfileData
 import teksturepako.pakkuDesktop.app.data.UpdateChannel
 import teksturepako.pakkuDesktop.app.plugins.PluginRegistry
@@ -292,7 +293,8 @@ private val uiScaleLabels = ProfileData.UI_SCALE_PRESETS.map { scale ->
 }
 
 /** Returns false for dev builds and other unsupported build types (pacman, snap, portable). */
-private fun isUpdateSupported(): Boolean = System.getProperty("jpackage.app-version") != null
+private fun isUpdateSupported(): Boolean =
+    AppInfo.VERSION != "0.0.0-dev" && !AppInfo.VERSION.contains("dev", ignoreCase = true)
 
 private fun uiScalePresetIndex(uiScale: Float): Int {
     val coerced = ProfileData.coerceUiScale(uiScale)

@@ -16,7 +16,6 @@ import teksturepako.pakku.api.data.jsonEncodeDefaults
 import teksturepako.pakku.io.readPathTextOrNull
 import teksturepako.pakku.io.writeToFile
 import teksturepako.pakkuDesktop.app.ui.application.theme.IntUiThemes
-import dev.nucleusframework.core.runtime.NucleusApp
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -34,7 +33,7 @@ enum class UpdateChannel(val id: String, val label: String) {
     /** Derives the default channel from the running packaged build's version string. */
     companion object {
         fun fromRunningVersion(): UpdateChannel {
-            val version = NucleusApp.version ?: ""
+            val version = AppInfo.VERSION
             return when {
                 version.contains("-alpha") -> ALPHA
                 version.contains("-beta") || version.contains("-rc") -> BETA
