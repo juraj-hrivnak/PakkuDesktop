@@ -1,4 +1,5 @@
 import dev.nucleusframework.desktop.application.dsl.*
+import org.gradle.internal.os.OperatingSystem
 
 // Kotlin plugins are loaded here once; subprojects apply them by id through build-logic conventions.
 plugins {
@@ -141,6 +142,26 @@ tasks.test {
 
 nucleus.application {
     mainClass = "teksturepako.pakkuDesktop.MainKt"
+
+    val baseArgs = arrayOf(
+        "-Xmx256m",
+        "-XX:+UseSerialGC",
+        "-XX:MinHeapFreeRatio=10",
+        "-XX:MaxHeapFreeRatio=30",
+        "-XX:TieredStopAtLevel=1",
+        "-XX:ReservedCodeCacheSize=64m",
+        "-Xss512k",
+        "-Dskiko.gpu.resourceCacheLimit=32M",
+        "-Dskiko.rendering.angle.enabled=false",
+        "-Dskiko.buffering=DOUBLE"
+    )
+
+    val isWindowsX64 = OperatingSystem.current().isWindows
+            && System.getProperty("os.arch") in setOf("amd64", "x86_64")
+
+    jvmArgs(*baseArgs)
+
+    if (isWindowsX64) jvmArgs("-Dskiko.renderApi=OPENGL")
 
     buildTypes {
         release {
