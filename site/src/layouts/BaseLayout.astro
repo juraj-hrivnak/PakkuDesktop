@@ -1,0 +1,89 @@
+---
+import '../styles/global.css';
+import PakkuGlyph from '../components/PakkuGlyph.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import DolphinOverlay from '../components/DolphinOverlay.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const title = Astro.props.title ?? 'Pakku · The package manager for Minecraft modpacks';
+const description = Astro.props.description
+  ?? 'Pakku is a multiplatform modpack manager for Minecraft: Java Edition. Add projects from CurseForge, Modrinth or GitHub with automatic dependency resolution, pin them in a lock file, and export for CurseForge, Modrinth and server packs.';
+const ogDescription = 'A multiplatform modpack manager for Minecraft: Java Edition. Add projects from CurseForge, Modrinth or GitHub with automatic dependency resolution, and export to CurseForge, Modrinth and server packs. Version control and CI/CD included.';
+const twitterDescription = 'A multiplatform modpack manager for Minecraft: Java Edition. CurseForge, Modrinth, GitHub, server packs — with version control and CI/CD included.';
+const siteUrl = Astro.site?.href ?? 'https://pakku.build/';
+const ogImage = new URL('/og.png', siteUrl).href;
+const ogImageAlt = 'Pakku Desktop home screen';
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<meta name="robots" content="index, follow" />
+
+<link rel="canonical" href={siteUrl} />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Pakku" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={ogDescription} />
+<meta property="og:url" content={siteUrl} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:alt" content={ogImageAlt} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={twitterDescription} />
+<meta name="twitter:image" content={ogImage} />
+<meta name="twitter:image:alt" content={ogImageAlt} />
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+<script is:inline type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Pakku",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Windows, macOS, Linux",
+  "description": "A multiplatform modpack manager for Minecraft: Java Edition. Create modpacks for CurseForge, Modrinth or both simultaneously, with automatic dependency resolution, lock files, version control and CI/CD support.",
+  "softwareVersion": "1.5.0",
+  "isAccessibleForFree": true,
+  "license": "https://spdx.org/licenses/EUPL-1.2-or-later.html",
+  "downloadUrl": "https://github.com/juraj-hrivnak/Pakku/releases",
+  "url": "https://github.com/juraj-hrivnak/Pakku",
+  "author": { "@type": "Person", "name": "Juraj Hrivnák" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "sameAs": [
+    "https://github.com/juraj-hrivnak/Pakku",
+    "https://github.com/juraj-hrivnak/PakkuDesktop",
+    "https://juraj-hrivnak.github.io/Pakku/",
+    "https://discord.com/invite/dtAyqdzTMj"
+  ]
+}
+</script>
+</head>
+<body>
+<DolphinOverlay />
+
+<a class="skip" href="#main">Skip to content</a>
+
+<PakkuGlyph />
+<Nav />
+
+<slot />
+
+<Footer />
+<ThemeToggle />
+</body>
+</html>
+

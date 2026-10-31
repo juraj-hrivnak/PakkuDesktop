@@ -3,10 +3,10 @@ run-name: "CI #${{ github.run_number }}"
 
 on:
   pull_request:
-    paths-ignore: ['docs/**', '**/*.md']
+    paths-ignore: ['docs/**', 'site/**', '**/*.md']
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '**/*.md']
+    paths-ignore: ['docs/**', 'site/**', '**/*.md']
   workflow_call:
 
 permissions:

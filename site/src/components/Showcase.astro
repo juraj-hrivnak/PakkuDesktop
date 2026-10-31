@@ -1,0 +1,61 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  homeDark: ImageMetadata;
+  overviewDark: ImageMetadata;
+  filesFetchDark: ImageMetadata;
+  gitLogDark: ImageMetadata;
+  gitCommitDark: ImageMetadata;
+  filesSyncDark: ImageMetadata;
+  screenshotLs: ImageMetadata;
+  screenshotExport: ImageMetadata;
+}
+
+const {
+  homeDark,
+  overviewDark,
+  filesFetchDark,
+  gitLogDark,
+  gitCommitDark,
+  filesSyncDark,
+  screenshotLs,
+  screenshotExport,
+} = Astro.props;
+---
+<section class="shots" id="shots" aria-label="Pakku CLI and Pakku Desktop showcase">
+  <div class="shots-stage">
+    <figure class="shots-cli">
+      <figcaption class="pane-label">Pakku CLI</figcaption>
+      <div class="cli-row" id="cliRow">
+        <div class="term">
+          <div class="term-bar"><span class="term-title">pakku</span><span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <pre><span class="t-p">$</span> pakku init
+<span class="c">&#10003; new modpack created</span>
+<span class="t-p">$</span> pakku add sodium --platform modrinth
+<span class="c">&#10003; sodium added (modrinth)</span>
+<span class="t-p">$</span> pakku build
+<span class="o">&#10003; modpack built</span></pre>
+        </div>
+        <Image src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[540, 720]} sizes="(max-width: 720px) 84vw, min(36vw, 540px)" loading="lazy" decoding="async" />
+        <Image src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[540, 720]} sizes="(max-width: 720px) 84vw, min(36vw, 540px)" loading="lazy" decoding="async" />
+      </div>
+    </figure>
+    <figure class="shots-desk">
+      <figcaption class="pane-label">Pakku Desktop</figcaption>
+      <div class="shots-row" id="shotsRow">
+        <Image src={homeDark} alt="Pakku Desktop home screen" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="eager" decoding="async" fetchpriority="high" />
+        <Image src={overviewDark} alt="Pakku Desktop modpack overview" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image src={filesFetchDark} alt="Pakku Desktop fetching projects" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image src={gitLogDark} alt="Pakku Desktop git history" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image src={gitCommitDark} alt="Pakku Desktop commit dialog" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image src={filesSyncDark} alt="Pakku Desktop syncing files" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+      </div>
+    </figure>
+  </div>
+</section>
+
+<script>
+  import './Showcase.client.ts';
+</script>

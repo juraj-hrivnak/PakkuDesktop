@@ -62,3 +62,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Node / Astro (site) ###
+site/node_modules/
+site/dist/
+site/.astro/

@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import Slogan from '../components/Slogan.astro';
+import Showcase from '../components/Showcase.astro';
+import FinalCta from '../components/FinalCta.astro';
+
+import homeDark from '../../images/home-dark-v1.0.0-alpha.11.png';
+import overviewDark from '../../images/modpack-overview-dark-v1.0.0-alpha.11.png';
+import filesFetchDark from '../../images/files-fetch-dark-v1.0.0-alpha.11.png';
+import gitLogDark from '../../images/git-log-dark-v1.0.0-alpha.11.png';
+import gitCommitDark from '../../images/git-commit-dark-v1.0.0-alpha.11.png';
+import filesSyncDark from '../../images/files-sync-dark-v1.0.0-alpha.11.png';
+import screenshotLs from '../../images/screenshot_ls.png';
+import screenshotExport from '../../images/screenshot_export.png';
+---
+<BaseLayout>
+  <main id="main">
+    <Hero />
+    <Slogan />
+    <Showcase
+      homeDark={homeDark}
+      overviewDark={overviewDark}
+      filesFetchDark={filesFetchDark}
+      gitLogDark={gitLogDark}
+      gitCommitDark={gitCommitDark}
+      filesSyncDark={filesSyncDark}
+      screenshotLs={screenshotLs}
+      screenshotExport={screenshotExport}
+    />
+    <FinalCta />
+  </main>
+</BaseLayout>

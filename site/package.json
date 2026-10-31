@@ -1,0 +1,21 @@
+{
+  "name": "pakku-website",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.0",
+    "astro": "^7.4.2",
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.128.0"
+  }
+}
+
