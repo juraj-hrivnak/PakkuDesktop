@@ -541,6 +541,9 @@ h2 {
    Footer
    ========================================================================== */
 footer {
+  /* Sit above the fixed scroll hint so links stay clickable. */
+  position: relative;
+  z-index: 32;
   padding-block: 24px;
   border-top: 1px solid rgb(255 255 255 / 0.07);
   background: #000;
@@ -561,7 +564,15 @@ footer {
   gap: 18px;
 
   & a {
+    position: relative;
     color: var(--gray10);
+
+    /* Expand the hit target without changing layout size (WCAG 2.5.8). */
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -12px -8px;
+    }
 
     &:hover {
       color: var(--white);
@@ -597,6 +608,8 @@ footer {
   text-transform: uppercase;
   color: var(--hint);
   opacity: 0.6;
+  /* Decorative only — must not steal clicks from the footer underneath. */
+  pointer-events: none;
 }
 
 .theme-btn {
