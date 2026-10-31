@@ -1,0 +1,11 @@
+---
+interface Props {
+  href: string;
+  class?: string;
+}
+
+const { href, class: className } = Astro.props;
+---
+<a href={href} class={className} target="_blank" rel="noopener noreferrer" aria-describedby="new-tab">
+  <slot /><svg class="ext" width="12" height="12" aria-hidden="true"><use href="#ext"/></svg>
+</a>

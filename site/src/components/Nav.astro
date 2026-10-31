@@ -1,4 +1,6 @@
 ---
+import ExternalLink from './ExternalLink.astro';
+
 const docsUrl = 'https://juraj-hrivnak.github.io/Pakku';
 const discordUrl = 'https://discord.com/invite/dtAyqdzTMj';
 const downloadUrl = 'https://github.com/juraj-hrivnak/Pakku/releases';
@@ -14,17 +16,17 @@ const downloadUrl = 'https://github.com/juraj-hrivnak/Pakku/releases';
       <summary class="nav-mobile-btn">Menu</summary>
       <ul class="nav-mobile-list">
         <li><a href="#shots">Showcase</a></li>
-        <li><a href={docsUrl} target="_blank" rel="noopener noreferrer">Documentation</a></li>
-        <li><a href="https://github.com/juraj-hrivnak/Pakku" target="_blank" rel="noopener noreferrer">Pakku on GitHub</a></li>
-        <li><a href="https://github.com/juraj-hrivnak/PakkuDesktop" target="_blank" rel="noopener noreferrer">Pakku Desktop on GitHub</a></li>
-        <li><a href={discordUrl} target="_blank" rel="noopener noreferrer">Discord</a></li>
-        <li><a href={downloadUrl} target="_blank" rel="noopener noreferrer">Download</a></li>
+        <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
+        <li><ExternalLink href="https://github.com/juraj-hrivnak/Pakku">Pakku on GitHub</ExternalLink></li>
+        <li><ExternalLink href="https://github.com/juraj-hrivnak/PakkuDesktop">Pakku Desktop on GitHub</ExternalLink></li>
+        <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
+        <li><ExternalLink href={downloadUrl}>Download</ExternalLink></li>
       </ul>
     </details>
 
     <ul class="nav-links">
       <li><a href="#shots">Showcase</a></li>
-      <li><a href={docsUrl} target="_blank" rel="noopener noreferrer">Documentation</a></li>
+      <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
       <li class="nav-drop">
         <button
           class="nav-drop-btn"
@@ -34,17 +36,17 @@ const downloadUrl = 'https://github.com/juraj-hrivnak/Pakku/releases';
           aria-controls="githubMenu"
         >
           GitHub
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
         <ul class="nav-drop-menu" id="githubMenu" hidden>
-          <li><a href="https://github.com/juraj-hrivnak/Pakku" target="_blank" rel="noopener noreferrer">Pakku</a></li>
-          <li><a href="https://github.com/juraj-hrivnak/PakkuDesktop" target="_blank" rel="noopener noreferrer">Pakku Desktop</a></li>
+          <li><ExternalLink href="https://github.com/juraj-hrivnak/Pakku">Pakku</ExternalLink></li>
+          <li><ExternalLink href="https://github.com/juraj-hrivnak/PakkuDesktop">Pakku Desktop</ExternalLink></li>
         </ul>
       </li>
-      <li><a href={discordUrl} target="_blank" rel="noopener noreferrer">Discord</a></li>
+      <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
     </ul>
 
-    <a class="btn btn-primary" href={downloadUrl} target="_blank" rel="noopener noreferrer">Download</a>
+    <ExternalLink class="btn btn-primary" href={downloadUrl}>Download</ExternalLink>
   </div>
 </nav>
 
