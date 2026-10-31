@@ -454,7 +454,6 @@ h2 {
 .shots-cli,
 .shots-desk {
   --pane-w: min(36vw, 540px);
-  --lean: 5deg;
 
   position: relative;
   display: flex;
@@ -467,7 +466,6 @@ h2 {
 
   align-items: flex-end;
   justify-self: end;
-  /* Sit lower on the slash */
   margin-top: 22vh;
   margin-inline-end: -2vw;
 }
@@ -506,8 +504,6 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 5vh;
-  rotate: var(--lean);
-  transform-origin: top center;
 }
 
 :is(.shots-row, .cli-row) img {
@@ -670,7 +666,6 @@ footer {
   .shots-cli,
   .shots-desk {
     --pane-w: 84vw;
-    --lean: 0deg;
 
     align-items: stretch;
     justify-self: stretch;
@@ -681,11 +676,6 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shots-cli,
-  .shots-desk {
-    --lean: 0deg;
-  }
-
   .shots-cli {
     margin-top: 0;
   }
