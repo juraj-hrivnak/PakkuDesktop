@@ -28,13 +28,15 @@ const fragmentShader = `
   uniform vec2 texel;
   uniform float uNear;
   uniform float uFar;
-  uniform vec3 uShadowColor;
-  uniform float uShadowStrength;
   varying vec2 vUv;
 
   float linearDepth(float d) {
     float z = d * 2.0 - 1.0;
     return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
+  }
+
+  float neighbourAlpha(vec2 offset) {
+    return texture2D(tex, vUv + offset * texel).a;
   }
 
   // 1e3 for empty neighbours so they never count as "in front"
@@ -48,16 +50,32 @@ const fragmentShader = `
     vec4 c = texture2D(tex, vUv);
     if (c.a < 0.5) discard;
 
-    float depth = linearDepth(texture2D(depthTex, vUv).x);
-    float nearest = min(
-      min(neighbourDepth(vec2(0.0, -1.0)), neighbourDepth(vec2(0.0, 1.0))),
-      min(neighbourDepth(vec2(1.0, 0.0)), neighbourDepth(vec2(-1.0, 0.0)))
-    );
-    float outline = smoothstep(0.25, 0.32, depth - nearest);
+    float empty =
+      step(neighbourAlpha(vec2(0.0, -1.0)), 0.5) +
+      step(neighbourAlpha(vec2(0.0, 1.0)), 0.5) +
+      step(neighbourAlpha(vec2(-1.0, 0.0)), 0.5) +
+      step(neighbourAlpha(vec2(1.0, 0.0)), 0.5);
+    float silhouette = step(1.0, empty);
 
-    float q = c.g < 0.55 ? 0.4 : c.g < 0.85 ? 0.7 : 1.0;
-    vec3 base = vec3(0.0, q, q);
-    gl_FragColor = vec4(mix(base, uShadowColor, outline * uShadowStrength), 1.0);
+    float depth = linearDepth(texture2D(depthTex, vUv).x);
+    float gap = 0.7;
+    float votes =
+      step(gap, depth - neighbourDepth(vec2(0.0, -1.0))) +
+      step(gap, depth - neighbourDepth(vec2(0.0, 1.0))) +
+      step(gap, depth - neighbourDepth(vec2(-1.0, 0.0))) +
+      step(gap, depth - neighbourDepth(vec2(1.0, 0.0))) +
+      step(gap, depth - neighbourDepth(vec2(-1.0, -1.0))) +
+      step(gap, depth - neighbourDepth(vec2(1.0, -1.0))) +
+      step(gap, depth - neighbourDepth(vec2(-1.0, 1.0))) +
+      step(gap, depth - neighbourDepth(vec2(1.0, 1.0)));
+    float crease = step(4.0, votes);
+    float outline = max(silhouette, crease);
+
+    vec3 dark = vec3(0.0, 0.4, 0.4);
+    vec3 mid = vec3(0.0, 0.7, 0.7);
+    vec3 light = vec3(0.0, 1.0, 1.0);
+    vec3 base = c.g < 0.55 ? dark : c.g < 0.85 ? mid : light;
+    gl_FragColor = vec4(outline > 0.5 ? dark : base, 1.0);
   }
 `;
 
@@ -96,8 +114,6 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       texel: { value: texel },
       uNear: { value: CAMERA.near },
       uFar: { value: CAMERA.far },
-      uShadowColor: { value: new THREE.Color(0x000000) },
-      uShadowStrength: { value: 0.85 },
     },
     vertexShader,
     fragmentShader,
