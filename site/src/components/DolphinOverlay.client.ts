@@ -1,191 +1,282 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-const canvas = document.getElementById('gl');
-const hint = document.getElementById('hint');
+const MODEL_URL = '/dolphin.glb';
+const CAMERA = { fov: 40, distance: 11, near: 4, far: 30 } as const;
+const ANIM_FPS = 30;
 
-const start = (canvas: HTMLCanvasElement) => {
-  const CYAN = 0x00ffff;
+// Model is ~6 units long; layout numbers below are world units at load-time zoom.
+const HALF_LENGTH = 3;
+const EDGE_MARGIN = 0.3;
+const BOB = 0.06;
+const MAX_WIDTH = 0.8;
+
+// Light intensities were tuned before three switched to physically based units (r155).
+const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
+
+const vertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+  }
+`;
+
+const fragmentShader = `
+  uniform sampler2D tex;
+  uniform sampler2D depthTex;
+  uniform vec2 texel;
+  uniform float uNear;
+  uniform float uFar;
+  uniform vec3 uShadowColor;
+  uniform float uShadowStrength;
+  varying vec2 vUv;
+
+  float linearDepth(float d) {
+    float z = d * 2.0 - 1.0;
+    return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
+  }
+
+  // 1e3 for empty neighbours so they never count as "in front"
+  float neighbourDepth(vec2 offset) {
+    vec2 uv = vUv + offset * texel;
+    if (texture2D(tex, uv).a < 0.5) return 1e3;
+    return linearDepth(texture2D(depthTex, uv).x);
+  }
+
+  void main() {
+    vec4 c = texture2D(tex, vUv);
+    if (c.a < 0.5) discard;
+
+    float depth = linearDepth(texture2D(depthTex, vUv).x);
+    float nearest = min(
+      min(neighbourDepth(vec2(0.0, -1.0)), neighbourDepth(vec2(0.0, 1.0))),
+      min(neighbourDepth(vec2(1.0, 0.0)), neighbourDepth(vec2(-1.0, 0.0)))
+    );
+    float outline = smoothstep(0.25, 0.32, depth - nearest);
+
+    float q = c.g < 0.55 ? 0.4 : c.g < 0.85 ? 0.7 : 1.0;
+    vec3 base = vec3(0.0, q, q);
+    gl_FragColor = vec4(mix(base, uShadowColor, outline * uShadowStrength), 1.0);
+  }
+`;
+
+const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
+  const abort = new AbortController();
+  const { signal } = abort;
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
   renderer.setClearColor(0x000000, 0);
+
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, 1, 4, 30);
-  camera.position.set(0, 0, 11);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, CAMERA.near, CAMERA.far);
+  camera.position.z = CAMERA.distance;
+
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8 * LIGHT_SCALE);
   sun.position.set(-3, 5, 6);
-  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.35 * LIGHT_SCALE), sun);
 
-  // r128 still needs skinning on MeshLambertMaterial
-  const toon = new THREE.MeshLambertMaterial({ color: CYAN, vertexColors: true }) as THREE.MeshLambertMaterial & {
-    skinning: boolean;
-  };
-  toon.skinning = true;
+  const material = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+  // pre-r150 only
+  if ('skinning' in material) (material as { skinning?: boolean }).skinning = true;
 
-  const rt = new THREE.WebGLRenderTarget(2, 2, {
+  const depthTexture = new THREE.DepthTexture(2, 2, THREE.UnsignedIntType);
+  const target = new THREE.WebGLRenderTarget(2, 2, {
     minFilter: THREE.NearestFilter,
     magFilter: THREE.NearestFilter,
     format: THREE.RGBAFormat,
+    depthTexture,
   });
-  rt.depthTexture = new THREE.DepthTexture(2, 2);
+
+  const texel = new THREE.Vector2();
   const post = new THREE.ShaderMaterial({
     uniforms: {
-      tex: { value: rt.texture },
-      depthTex: { value: rt.depthTexture },
-      uNear: { value: 4 },
-      uFar: { value: 30 },
-      res: { value: new THREE.Vector2(2, 2) },
+      tex: { value: target.texture },
+      depthTex: { value: depthTexture },
+      texel: { value: texel },
+      uNear: { value: CAMERA.near },
+      uFar: { value: CAMERA.far },
       uShadowColor: { value: new THREE.Color(0x000000) },
       uShadowStrength: { value: 0.85 },
     },
-    vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
-    fragmentShader: `
-      uniform sampler2D tex; uniform sampler2D depthTex;
-      uniform vec2 res; uniform float uNear; uniform float uFar;
-      uniform vec3 uShadowColor; uniform float uShadowStrength;
-      varying vec2 vUv;
-      float lin(float d){ float z = d*2.0-1.0; return 2.0*uNear*uFar/(uFar+uNear - z*(uFar-uNear)); }
-      void main(){
-        vec2 e = 1.0/res;
-        vec4 c = texture2D(tex, vUv);
-        if (c.a < 0.5) discard;
-        float depth = lin(texture2D(depthTex, vUv).x);
-        float au = texture2D(tex, vUv + vec2(0.0,-e.y)).a;
-        float an = texture2D(tex, vUv + vec2(0.0, e.y)).a;
-        float ar = texture2D(tex, vUv + vec2( e.x,0.0)).a;
-        float al = texture2D(tex, vUv + vec2(-e.x,0.0)).a;
-        vec4 am = step(vec4(0.5), vec4(au, an, ar, al));
-        float du = lin(texture2D(depthTex, vUv + vec2(0.0,-e.y)).x);
-        float dn = lin(texture2D(depthTex, vUv + vec2(0.0, e.y)).x);
-        float dr = lin(texture2D(depthTex, vUv + vec2( e.x,0.0)).x);
-        float dl = lin(texture2D(depthTex, vUv + vec2(-e.x,0.0)).x);
-        float m = min(min(mix(1e3, du, am.x), mix(1e3, dn, am.y)), min(mix(1e3, dr, am.z), mix(1e3, dl, am.w)));
-        float outline = smoothstep(0.25, 0.32, depth - m);
-        float l = c.g;
-        float q = l < 0.55 ? 0.4 : (l < 0.85 ? 0.7 : 1.0);
-        vec3 base = vec3(0.0, q, q);
-        vec3 col = mix(base, mix(base, uShadowColor, uShadowStrength), outline);
-        gl_FragColor = vec4(col, 1.0);
-      }`,
+    vertexShader,
+    fragmentShader,
     depthTest: false,
     depthWrite: false,
   });
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post);
   quad.frustumCulled = false;
-  const postScene = new THREE.Scene();
-  postScene.add(quad);
-  const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const postScene = new THREE.Scene().add(quad);
+  const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
   const dolphin = new THREE.Group();
   scene.add(dolphin);
-  let mixer: THREE.AnimationMixer | null = null;
+  let mixer: THREE.AnimationMixer | undefined;
 
-  new GLTFLoader().load(
-    '/dolphin.glb',
-    (gltf) => {
-      gltf.scene.traverse((o) => {
-        if (!(o as THREE.SkinnedMesh).isSkinnedMesh) return;
-        const mesh = o as THREE.SkinnedMesh;
-        mesh.material = toon;
-        mesh.frustumCulled = false;
+  new GLTFLoader()
+    .loadAsync(MODEL_URL)
+    .then(({ scene: model, animations }) => {
+      if (signal.aborted) return;
+      let hasColors = false;
+      model.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        obj.material = material;
+        obj.frustumCulled = false;
+        hasColors ||= obj.geometry.hasAttribute('color');
       });
-      dolphin.add(gltf.scene);
-      mixer = new THREE.AnimationMixer(gltf.scene);
-      const clip = gltf.animations.at(0);
-      if (clip) mixer.clipAction(clip).play();
-    },
-    undefined,
-    (e) => console.error('GLB load failed', e),
-  );
+      // vertexColors with no color attribute renders black
+      material.vertexColors = hasColors;
+      material.needsUpdate = true;
 
-  let W = 1;
-  let H = 1;
-  let sc = 0.8;
-  let hw = 7;
-  const resize = () => {
-    W = innerWidth;
-    H = innerHeight;
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(W, H, false);
-    const px = W < 700 ? 3 : 4;
-    const lw = Math.max(2, Math.round(W / px));
-    const lh = Math.max(2, Math.round(H / px));
-    rt.setSize(lw, lh);
-    const res = post.uniforms.res?.value;
-    if (res instanceof THREE.Vector2) res.set(lw, lh);
-    camera.aspect = W / H;
-    camera.updateProjectionMatrix();
-    sc = Math.min(0.85, Math.max(0.35, (W / H) * 0.55));
-    hw = Math.tan((20 * Math.PI) / 180) * 11 * (W / H);
-  };
-  addEventListener('resize', resize);
-  resize();
+      dolphin.add(model);
+      if (animations[0]) {
+        mixer = new THREE.AnimationMixer(model);
+        mixer.clipAction(animations[0]).play();
+      }
+    })
+    .catch((err) => console.error('GLB load failed', err));
 
-  let target = 0;
-  let smooth = 0;
-  let last = 0;
-  let speed = 0;
-  let T = 0;
-  let animT = 0;
-  let stepT = 0;
-  const ANIM_FPS = 30;
+  // The layout is the original one at load-time zoom. Browser zoom is detected
+  // through devicePixelRatio and applied on top, so the dolphin, its margin and
+  // its texels keep their CSS size like any other page content.
+  const baseDpr = devicePixelRatio || 1;
+  let zoom = 1;
+  let scale = 0.8;
+  let halfWidth = 7;
+  let scroll = 0;
+
   const readScroll = () => {
     const max = document.documentElement.scrollHeight - innerHeight;
-    target = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+    scroll = max > 0 ? THREE.MathUtils.clamp(scrollY / max, 0, 1) : 0;
     if (hint) hint.style.opacity = scrollY > 40 ? '0' : '0.6';
   };
-  addEventListener('scroll', readScroll, { passive: true });
-  readScroll();
+
+  const resize = () => {
+    // Not canvas.clientWidth: setSize(..., false) leaves CSS sizing to the
+    // stylesheet, and an unstyled canvas would report its own buffer size.
+    const w = Math.max(1, innerWidth);
+    const h = Math.max(1, innerHeight);
+    const aspect = w / h;
+    zoom = (devicePixelRatio || 1) / baseDpr;
+
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(w, h, false);
+
+    const texelPx = w * zoom < 700 ? 3 : 4;
+    const bufferW = Math.max(2, Math.round(w / texelPx));
+    const bufferH = Math.max(2, Math.round(h / texelPx));
+    target.setSize(bufferW, bufferH);
+    // older three versions leave the depth texture at its old size
+    depthTexture.image.width = bufferW;
+    depthTexture.image.height = bufferH;
+    texel.set(1 / bufferW, 1 / bufferH);
+
+    camera.aspect = aspect;
+    camera.updateProjectionMatrix();
+
+    halfWidth = Math.tan(THREE.MathUtils.degToRad(CAMERA.fov / 2)) * CAMERA.distance * aspect;
+    const base = THREE.MathUtils.clamp(aspect * 0.55, 0.35, 0.85);
+    scale = Math.min(base * zoom, (halfWidth * MAX_WIDTH) / HALF_LENGTH);
+
+    readScroll();
+  };
+
+  // zoom changes the ratio without always firing `resize`; the query has to be
+  // re-armed since it embeds the current ratio
+  const watchDpr = () => {
+    matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener(
+      'change',
+      () => {
+        resize();
+        watchDpr();
+      },
+      { once: true, signal },
+    );
+  };
+
+  addEventListener('resize', resize, { signal });
+  addEventListener('scroll', readScroll, { passive: true, signal });
+  resize();
+  watchDpr();
 
   const clock = new THREE.Clock();
-  let running = true;
+  let smooth = 0;
+  let speed = 0;
+  let animTime = 0;
+  let steppedTime = 0;
+  let raf = 0;
+
   const frame = () => {
-    if (!running) return;
+    raf = requestAnimationFrame(frame);
     const dt = Math.min(clock.getDelta(), 0.05);
-    animT += dt;
-    const stepped = Math.floor(animT * ANIM_FPS) / ANIM_FPS;
-    const dStep = stepped - stepT;
-    stepT = stepped;
-    T = stepped;
-    smooth += (target - smooth) * Math.min(1, dt * 5);
-    speed += (Math.min(1, Math.abs(smooth - last) * 80) - speed) * 0.1;
-    last = smooth;
-    mixer?.update(dStep * (1 + speed * 1.6));
+
+    // the swim cycle and bobbing run at a fixed low fps
+    animTime += dt;
+    const prevStep = steppedTime;
+    steppedTime = Math.floor(animTime * ANIM_FPS) / ANIM_FPS;
+
+    const prev = smooth;
+    smooth += (scroll - smooth) * Math.min(1, dt * 5);
+    const velocity = dt > 0 ? Math.abs(smooth - prev) / dt : 0;
+    speed += (Math.min(1, velocity * 1.33) - speed) * (1 - Math.exp(-6 * dt));
+    mixer?.update((steppedTime - prevStep) * (1 + speed * 1.6));
 
     const p = smooth;
-    const range = hw - 3 * sc - 0.3;
-    dolphin.scale.setScalar(sc);
-    dolphin.position.set((p * 2 - 1) * range, 1.5 - p * 3.0 + Math.sin(T * 1.1) * 0.06, 0);
+    const range = Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
+    dolphin.scale.setScalar(scale);
+    dolphin.position.set(
+      (p * 2 - 1) * range,
+      1.5 - p * 3 + Math.sin(steppedTime * 1.1) * BOB * zoom,
+      0,
+    );
     dolphin.rotation.y = -0.4 + 0.3 * Math.sin(p * Math.PI * 2);
     dolphin.rotation.z = -0.08 - 0.3 * p;
-    renderer.setRenderTarget(rt);
-    renderer.setClearColor(0x000000, 0);
-    renderer.clear();
+
+    renderer.setRenderTarget(target);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
-    renderer.clear();
-    renderer.render(postScene, postCam);
-    requestAnimationFrame(frame);
+    renderer.render(postScene, postCamera);
   };
   frame();
 
-  reduce.addEventListener('change', (e) => {
-    if (!e.matches) return;
-    running = false;
+  return () => {
+    abort.abort();
+    cancelAnimationFrame(raf);
+    mixer?.stopAllAction();
+    quad.geometry.dispose();
+    post.dispose();
+    material.dispose();
+    depthTexture.dispose();
+    target.dispose();
     renderer.dispose();
-    canvas.remove();
-    hint?.remove();
-  });
+  };
 };
 
+const canvas = document.getElementById('gl');
+const hint = document.getElementById('hint');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 if (canvas instanceof HTMLCanvasElement) {
-  if (reduce.matches) {
+  const remove = () => {
     canvas.remove();
     hint?.remove();
+  };
+
+  if (reduceMotion.matches) {
+    remove();
   } else {
-    const ric = window.requestIdleCallback;
-    if (typeof ric === 'function') ric(() => start(canvas), { timeout: 1500 });
-    else setTimeout(() => start(canvas), 1);
+    let stop: (() => void) | undefined;
+    const boot = () => {
+      if (reduceMotion.matches) return;
+      stop = start(canvas, hint);
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(boot, { timeout: 1500 });
+    else setTimeout(boot, 1);
+
+    reduceMotion.addEventListener('change', (e) => {
+      if (!e.matches) return;
+      stop?.();
+      remove();
+    });
   }
 }
