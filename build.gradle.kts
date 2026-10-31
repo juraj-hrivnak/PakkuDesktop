@@ -144,7 +144,7 @@ nucleus.application {
     mainClass = "teksturepako.pakkuDesktop.MainKt"
 
     val baseArgs = arrayOf(
-        "-Xmx256m",
+        "-Xmx1024m",
         "-XX:+UseSerialGC",
         "-XX:MinHeapFreeRatio=10",
         "-XX:MaxHeapFreeRatio=30",
