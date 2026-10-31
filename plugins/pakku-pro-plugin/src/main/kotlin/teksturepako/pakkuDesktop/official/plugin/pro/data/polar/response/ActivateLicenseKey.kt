@@ -4,9 +4,9 @@
 
 package teksturepako.pakkuDesktop.official.plugin.pro.data.polar.response
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 import teksturepako.pakkuDesktop.official.plugin.pro.data.polar.LicenseKeyUser
 import teksturepako.pakkuDesktop.official.plugin.pro.data.polar.Meta
 

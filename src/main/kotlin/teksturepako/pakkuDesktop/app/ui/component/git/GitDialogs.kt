@@ -262,7 +262,7 @@ private fun GitPushDialog(git: GitState, hide: () -> Unit, run: (GitOp) -> Unit)
     val canPush = remote != null
     val push = { if (canPush) { run(GitOp.Push(force, pushTags)); hide() } }
     val localTags = git.refs.filter { it.type == GitRefType.Tag && it.name !in git.remoteTagNames }
-        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
+        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlin.time.Instant.DISTANT_PAST }.thenBy { it.name })
     val localTagNames = git.refs.filter { it.type == GitRefType.Tag }.mapTo(HashSet()) { it.name }
     val deletedTags = (git.remoteTagNames - localTagNames).sorted()
 

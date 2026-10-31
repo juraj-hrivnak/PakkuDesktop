@@ -4,7 +4,7 @@
 
 package teksturepako.pakkuDesktop.app.git.log
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import teksturepako.pakkuDesktop.app.git.GitLogFilters
 import teksturepako.pakkuDesktop.app.git.GitRef
 import teksturepako.pakkuDesktop.app.git.GitRefType

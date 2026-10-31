@@ -13,7 +13,6 @@ import io.klogging.logger
 import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.toDeprecatedInstant
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.workingPath
 import teksturepako.pakkuDesktop.app.data.Profile
@@ -66,7 +65,7 @@ val profileDiskDriver: Driver<AppModel, AppMsg> = { publish, model, content ->
         val newProfile = Profile(
             name       = modpackName,
             path       = path.absolutePathString(),
-            lastOpened = Clock.System.now().toDeprecatedInstant()
+            lastOpened = Clock.System.now()
         )
 
         val newData = latestModel.profile.data.withCurrentProfile(newProfile)

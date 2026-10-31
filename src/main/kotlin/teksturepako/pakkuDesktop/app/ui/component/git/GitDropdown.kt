@@ -192,7 +192,7 @@ val gitDropdownComponent = component(
                     val local = gitState.branches.filterNot { it.isRemote }.sortedWith(compareBy({ !it.isCurrent }, { it.name }))
                     val remote = gitState.branches.filter { it.isRemote && !it.name.endsWith("/HEAD") }.sortedBy { it.name }
                     val tags = gitState.refs.filter { it.type == GitRefType.Tag }
-                        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
+                        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlin.time.Instant.DISTANT_PAST }.thenBy { it.name })
 
                     if (local.isNotEmpty()) {
                         separator()

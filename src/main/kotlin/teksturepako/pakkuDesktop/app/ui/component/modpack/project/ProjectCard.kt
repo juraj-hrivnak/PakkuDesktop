@@ -18,7 +18,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.time.Instant
-import kotlinx.datetime.toStdlibInstant
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Icon
@@ -84,7 +83,6 @@ fun ProjectCard(
     }
     val latest = project.getLatestFile(project.getProviders().ifEmpty { Provider.providers })
     val published = latest?.datePublished
-        ?.toStdlibInstant()
         ?.takeUnless { it == Instant.DISTANT_PAST }
         ?.formatPublishedDate()
 

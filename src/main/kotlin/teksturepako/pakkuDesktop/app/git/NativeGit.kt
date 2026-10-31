@@ -9,8 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
 import teksturepako.pakkuDesktop.app.git.log.GitLogTopology
+import kotlin.time.Instant
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption

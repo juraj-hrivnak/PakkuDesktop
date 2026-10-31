@@ -186,10 +186,10 @@ class ModpackUpdateSameInstanceTest {
             parents = emptyList(),
             authorName = "A",
             authorEmail = "a@b",
-            authorTime = kotlinx.datetime.Instant.fromEpochSeconds(0),
+            authorTime = kotlin.time.Instant.fromEpochSeconds(0),
             committerName = "A",
             committerEmail = "a@b",
-            commitTime = kotlinx.datetime.Instant.fromEpochSeconds(0),
+            commitTime = kotlin.time.Instant.fromEpochSeconds(0),
             message = "m",
             changes = emptyList(),
         )

@@ -546,7 +546,7 @@ private fun labelGroups(refs: List<GitRef>, currentBranch: String?, upstream: St
         ordered.add(LabelGroup(otherRemotes.first().name, List(otherRemotes.size) { REF_REMOTE }, tagsOnly = false))
     }
     val tags = refs.filter { it.type == GitRefType.Tag }
-        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlinx.datetime.Instant.DISTANT_PAST }.thenBy { it.name })
+        .sortedWith(compareByDescending<GitRef> { it.createdAt ?: kotlin.time.Instant.DISTANT_PAST }.thenBy { it.name })
     if (tags.isNotEmpty()) {
         val tagNames = tags.joinToString(", ") { it.name }
         ordered.add(LabelGroup(tagNames, List(tags.size) { REF_TAG }, tagsOnly = true))

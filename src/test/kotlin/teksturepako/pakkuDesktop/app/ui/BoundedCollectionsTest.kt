@@ -5,7 +5,7 @@
 package teksturepako.pakkuDesktop.app.ui
 
 import kotlinx.collections.immutable.toPersistentList
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import teksturepako.pakkuDesktop.app.actions.AppToast
 import teksturepako.pakkuDesktop.app.data.Profile
 import teksturepako.pakkuDesktop.app.data.ProfileData
