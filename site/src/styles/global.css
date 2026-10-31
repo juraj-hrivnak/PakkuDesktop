@@ -432,43 +432,44 @@ h2 {
 }
 
 /* ==========================================================================
-   Sticky scroll gallery
-   Must be display: block — sticky breaks inside the flex `section` rule.
-   Height is set in Showcase.client.ts to viewport + travel (1px scroll = 1px move).
+   Showcase gallery — "/" slash: CLI low-left, Desktop high-right
    ========================================================================== */
 .shots {
   display: block;
   position: relative;
   padding: 0;
+  overflow: visible;
   text-align: left;
 }
 
 .shots-stage {
-  position: sticky;
-  top: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: start;
-  gap: 4vw;
-  height: 100svh;
+  column-gap: 2vw;
   padding: var(--pad);
-  overflow: hidden;
-  contain: paint;
+  overflow: visible;
 }
 
 .shots-cli,
 .shots-desk {
   --pane-w: min(36vw, 540px);
+  --lean: 5deg;
 
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
   min-width: 0;
 }
 
 .shots-cli {
+  --pane-w: min(40vw, 580px);
+
   align-items: flex-end;
   justify-self: end;
+  /* Sit lower on the slash */
+  margin-top: 22vh;
+  margin-inline-end: -2vw;
 }
 
 .shots-desk {
@@ -476,90 +477,49 @@ h2 {
 
   align-items: flex-start;
   justify-self: start;
+  margin-inline-start: -2vw;
 }
 
-.pane-label {
-  font-size: 0.8rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--label);
+/* Above the images at rest; sticks under the nav while the column scrolls */
+.shots h2 {
+  position: sticky;
+  top: calc(var(--nav-h) + 12px);
+  z-index: 2;
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: 14px;
+  pointer-events: none;
 }
 
-/* Transformed by Showcase.client.ts */
+.shots-cli h2 {
+  align-self: flex-start;
+  text-align: start;
+}
+
+.shots-desk h2 {
+  align-self: flex-end;
+  text-align: end;
+}
+
 .shots-row,
 .cli-row {
   display: flex;
   flex-direction: column;
-  gap: 4vh;
-  will-change: transform;
+  gap: 5vh;
+  rotate: var(--lean);
+  transform-origin: top center;
 }
 
 :is(.shots-row, .cli-row) img {
   display: block;
   width: var(--pane-w);
   height: auto;
+}
+
+.shots-row img {
   border: var(--hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-}
-
-.shots .term {
-  width: var(--pane-w);
-  overflow: hidden;
-  border: var(--hairline);
-  border-radius: var(--radius);
-  background: #0b0c0e;
-  box-shadow: var(--shadow);
-  color: var(--gray13);
-  font-family: var(--mono);
-  font-size: 0.875rem;
-  line-height: 1.9;
-
-  & pre {
-    padding: 14px 16px;
-    overflow-x: auto;
-    font: inherit;
-    line-height: 1.8;
-  }
-
-  & .c {
-    color: var(--gray9);
-  }
-
-  & .o {
-    color: var(--green);
-  }
-}
-
-.term-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--gray4);
-}
-
-.term-title {
-  font-family: var(--mono), serif;
-  font-size: 0.75rem;
-  color: var(--gray9);
-}
-
-.term-dots {
-  display: inline-flex;
-  gap: 6px;
-
-  & i {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: rgb(255 255 255 / 0.14);
-  }
-}
-
-.t-p {
-  color: var(--cyan);
 }
 
 /* ==========================================================================
@@ -678,15 +638,8 @@ footer {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .shots-row,
-  .cli-row {
-    will-change: auto;
-  }
-}
-
 /* ==========================================================================
-   Mobile — gallery becomes a normal stacked layout (no sticky scrub)
+   Mobile — stacked columns
    ========================================================================== */
 @media (max-width: 720px) {
   .nav-links {
@@ -710,19 +663,30 @@ footer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     gap: 6vh;
-    height: auto;
     padding: 0;
-    overflow: visible;
   }
 
   .shots-cli,
   .shots-desk {
     --pane-w: 84vw;
+    --lean: 0deg;
 
     align-items: stretch;
     justify-self: stretch;
     width: 100%;
+    margin-top: 0;
+    margin-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shots-cli,
+  .shots-desk {
+    --lean: 0deg;
+  }
+
+  .shots-cli {
+    margin-top: 0;
   }
 }

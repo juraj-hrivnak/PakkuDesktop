@@ -24,26 +24,17 @@ const {
   screenshotExport,
 } = Astro.props;
 ---
-<section class="shots" id="shots" aria-label="Pakku CLI and Pakku Desktop showcase">
+<section class="shots" id="shots" aria-label="CLI and Desktop showcase">
   <div class="shots-stage">
     <figure class="shots-cli">
-      <figcaption class="pane-label">Pakku CLI</figcaption>
+      <h2>CLI</h2>
       <div class="cli-row" id="cliRow">
-        <div class="term">
-          <div class="term-bar"><span class="term-title">pakku</span><span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
-          <pre><span class="t-p">$</span> pakku init
-<span class="c">&#10003; new modpack created</span>
-<span class="t-p">$</span> pakku add sodium --platform modrinth
-<span class="c">&#10003; sodium added (modrinth)</span>
-<span class="t-p">$</span> pakku build
-<span class="o">&#10003; modpack built</span></pre>
-        </div>
-        <Image src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[540, 720]} sizes="(max-width: 720px) 84vw, min(36vw, 540px)" loading="lazy" decoding="async" />
-        <Image src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[540, 720]} sizes="(max-width: 720px) 84vw, min(36vw, 540px)" loading="lazy" decoding="async" />
+        <Image src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
+        <Image src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
       </div>
     </figure>
     <figure class="shots-desk">
-      <figcaption class="pane-label">Pakku Desktop</figcaption>
+      <h2>Desktop</h2>
       <div class="shots-row" id="shotsRow">
         <Image src={homeDark} alt="Pakku Desktop home screen" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="eager" decoding="async" fetchpriority="high" />
         <Image src={overviewDark} alt="Pakku Desktop modpack overview" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
@@ -55,7 +46,3 @@ const {
     </figure>
   </div>
 </section>
-
-<script>
-  import './Showcase.client.ts';
-</script>
