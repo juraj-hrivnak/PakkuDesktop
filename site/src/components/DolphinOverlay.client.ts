@@ -11,29 +11,39 @@ const EDGE_MARGIN = 0.3;
 const BOB = 0.06;
 const MAX_WIDTH = 0.8;
 
-// Pointer interaction (v2)
-const INFLUENCE = 2.5;
-const PULL = 0.35;
-const PLAY_OFFSET = INFLUENCE * PULL;
+// Grab hit pad only — no hover play; interactive solely while dragging
+const HIT_PAD = 0.35;
 
 // Fluid spring toward scroll lane / grab (v2)
-const SPRING_K = 16;
-const SPRING_D = 4.5;
+const SPRING_K = 18;
+const SPRING_D = 4.2;
+const DRAG_SPRING_K = 52; // snappy follow while held
+const DRAG_SPRING_D = 2.4;
 
-// Wide upright turns — slow yaw flips, gentle tip (late v2)
-const MAX_TURN = 0.45; // rad/s yaw cap — slower arcs, fewer mid-flip hangs
-const MAX_TIP = 1.4;
+// 3D aim: nose follows direction, world-up kept (no free belly roll)
 const STEER = 0.45;
-const ORIENT_RATE = 3.5;
-const BLEND_RATE = 4.0;
-const FLIP_X = 1.0; // |dx| needed before committing a left/right flip
+const ORIENT_RATE = 6.0;
+const BLEND_RATE = 12.0;
+const AIM_BLEND_RATE = 5.0;
 
-// v3 biomechanics seasoning
-const STROUAL = 0.25;
-const BANK_MAX = 0.22; // subtle lean; was pinning ~26° during slow flips
-const TURN_K = 0.02;
+// Real 3D turns: nose aims into the dive, body swims along that heading through XYZ
+const TURN_INTO = 1.35;
+const SWIM_PUSH = 0.55; // blend velocity onto the nose while turning
+const HOME_Z_K = 5.5; // soft pull back to the lane plane after the dive
+const HOME_Z_D = 3.2;
+const Z_LIMIT = 6.0;
+const ARC_TIME = 0.85;
+const FLIP_STICKY = 0.9;
+const FLIP_COOLDOWN = 1.1;
+
+// Biomechanics
+const STROUAL = 0.22;
+const BANK_MAX = 0.5; // bank into 3D turns; not a flat spin
+const TURN_K = 0.045;
 const ESCAPE_SPEED = 7.5;
 const ESCAPE_TIME = 0.75;
+const SCROLL_TAIL = 0.7; // was *4 — scroll must not thrash the tailbeat
+const DRAG_TAIL_CAP = 0.9; // drag spring is fast — never let that thrash the mixer
 
 // Light intensities were tuned before three switched to physically based units (r155).
 const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
@@ -158,34 +168,38 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   const raycaster = new THREE.Raycaster();
   const zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   const ndc = new THREE.Vector2();
-  const pointer = new THREE.Vector3();
-  let pointerFresh = false;
   const dragPos = new THREE.Vector3();
   const dragOffset = new THREE.Vector3();
   let dragId: number | null = null;
   let dragBlend = 0;
   let modelReady = false;
 
-  // ---- fluid spring + upright aim ----
+  // ---- fluid spring + 3D aim (nose along dir, belly via world-up) ----
   const vel = new THREE.Vector3();
   let excitement = 0;
-  let greetCooldown = 0;
   let escapeTimer = 0;
   let flick = 0; // 1 → 0: idle barrel-roll on the main (nose) axis
   let idleTimer = 5; // seconds until the next idle flourish
   let fClip = 1 / 1.2;
-  let yaw = -0.35;
-  let tip = 0;
   let bank = 0;
-  let prevYaw = yaw;
+  let prevAng = -0.35;
+  let faceSign = 1; // sticky left/right facing — no jitter flips
+  let flipCool = 0;
+  let aimBlend = 0.25;
+  let turnArc = 0; // 1 → 0: dive into screen while reversing facing
 
   const forward = new THREE.Vector3();
+  const aimDir = new THREE.Vector3(1, 0, 0);
+  const right = new THREE.Vector3();
+  const up = new THREE.Vector3();
+  const worldUp = new THREE.Vector3(0, 1, 0);
   const aimQuat = new THREE.Quaternion();
-  const aimEuler = new THREE.Euler();
   const pathEuler = new THREE.Euler();
   const pathQuat = new THREE.Quaternion();
   const desiredQuat = new THREE.Quaternion();
   const qRoll = new THREE.Quaternion();
+  const qBank = new THREE.Quaternion();
+  const basis = new THREE.Matrix4();
   const AXIS_X = new THREE.Vector3(1, 0, 0);
 
   const ease = (cur: number, target: number, rate: number, dtAim: number) =>
@@ -198,20 +212,25 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     return d;
   };
 
-  // Rate-limited upright aim: yaw on Y, tip on Z — belly stays down, turns take space
-  const setAimUpright = (dx: number, dy: number, dtAim: number) => {
-    // sticky facing: only flip when the aim clearly crosses sides
-    const desiredYaw = dx < -FLIP_X ? Math.PI - 0.35 : dx > FLIP_X ? -0.35 : yaw;
-    yaw += THREE.MathUtils.clamp(deltaAngle(yaw, desiredYaw), -MAX_TURN * dtAim, MAX_TURN * dtAim);
-    const tipTarget = THREE.MathUtils.clamp(
-      Math.atan2(dy, Math.max(0.35, Math.abs(dx))),
-      -0.40,
-      0.40,
-    );
-    tip += THREE.MathUtils.clamp(tipTarget - tip, -MAX_TIP * dtAim, MAX_TIP * dtAim);
-    const side = Math.cos(yaw) >= 0 ? 1 : -1;
-    aimEuler.set(0, yaw, tip * side);
-    aimQuat.setFromEuler(aimEuler);
+  // Nose along full 3D dir; up from world-up + bank — turns can point into the screen
+  const setAimFromDir = (dx: number, dy: number, dz: number, bankRad: number) => {
+    const len = Math.hypot(dx, dy, dz);
+    if (len < 1e-4) return;
+    forward.set(dx / len, dy / len, dz / len);
+    right.crossVectors(forward, worldUp);
+    if (right.lengthSq() < 1e-8) {
+      // nearly vertical — pick a stable side axis
+      right.set(forward.y > 0 ? 1 : -1, 0, 0);
+      right.crossVectors(forward, right);
+    }
+    right.normalize();
+    up.crossVectors(right, forward).normalize();
+    right.crossVectors(forward, up).normalize();
+    qBank.setFromAxisAngle(forward, bankRad);
+    up.applyQuaternion(qBank);
+    right.applyQuaternion(qBank);
+    basis.makeBasis(forward, up, right);
+    aimQuat.setFromRotationMatrix(basis);
   };
 
   // ---- chirp: synthesized, no audio files ----
@@ -256,8 +275,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     const w = Math.max(1, innerWidth);
     const h = Math.max(1, innerHeight);
     const halfH = halfWidth / camera.aspect;
-    const hx = HALF_LENGTH * scale * 1.05 + PLAY_OFFSET;
-    const hy = 1.0 * scale + BOB * zoom + PLAY_OFFSET;
+    const hx = HALF_LENGTH * scale * 1.05 + HIT_PAD;
+    const hy = 1.0 * scale + BOB * zoom + HIT_PAD;
     const pxX = w / (2 * halfWidth);
     const pxY = h / (2 * halfH);
     hitEl.style.transform = `translate(${w / 2 + (dolphin.position.x - hx) * pxX}px, ${h / 2 - (dolphin.position.y + hy) * pxY}px)`;
@@ -340,14 +359,6 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     hitEl.addEventListener('lostpointercapture', endDrag, { signal });
   }
 
-  addEventListener('pointermove', (e) => {
-    toWorld(e.clientX, e.clientY, pointer);
-    pointerFresh = true;
-  }, { passive: true, signal });
-  addEventListener('pointerout', (e) => {
-    if (!e.relatedTarget) pointerFresh = false;
-  }, { signal });
-
   const baseDpr = devicePixelRatio || 1;
   let zoom = 1;
   let scale = 0.8;
@@ -428,89 +439,133 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     // ---- scroll lane (v1/v2 choreography) ----
     const prevSmooth = smooth;
     smooth += (scroll - smooth) * Math.min(1, dt * 5);
-    const scrollVel = dt > 0 ? Math.abs(smooth - prevSmooth) / dt : 0;
-    scrollSpeed += (Math.min(1, scrollVel * 1.33) - scrollSpeed) * (1 - Math.exp(-6 * dt));
+    // signed: <0 = scroll up (lane rises), >0 = scroll down — drives nose tip
+    const signedScrollVel = dt > 0 ? (smooth - prevSmooth) / dt : 0;
+    scrollSpeed += (Math.min(1, Math.abs(signedScrollVel) * 1.33) - scrollSpeed) * (1 - Math.exp(-6 * dt));
 
     const p = smooth;
     const range = Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
     const pathX = (p * 2 - 1) * range;
     const pathY = 1.5 - p * 3 + Math.sin(steppedTime * 1.1) * BOB * zoom;
 
-    // cursor play: drift the home target toward the pointer
-    let targetX = pathX;
-    let targetY = pathY;
-    let nearPointer = 0;
-    if (pointerFresh && dragBlend < 0.5 && escapeTimer <= 0) {
-      const dx = pointer.x - pathX;
-      const dy = pointer.y - pathY;
-      const t = THREE.MathUtils.clamp(1 - Math.hypot(dx, dy) / INFLUENCE, 0, 1);
-      nearPointer = t * t;
-      targetX += dx * nearPointer * PULL;
-      targetY += dy * nearPointer * PULL;
-    }
-
+    // Home is the scroll lane only — no hover pull / glance / greet
     dragBlend = ease(dragBlend, dragId !== null ? 1 : 0, BLEND_RATE, dt);
-    const tx = THREE.MathUtils.lerp(targetX, dragPos.x - dragOffset.x, dragBlend);
-    const ty = THREE.MathUtils.lerp(targetY, dragPos.y - dragOffset.y, dragBlend);
+    const tx = THREE.MathUtils.lerp(pathX, dragPos.x - dragOffset.x, dragBlend);
+    const ty = THREE.MathUtils.lerp(pathY, dragPos.y - dragOffset.y, dragBlend);
 
-    // ---- fluid spring (mass + water) ----
-    // during escape, spring is weaker so the startle impulse can carry
+    // ---- fluid spring (mass + water); stiffer while dragged ----
     const springScale = escapeTimer > 0 ? 0.35 : 1;
-    vel.x += (tx - dolphin.position.x) * SPRING_K * springScale * dt;
-    vel.y += (ty - dolphin.position.y) * SPRING_K * springScale * dt;
-    vel.multiplyScalar(Math.exp(-SPRING_D * dt));
+    const k = THREE.MathUtils.lerp(SPRING_K, DRAG_SPRING_K, dragBlend) * springScale;
+    const damp = THREE.MathUtils.lerp(SPRING_D, DRAG_SPRING_D, dragBlend);
+    vel.x += (tx - dolphin.position.x) * k * dt;
+    vel.y += (ty - dolphin.position.y) * k * dt;
+    // XY damp only — Z comes from swimming along the nose
+    const vzKeep = vel.z;
+    vel.z = 0;
+    vel.multiplyScalar(Math.exp(-damp * dt));
+    vel.z = vzKeep;
 
-    // ---- upright orientation: path pose by default; pointer/drag aims the nose ----
-    prevYaw = yaw;
-    pathEuler.set(0, -0.4 + 0.3 * Math.sin(p * Math.PI * 2), -0.08 - 0.15 * p);
+    // ---- 3D orientation: nose along swim / look dir, turns dive into −Z ----
+    pathEuler.set(0, -0.35, -0.06 - 0.1 * p);
     pathQuat.setFromEuler(pathEuler);
 
-    const lookBlend = Math.max(dragBlend, nearPointer);
-    let aimBlendTarget = 0;
-    if (lookBlend > 0.05) {
-      const lookX = (dragId !== null ? dragPos.x : pointer.x) - dolphin.position.x;
-      const lookY = (dragId !== null ? dragPos.y : pointer.y) - dolphin.position.y;
-      if (lookX * lookX + lookY * lookY > 0.0025) {
-        setAimUpright(lookX, lookY, dt);
-        aimBlendTarget = lookBlend;
-      }
-    } else {
-      // stay on the scroll pose — tip a little with vertical motion, never flip for swim vel
-      yaw += THREE.MathUtils.clamp(deltaAngle(yaw, pathEuler.y), -MAX_TURN * 0.45 * dt, MAX_TURN * 0.45 * dt);
-      const tipTarget = pathEuler.z + THREE.MathUtils.clamp(vel.y * 0.1, -0.35, 0.35);
-      tip += THREE.MathUtils.clamp(tipTarget - tip, -MAX_TIP * dt, MAX_TIP * dt);
-      const side = Math.cos(yaw) >= 0 ? 1 : -1;
-      aimEuler.set(0, yaw, tip * side);
-      aimQuat.setFromEuler(aimEuler);
-      aimBlendTarget = 0.25;
-    }
-
-    const turnRate = deltaAngle(yaw, prevYaw) / Math.max(dt, 1e-4);
     const swim = Math.hypot(vel.x, vel.y);
-    const bankCap = dragBlend > 0.4 ? BANK_MAX : BANK_MAX * 0.5;
-    const bankTarget = THREE.MathUtils.clamp(turnRate * Math.max(swim, 1) * TURN_K, -bankCap, bankCap);
-    bank = ease(bank, bankTarget, 3.5, dt);
+    let rawX = aimDir.x;
+    let rawY = aimDir.y;
+    let wantAim = 0.2;
 
-    const side = Math.cos(yaw) >= 0 ? 1 : -1;
-    aimEuler.set(0, yaw, tip * side);
-    aimQuat.setFromEuler(aimEuler);
-    desiredQuat.copy(pathQuat).slerp(aimQuat, Math.max(aimBlendTarget, lookBlend));
-    // bank + idle barrel-roll around the main (nose) axis
-    const roll = bank + (flick > 0 ? (1 - flick) * Math.PI * 2 : 0);
-    qRoll.setFromAxisAngle(AXIS_X, roll);
-    desiredQuat.multiply(qRoll);
-    dolphin.quaternion.slerp(desiredQuat, 1 - Math.exp(-ORIENT_RATE * dt));
-
-    // Nose-steer only while dragged/escaping — on the scroll lane it was
-    // swimming down the tipped path heading and fighting the spring.
-    if ((dragBlend > 0.2 || escapeTimer > 0) && swim > 0.05) {
-      forward.set(1, 0, 0).applyQuaternion(dolphin.quaternion);
-      vel.x += (forward.x * swim - vel.x) * STEER;
-      vel.y += (forward.y * swim - vel.y) * STEER;
+    if (dragBlend > 0.25) {
+      // Drag only: face travel (not cursor−body — that overshoots and flip-flops)
+      if (swim > 0.18) {
+        rawX = vel.x;
+        rawY = vel.y;
+      } else {
+        rawX = tx - dolphin.position.x;
+        rawY = ty - dolphin.position.y;
+      }
+      wantAim = Math.max(0.7, dragBlend);
+    } else if (swim > 0.12) {
+      rawX = vel.x;
+      rawY = vel.y;
+      if (signedScrollVel < -0.12) rawY += 1.1 * Math.abs(signedScrollVel);
+      wantAim = THREE.MathUtils.clamp(0.35 + swim * 0.35, 0.35, 0.95);
+    } else {
+      rawX = Math.max(0.4, range * 0.15);
+      rawY = signedScrollVel < -0.08 ? 0.45 : -0.15 - 0.1 * p;
+      wantAim = 0.3;
     }
+
+    // Sticky facing: one committed reverse + into-screen arc, then cooldown
+    flipCool = Math.max(0, flipCool - dt);
+    turnArc = Math.max(0, turnArc - dt / ARC_TIME);
+    if (
+      Math.abs(rawX) > FLIP_STICKY &&
+      Math.sign(rawX) !== faceSign &&
+      turnArc <= 0.02 &&
+      flipCool <= 0
+    ) {
+      faceSign = Math.sign(rawX) || faceSign;
+      turnArc = 1;
+      flipCool = FLIP_COOLDOWN;
+    }
+
+    // Keep horizontal facing stable; tip from rawY; into −Z only during a committed arc
+    const dirX = faceSign * Math.max(0.35, Math.abs(rawX));
+    const dirY = rawY;
+    const ang = Math.atan2(dirY, dirX);
+    const turnRate = THREE.MathUtils.clamp(
+      deltaAngle(prevAng, ang) / Math.max(dt, 1e-4),
+      -2.5,
+      2.5,
+    );
+    prevAng = ang;
+
+    // Peak into-screen at mid-arc so the turn reads as going away, then coming back
+    const arcWave = turnArc > 0 ? Math.sin(turnArc * Math.PI) : 0;
+    const turnAmount = THREE.MathUtils.clamp(
+      Math.max(arcWave, Math.abs(turnRate) / 3.5 * (1 - dragBlend * 0.7)),
+      0,
+      1,
+    );
+
+    const into = turnAmount * TURN_INTO;
+    aimDir.set(dirX, dirY, -into);
+    if (aimDir.lengthSq() > 1e-6) aimDir.normalize();
+    else aimDir.set(faceSign, 0, 0);
+
+    const bankTarget = THREE.MathUtils.clamp(
+      turnRate * Math.max(swim, 0.6) * TURN_K,
+      -BANK_MAX,
+      BANK_MAX,
+    );
+    bank = ease(bank, bankTarget, 5, dt);
+
+    setAimFromDir(aimDir.x, aimDir.y, aimDir.z, bank);
+    aimBlend = ease(aimBlend, wantAim, AIM_BLEND_RATE, dt);
+    desiredQuat.copy(pathQuat).slerp(aimQuat, aimBlend);
+    if (flick > 0) {
+      qRoll.setFromAxisAngle(AXIS_X, (1 - flick) * Math.PI * 2);
+      desiredQuat.multiply(qRoll);
+    }
+    const orientRate = dragBlend > 0.3 ? ORIENT_RATE * 1.35 : ORIENT_RATE;
+    dolphin.quaternion.slerp(desiredQuat, 1 - Math.exp(-orientRate * dt));
+
+    // Swim in 3D along the nose — turns that point into −Z actually carry the body there
+    forward.set(1, 0, 0).applyQuaternion(dolphin.quaternion);
+    const push = Math.max(swim, turnAmount * 7);
+    if (turnAmount > 0.04 || escapeTimer > 0) {
+      const blend = escapeTimer > 0 ? STEER : SWIM_PUSH * Math.max(turnAmount, 0.35);
+      vel.x += (forward.x * push - vel.x) * blend;
+      vel.y += (forward.y * push - vel.y) * blend;
+      vel.z += (forward.z * push - vel.z) * blend;
+    }
+    // Soft home to the lane plane so a dive doesn't leave him stuck in the distance
+    vel.z += (0 - dolphin.position.z) * HOME_Z_K * (1 - turnAmount * 0.85) * dt;
+    vel.z *= Math.exp(-HOME_Z_D * dt);
+
     dolphin.position.x += vel.x * dt;
     dolphin.position.y += vel.y * dt;
-    dolphin.position.z = 0;
+    dolphin.position.z = THREE.MathUtils.clamp(dolphin.position.z + vel.z * dt, -Z_LIMIT, 0.5);
     dolphin.scale.setScalar(scale);
 
     // ---- aliveness ----
@@ -518,27 +573,24 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     excitement = Math.max(
       excitement * (1 - dt * 1.2),
       Math.min(1, swim * 0.35),
-      nearPointer,
       escapeTimer > 0 ? 1 : 0,
     );
-    greetCooldown -= dt;
     idleTimer -= dt;
-    if (dragId === null && lookBlend < 0.15 && idleTimer <= 0 && swim < 0.55 && escapeTimer <= 0) {
+    if (dragId === null && dragBlend < 0.15 && idleTimer <= 0 && swim < 0.55 && escapeTimer <= 0) {
       idleTimer = 5 + Math.random() * 6;
       flick = 1;
     }
     flick = Math.max(0, flick - dt * 1.4);
-    if (nearPointer > 0.5 && greetCooldown <= 0 && dragId === null) {
-      greetCooldown = 12;
-      excitement = 1;
-      chirp(1);
-    }
 
-    // Strouhal tailbeat from swim speed, with a little scroll/excitement boost
+    // Strouhal tailbeat — calm while dragged (spring speed must not drive the mixer)
     const A = 0.6 * scale;
-    const swimSpeed = Math.max(swim, scrollSpeed * 4);
-    const fBase = (STROUAL * Math.max(2, swimSpeed)) / (2 * Math.max(0.1, A));
-    const f = fBase * (1 + excitement * 0.5) * (dragId !== null ? 1.35 : 1);
+    let swimSpeed = Math.max(swim, scrollSpeed * SCROLL_TAIL);
+    if (dragBlend > 0.15 || dragId !== null) {
+      swimSpeed = Math.min(swimSpeed, DRAG_TAIL_CAP);
+    }
+    const fBase = (STROUAL * Math.max(0.75, swimSpeed)) / (2 * Math.max(0.1, A));
+    const fExcite = dragBlend > 0.15 ? 0 : excitement * 0.2;
+    const f = Math.min(fBase * (1 + fExcite), dragBlend > 0.15 ? fClip * 1.05 : fClip * 2.2);
     mixer?.update((steppedTime - prevStep) * (f / fClip));
 
     placeHit();

@@ -4,14 +4,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/fetch-desktop-release.mjs",
+    "predev": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
     "dev": "astro dev",
-    "prebuild": "node scripts/fetch-desktop-release.mjs",
+    "prebuild": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "fetch-desktop-release": "node scripts/fetch-desktop-release.mjs",
-    "test:e2e": "node scripts/run-e2e.mjs",
+    "fetch-desktop-release": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
+    "test:e2e": "node --experimental-strip-types scripts/run-e2e.ts",
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {

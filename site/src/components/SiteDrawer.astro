@@ -1,0 +1,58 @@
+---
+import ExternalLink from './ExternalLink.astro';
+import {
+  desktopDownloadPath,
+  discordUrl,
+  docsUrl,
+  installPakkuUrl,
+  pakkuDesktopGithub,
+  pakkuGithub,
+  pakkuJarUrl,
+} from '../lib/links';
+---
+<aside class="drawer-side z-50">
+  <label for="pakku-drawer" aria-label="Close menu" class="drawer-overlay"></label>
+  <div class="flex min-h-full w-80 flex-col bg-base-200 text-base-content">
+    <div class="flex h-[var(--nav-h)] items-center gap-2 px-2">
+      <label for="pakku-drawer" aria-label="Close menu" class="btn btn-square btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block size-5 stroke-current" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </label>
+      <a class="brand inline-flex items-center gap-2 text-[0.95rem] font-semibold text-base-content no-underline hover:no-underline" href="/" data-close-drawer>
+        <svg width="24" height="24" viewBox="0 0 500 500" aria-hidden="true"><use href="#pakku-glyph"/></svg>
+        Pakku
+      </a>
+    </div>
+
+    <ul class="menu flex-1 p-4 pt-2">
+      <li class="menu-title">Pakku</li>
+      <li><ExternalLink href={docsUrl} data-close-drawer>Documentation</ExternalLink></li>
+      <li>
+        <details open>
+          <summary>GitHub</summary>
+          <ul>
+            <li><ExternalLink href={pakkuGithub} data-close-drawer>Pakku</ExternalLink></li>
+            <li><ExternalLink href={pakkuDesktopGithub} data-close-drawer>Pakku Desktop</ExternalLink></li>
+          </ul>
+        </details>
+      </li>
+      <li><ExternalLink href={discordUrl} data-close-drawer>Discord</ExternalLink></li>
+      <li class="menu-title mt-2">Download</li>
+      <li><ExternalLink href={installPakkuUrl} data-close-drawer>Install Pakku</ExternalLink></li>
+      <li><ExternalLink href={pakkuJarUrl} data-close-drawer>Download pakku.jar</ExternalLink></li>
+      <li><a href={desktopDownloadPath} data-close-drawer>Download Desktop</a></li>
+    </ul>
+  </div>
+</aside>
+
+<script>
+  const drawer = document.getElementById('pakku-drawer');
+  if (drawer instanceof HTMLInputElement) {
+    document.querySelectorAll('[data-close-drawer]').forEach((node) => {
+      node.addEventListener('click', () => {
+        drawer.checked = false;
+      });
+    });
+  }
+</script>

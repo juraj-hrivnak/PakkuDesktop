@@ -1,0 +1,282 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import ExternalLink from './ExternalLink.astro';
+import manifest from '../data/desktop-downloads.json';
+import { desktopReleasesUrl } from '../lib/links';
+import {
+  ARCH_LABEL,
+  ARCH_LIST,
+  assetFormatLabel,
+  findAlternatives,
+  findPrimary,
+  formatBytes,
+  formatPublishedAt,
+  OS_LABEL,
+  OS_LIST,
+  platformKey,
+  type ArchId,
+  type OsId,
+} from '../lib/desktopDownloads';
+
+interface Props {
+  screenshot: ImageMetadata;
+}
+
+const { screenshot } = Astro.props;
+const published = formatPublishedAt(manifest.publishedAt);
+const defaultOs: OsId = 'windows';
+const defaultArch: ArchId = 'x64';
+
+function packagesFor(os: OsId, arch: ArchId) {
+  const key = platformKey(os, arch);
+  const primary = findPrimary(manifest.assets, key);
+  const alternatives = findAlternatives(manifest.assets, key, primary);
+  return { primary, alternatives };
+}
+---
+<section
+  class="desktop-download"
+  data-desktop-download
+  aria-labelledby="desktop-download-heading"
+>
+  <div class="desktop-download__intro">
+    <h1 id="desktop-download-heading" class="desktop-download__title">
+      Download Pakku Desktop
+    </h1>
+    <p class="desktop-download__lede tagline">
+      The desktop app for Minecraft modpack development
+    </p>
+  </div>
+
+  <div
+    class="desktop-download__tabs"
+    role="tablist"
+    aria-label="Operating system"
+  >
+    {OS_LIST.map((os) => {
+      const active = os === defaultOs;
+      return (
+        <button
+          type="button"
+          role="tab"
+          class:list={['desktop-download__tab', { 'is-active': active }]}
+          data-os-tab={os}
+          aria-controls={`download-panel-${os}`}
+          id={`download-tab-${os}`}
+          aria-selected={active ? 'true' : 'false'}
+          tabindex={active ? 0 : -1}
+        >
+          {OS_LABEL[os]}
+        </button>
+      );
+    })}
+  </div>
+
+  <div class="desktop-download__grid">
+    <div class="desktop-download__panels">
+      {OS_LIST.map((os) => {
+        const osActive = os === defaultOs;
+        return (
+          <div
+            class:list={['desktop-download__panel', { 'is-active': osActive }]}
+            role="tabpanel"
+            id={`download-panel-${os}`}
+            data-os-panel={os}
+            aria-labelledby={`download-tab-${os}`}
+            hidden={!osActive}
+          >
+            <div class="desktop-download__product">
+              <dl class="desktop-download__meta">
+                <div>
+                  <dt>Version</dt>
+                  <dd>
+                    <span>{manifest.version}</span>
+                    {manifest.prerelease && (
+                      <span class="desktop-download__badge">Alpha</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Released</dt>
+                  <dd>{published}</dd>
+                </div>
+              </dl>
+
+              <div class="desktop-download__arch" role="group" aria-label="Architecture">
+                <span class="desktop-download__arch-label">Architecture</span>
+                <div class="join">
+                  {ARCH_LIST.map((arch) => {
+                    const active = arch === defaultArch;
+                    return (
+                      <button
+                        type="button"
+                        class:list={[
+                          'pakku-btn',
+                          'join-item',
+                          { 'pakku-btn--primary': active },
+                        ]}
+                        data-os={os}
+                        data-arch={arch}
+                        aria-pressed={active ? 'true' : 'false'}
+                      >
+                        {ARCH_LABEL[arch]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {ARCH_LIST.map((arch) => {
+                const { primary, alternatives } = packagesFor(os, arch);
+                const archActive = osActive && arch === defaultArch;
+                return (
+                  <div
+                    class="desktop-download__arch-panel"
+                    data-os={os}
+                    data-arch-panel={arch}
+                    hidden={!archActive}
+                  >
+                    {primary ? (
+                      <a
+                        class="pakku-btn pakku-btn--primary desktop-download__primary"
+                        href={primary.url}
+                        rel="noopener noreferrer"
+                        download={primary.name}
+                      >
+                        <svg class="ext !m-0" width="16" height="16" aria-hidden="true">
+                          <use href="#dl" />
+                        </svg>
+                        <span>Download {assetFormatLabel(primary.name)}</span>
+                        <span class="desktop-download__size">{formatBytes(primary.size)}</span>
+                      </a>
+                    ) : (
+                      <div class="desktop-download__empty">
+                        <p>No package for {ARCH_LABEL[arch]} in {manifest.tag}.</p>
+                        <ExternalLink class="pakku-btn" href={desktopReleasesUrl}>
+                          Browse all releases
+                        </ExternalLink>
+                      </div>
+                    )}
+
+                    {alternatives.length > 0 && (
+                      <div class="desktop-download__alts">
+                        <h3>Other packages</h3>
+                        <ul>
+                          {alternatives.map((asset) => (
+                            <li>
+                              <a href={asset.url} rel="noopener noreferrer" download={asset.name}>
+                                <span>{assetFormatLabel(asset.name)}</span>
+                                <span class="desktop-download__size">{formatBytes(asset.size)}</span>
+                                <svg class="ext" width="12" height="12" aria-hidden="true">
+                                  <use href="#dl" />
+                                </svg>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div class="desktop-download__notes">
+                <p>
+                  Builds are not code-signed. Your OS may warn when you install or open the app.
+                </p>
+                {os === 'linux' && (
+                  <p data-linux-note hidden>
+                    On NixOS, use the project's dev shell for now.
+                  </p>
+                )}
+              </div>
+
+              <p class="desktop-download__releases">
+                <ExternalLink href={desktopReleasesUrl}>
+                  All releases · {manifest.tag}
+                </ExternalLink>
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <figure class="desktop-download__shot">
+      <Image
+        src={screenshot}
+        alt="Pakku Desktop home screen"
+        widths={[720, 960, 1200]}
+        sizes="(max-width: 959px) 86vw, min(34vw, 560px)"
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+      />
+    </figure>
+  </div>
+</section>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-desktop-download]');
+    if (!(root instanceof HTMLElement)) return;
+
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section');
+    const platform = navigator.platform || '';
+    const ua = navigator.userAgent || '';
+    const os =
+      section === 'windows' || section === 'macos' || section === 'linux'
+        ? section
+        : /Win/i.test(platform) || /Windows/i.test(ua)
+          ? 'windows'
+          : /Mac/i.test(platform) || /Mac OS|Macintosh/i.test(ua)
+            ? 'macos'
+            : 'linux';
+
+    let arch = 'x64';
+    if (/aarch64|arm64|Apple Silicon/i.test(ua)) arch = 'arm64';
+    else if (/Mac/i.test(platform) && !navigator.userAgentData) arch = 'arm64';
+
+    const url = new URL(location.href);
+    url.searchParams.set('section', os);
+    history.replaceState({}, '', url);
+
+    root.querySelectorAll('[data-os-tab]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const active = node.dataset.osTab === os;
+      node.classList.toggle('is-active', active);
+      node.setAttribute('aria-selected', active ? 'true' : 'false');
+      node.tabIndex = active ? 0 : -1;
+    });
+
+    root.querySelectorAll('[data-os-panel]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const active = node.dataset.osPanel === os;
+      node.hidden = !active;
+      node.classList.toggle('is-active', active);
+    });
+
+    root.querySelectorAll('[data-arch]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.dataset.os !== os) return;
+      const active = node.dataset.arch === arch;
+      node.classList.toggle('pakku-btn--primary', active);
+      node.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    root.querySelectorAll('[data-arch-panel]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      node.hidden = !(node.dataset.os === os && node.dataset.archPanel === arch);
+    });
+
+    root.querySelectorAll('[data-linux-note]').forEach((node) => {
+      if (node instanceof HTMLElement) node.hidden = os !== 'linux';
+    });
+  })();
+</script>
+
+<script>
+  import './DesktopDownload.client.ts';
+</script>

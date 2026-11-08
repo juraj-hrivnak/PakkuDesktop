@@ -217,24 +217,24 @@ html {
   scroll-padding-top: calc(var(--nav-h) + 12px);
 }
 
-.site-nav-end .nav-download {
+.site-nav-end .nav-download-slot {
   margin-inline-start: 1.25rem;
+  flex: 0 0 auto;
 }
 
-.nav-download.is-deferred {
-  opacity: 0;
-  pointer-events: none;
-  max-width: 0;
+.nav-download-slot.is-deferred {
+  width: 0;
   margin-inline-start: 0;
   overflow: hidden;
+  display: flex;
+  justify-content: flex-end;
+  will-change: width;
 }
 
-.nav-download.is-deferred.is-visible {
-  opacity: 1;
-  pointer-events: auto;
-  max-width: 10rem;
-  margin-inline-start: 1.25rem;
-  overflow: visible;
+.nav-download-slot.is-deferred .nav-download {
+  opacity: 0;
+  pointer-events: none;
+  flex: 0 0 auto;
 }
 
 .home-main {
@@ -699,13 +699,6 @@ a:has(> .ext),
 
   .hint {
     transition: opacity 0.4s;
-  }
-
-  .nav-download.is-deferred {
-    transition:
-      opacity 0.4s,
-      max-width 0.4s,
-      margin-inline-start 0.4s;
   }
 
   .theme-btn {
