@@ -5,60 +5,56 @@ const MODEL_URL = '/dolphin.glb';
 const CAMERA = { fov: 40, distance: 11, near: 4, far: 30 } as const;
 const ANIM_FPS = 30;
 
-// Model is ~6 units long; layout numbers below are world units at load-time zoom.
+// Model is ~6 units long. Layout numbers below are world units at load-time zoom.
 const HALF_LENGTH = 3;
 const EDGE_MARGIN = 0.3;
 const BOB = 0.06;
 const MAX_WIDTH = 0.8;
 
-// Grab hit pad — interactive solely while dragging (no hover play)
+// Extra padding on the invisible drag hit box. Interaction is drag-only.
 const HIT_PAD = 0.35;
 
-// Fluid spring toward scroll lane / grab
+// Spring toward the scroll lane / grab target.
 const SPRING_K = 18;
-const SPRING_D = 6.5; // ~0.77 damping ratio: a hint of fluid overshoot, no oscillation loop
+const SPRING_D = 6.5; // damping ratio ~0.77; slight overshoot, no looping bounce
 
-// Dragging is a lure, not a handle: the dolphin swims toward the cursor at its own pace —
-// limited cruise speed, limited turn rate, gentle acceleration — and can't strafe or reverse.
-const DRAG_CRUISE = 5.0; // world units/s top swim speed while chasing
-const DRAG_ARRIVE = 2.2; // slows down in proportion to distance (speed = dist × this, capped)
-const DRAG_TURN_RATE = 3.0; // rad/s the swim direction can rotate
-const DRAG_SPEED_RATE = 2.5; // how quickly speed builds / fades
-const DRAG_FLIP_DIST = 1.2; // cursor must be at least this far behind before he turns around
-const DRAG_PITCH_GAIN = 0.45; // nose tips less while swimming after the cursor…
-const DRAG_PITCH_RATE = 3.5; // …and more slowly, so it never looks like it snaps up/down
+// Drag chase: forward swim only — limited cruise, turn rate, and accel.
+const DRAG_CRUISE = 5.0; // max chase speed (world units/s)
+const DRAG_ARRIVE = 2.2; // speed ≈ dist * this, capped by DRAG_CRUISE
+const DRAG_TURN_RATE = 3.0; // rad/s cap on swim heading changes
+const DRAG_SPEED_RATE = 2.5; // how fast chase speed eases in/out
+const DRAG_FLIP_DIST = 1.2; // how far behind the cursor must be to flip facing
+const DRAG_PITCH_GAIN = 0.45; // pitch scale while chasing
+const DRAG_PITCH_RATE = 3.5; // slower pitch while chasing
 const MAX_SPEED = 16;
 const BLEND_RATE = 12;
 
-// Orientation: continuous yaw (turn through −Z), pitch (nose tip) and bank
-const TURN_TIME = 1.15; // seconds for a full turn-around (quintic ease: no jerk at start or end)
+// Orientation: yaw (through −Z on reverse), pitch, bank.
+const TURN_TIME = 1.15; // full facing reverse duration (quintic ease)
 const PITCH_RATE = 7;
 const PITCH_MAX = 0.95;
-const REST_TILT = 0.35; // idle: nose angled slightly toward the camera
-const BANK_MAX = 0.95; // dolphins bank hard into a turn, belly toward the inside of the arc
+const REST_TILT = 0.35; // idle nose angled a bit toward the camera
+const BANK_MAX = 0.95; // peak bank into a turn
 
-// Facing reverse: direction must be held for a moment (hysteresis) before it commits
-const FLIP_THRESHOLD = 0.5; // |unit dir x| needed to count as "wants to face the other way"
-const FLIP_HOLD = 0.2; // seconds the intent must persist
+// Facing reverse needs clear intent + cooldown so it doesn't chatter.
+const FLIP_THRESHOLD = 0.5; // |unit dir x| before we consider flipping
+const FLIP_HOLD = 0.2; // how long that intent must hold
 const FLIP_COOLDOWN = 0.6;
 
-// Facing follows the page: scrolling down / top of page → faces right,
-// scrolling up / bottom of page → faces left. The turn-around happens at the ends.
-const EDGE_P = 0.04; // scroll progress within this of an end counts as "at the end"
-const SCROLL_FACE_V = 0.04; // scroll speed (progress/s) needed to count as a direction
+// Scroll-driven facing: down/top → right, up/bottom → left.
+const EDGE_P = 0.04; // near 0 or 1 scroll progress
+const SCROLL_FACE_V = 0.04; // min |scroll speed| to count as a direction
 
-// Dolphin U-turn: banked arc with a *shallow* depth offset — nose sweeps into −Z for
-// foreshortening. Keep |z| small so perspective doesn't read as a zoom.
-// All visual-only offsets — they never feed back into the steering.
-const TURN_RADIUS_K = 0.18; // was 0.7 — deep Z shrank the silhouette like a zoom
-const TURN_DIP = 0.18; // subtle sink mid-turn
-const TURN_PITCH = 0.45; // rad: nose down first half of the turn, nose up second half
-const SETTLE_TIME = 0.9; // seconds to glide back onto the lane plane after the turn
+// U-turn arc in depth (nose into −Z). Shallow so it doesn't read as zoom.
+const TURN_RADIUS_K = 0.18; // radius vs half body length
+const TURN_DIP = 0.18; // downward sink mid-turn
+const TURN_PITCH = 0.45; // nose down then up through the turn
+const SETTLE_TIME = 0.9; // glide back to the lane plane
 
-const ESCAPE_SPEED = 3.5; // gentle startle on release
+const ESCAPE_SPEED = 3.5; // release shove
 const ESCAPE_TIME = 0.75;
 
-// Light intensities were tuned before three switched to physically based units (r155).
+// Pre-r155 lights were authored in non-PBR units.
 const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
 
 const vertexShader = `
@@ -138,7 +134,7 @@ const wrapPi = (a: number) => {
   return a;
 };
 
-// Scratch result for setUnit (avoids per-frame allocation)
+// Scratch for setUnit (avoids per-frame allocation)
 const dirTmp = { x: 1, y: 0 };
 const setUnit = (x: number, y: number, fx: number, fy: number) => {
   const l = Math.hypot(x, y);
@@ -211,18 +207,18 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   let mixer: THREE.AnimationMixer | undefined;
   let model: THREE.Object3D | undefined;
 
-  // ---- layout state (declared up front; updated in resize) ----
+  // --- LAYOUT ---
   const baseDpr = devicePixelRatio || 1;
   let zoom = 1;
   let scale = 0.8;
   let halfWidth = 7;
   let scroll = 0;
 
-  // ---- pointer interaction (drag only) ----
+  // --- POINTER ---
   const hitEl = document.getElementById('dolphin-hit');
   const hit = hitEl instanceof HTMLElement ? hitEl : null;
   if (hit) {
-    // Positioned purely by our transform; touch-drag must not become a scroll gesture
+    // touch-drag must not become a scroll gesture
     Object.assign(hit.style, {
       position: 'fixed',
       left: '0',
@@ -241,31 +237,30 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   let dragBlend = 0;
   let modelReady = false;
 
-  // ---- motion state ----
-  // `pos` is where the dolphin appears ON SCREEN (home-plane coordinates). Real depth is
-  // applied afterwards with perspective compensation, so the screen position, the hit box
-  // and the drag mapping never shift while the body dives.
+  // --- MOTION STATE ---
+  // pos/vel live on the home plane (on-screen). Depth is applied later in applyPose
+  // so the hit box and drag mapping stay put while the body arcs.
   const pos = new THREE.Vector2();
   const vel = new THREE.Vector2();
-  let depthK = 1; // perspective compensation factor of the current frame
-  let swimS = 0; // smoothed swim speed (raw spring speed is too noisy to steer by)
-  let scrollUp = 0; // smoothed "scrolling up" speed, tips the nose up
+  let depthK = 1; // always 1; hit sizing still divides by it
+  let swimS = 0; // smoothed swim speed (spring speed is too noisy to steer by)
+  let scrollUp = 0; // tips nose up
   let escapeEase = 0;
   let escapeTimer = 0;
-  let flick = 0; // 1 → 0: idle barrel-roll on the nose axis
+  let flick = 0; // 1 → 0: idle barrel-roll on nose axis
   let idleTimer = 5;
 
-  // Orientation state — everything continuous, nothing ever snaps
-  let faceSign = 1; // committed facing: +1 right, −1 left
+  // orientation
+  let faceSign = 1; // +1 right, −1 left
   let flipTimer = 0;
-  let turnFrom = 0; // turn animation: 0 = facing right, 1 = facing left
+  let turnFrom = 0; // 0 = right, 1 = left
   let turnTo = 0;
-  let turnT = 1; // 0 → 1 over TURN_TIME; 1 = no turn in progress
+  let turnT = 1; // 0 → 1 over TURN_TIME; 1 = idle
   let turnP = 0;
   let tiltS = REST_TILT;
-  let settleT = 1; // 0 right after a turn starts, 1 once the glide back to the lane is done
+  let settleT = 1; // 0 at turn start, 1 after glide back
   let flipCool = 0;
-  let yaw = -REST_TILT; // 0 = facing right, π = facing left; in-between = nose into screen
+  let yaw = -REST_TILT; // 0 = right, π = left; in-between = into screen
   let yawVel = 0;
   let pitch = -0.15;
   let bank = 0;
@@ -280,8 +275,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   const basis = new THREE.Matrix4();
   const AXIS_X = new THREE.Vector3(1, 0, 0);
 
-  // Nose along (yaw, pitch); belly stays toward world-down, plus bank around the nose.
-  // pitch is clamped well below ±90°, so forward is never parallel to world-up.
+  // Yaw + pitch, belly toward world-down, bank around the nose.
+  // Pitch stays off ±90° so forward never aligns with world-up (basis stays stable).
   const setAim = (yawA: number, pitchA: number, bankA: number) => {
     const cp = Math.cos(pitchA);
     forward.set(Math.cos(yawA) * cp, Math.sin(pitchA), -Math.sin(yawA) * cp);
@@ -295,9 +290,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     aimQuat.setFromRotationMatrix(basis);
   };
 
-  // Place the body at a shallow depth — natural perspective only (no screen-lock scale-up,
-  // which made the into-screen arc look like a zoom).
-  let visXOff = 0; // visual-only turn-arc offsets (never enter the physics)
+  // Visual-only turn arc / dip offsets (physics stays on `pos`).
+  let visXOff = 0;
   let visYOff = 0;
   const applyPose = (z: number, xOff: number, yOff: number) => {
     depthK = 1;
@@ -311,7 +305,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     if (sp > MAX_SPEED) vel.multiplyScalar(MAX_SPEED / sp);
   };
 
-  // ---- chirp: synthesized, no audio files ----
+  // --- CHIRP ---
   let audio: AudioContext | null = null;
   let audioUnlocked = false;
   const chirp = (n = 1) => {
@@ -338,7 +332,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
         osc.stop(t + 0.14);
       }
     } catch {
-      /* audio is a bonus; never fatal */
+      /* non-fatal */
     }
   };
 
@@ -359,7 +353,6 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     const w = Math.max(1, innerWidth);
     const h = Math.max(1, innerHeight);
     const halfH = halfWidth / Math.max(1e-4, camera.aspect);
-    // model part shrinks with perspective while dived; the pad stays constant
     const hx = (HALF_LENGTH * scale * 1.05) / depthK + HIT_PAD;
     const hy = (1.0 * scale) / depthK + BOB * zoom + HIT_PAD;
     const pxX = w / (2 * halfWidth);
@@ -418,12 +411,12 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       if (e.pointerId !== dragId) return;
       dragId = null;
       hit.classList.remove('dragging');
-      // startle escape: shove away from the grab point, then spring home
+      // shove away from the grab point, then spring home
       let awayX = pos.x - dragPos.x;
       let awayY = pos.y - dragPos.y;
       let len = Math.hypot(awayX, awayY);
       if (len < 1e-3) {
-        // released dead-centre: pick a stable direction instead of doing nothing
+        // released dead-centre: pick a stable direction
         awayX = faceSign;
         awayY = 0.3;
         len = Math.hypot(awayX, awayY);
@@ -513,12 +506,12 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   resize();
   watchDpr();
 
-  // Snap onto the scroll-lane start pose (p=0 → left, y=1.5) — never rise from (0,0,0)
   let smooth = 0;
   {
+    // Boot at p=0 (left, y=1.5) — avoid rising from the origin
     pos.set(-laneRange(), 1.5);
     applyPose(0, 0, 0);
-    smooth = scroll; // catch up via the spring if the page loaded mid-scroll
+    smooth = scroll; // catch up via spring if loaded mid-scroll
   }
 
   const clock = new THREE.Clock();
@@ -536,10 +529,10 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     const prevStep = steppedTime;
     steppedTime = Math.floor(animTime * ANIM_FPS) / ANIM_FPS;
 
-    // ---- scroll lane ----
+    // --- SCROLL LANE ---
     const prevSmooth = smooth;
     smooth = ease(smooth, scroll, 5, dt);
-    // signed: <0 = scroll up (lane rises), >0 = scroll down
+    // signed: <0 = scroll up, >0 = scroll down
     const signedScrollVel = (smooth - prevSmooth) / dt;
     scrollSpeed = ease(scrollSpeed, Math.min(1, Math.abs(signedScrollVel) * 1.33), 6, dt);
     scrollUp = ease(scrollUp, Math.max(0, -signedScrollVel), 8, dt);
@@ -547,21 +540,19 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     const p = smooth;
     const range = laneRange();
     const pathX = (p * 2 - 1) * range;
-    // Same vertical lane as live pakku.build: p=0 → y=1.5, p=1 → y=-1.5
+    // p=0 → y=1.5, p=1 → y=-1.5 (+ bob)
     const pathY = 1.5 - p * 3 + Math.sin(animTime * 1.1) * BOB * zoom;
 
-    // Home is the scroll lane only — interactive solely while dragging
     dragBlend = ease(dragBlend, dragId !== null ? 1 : 0, BLEND_RATE, dt);
 
-    // ---- motion: lane spring (mass + water) blended with paced swim steering ----
+    // --- MOTION ---
     escapeEase = ease(escapeEase, escapeTimer > 0 ? 1 : 0, 8, dt);
     const springScale = lerp(1, 0.35, escapeEase);
     const dampL = Math.exp(-SPRING_D * dt);
     const vlx = (vel.x + (pathX - pos.x) * SPRING_K * springScale * dt) * dampL;
     const vly = (vel.y + (pathY - pos.y) * SPRING_K * springScale * dt) * dampL;
     if (dragBlend > 0.001) {
-      // The cursor is a lure. He swims toward it forward-only: the swim direction rotates at a
-      // limited rate, speed builds gradually and drops while he is still turning round.
+      // Forward-only chase toward the cursor (capped turn rate + speed)
       const toX = dragPos.x - dragOffset.x - pos.x;
       const toY = dragPos.y - dragOffset.y - pos.y;
       const dist = Math.hypot(toX, toY);
@@ -583,8 +574,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
 
     swimS = ease(swimS, vel.length(), 10, dt);
 
-    // ---- desired heading: blend of unit vectors, every weight is smooth ----
-    // 1) idle: keep facing, tip slightly with the lane (nose up when scrolling up)
+    // --- HEADING ---
+    // Idle: tip from lane position / scroll-up
     const idleTipY = lerp(-0.15 - 0.1 * p, 0.45, smoothstep(scrollUp, 0.04, 0.15));
     setUnit(faceSign, idleTipY, faceSign, 0);
     const idleX = dirTmp.x;
@@ -592,7 +583,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     let dx = idleX;
     let dy = idleY;
 
-    // 2) swimming: face travel direction
+    // Swim: face travel direction
     const motionW = smoothstep(swimS, 0.1, 0.5);
     setUnit(vel.x, vel.y + 1.1 * scrollUp, idleX, idleY);
     dx = lerp(dx, dirTmp.x, motionW);
@@ -602,7 +593,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     dx = dirTmp.x;
     dy = dirTmp.y;
 
-    // ---- facing: scroll direction / page ends decide it (held = drag direction) ----
+    // --- FACING ---
     flipCool = Math.max(0, flipCool - dt);
     let wantSign = faceSign;
     if (dragBlend > 0.5) {
@@ -611,15 +602,15 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       const cd = Math.hypot(cx, cy);
       if (cd > DRAG_FLIP_DIST && Math.abs(cx) / cd > FLIP_THRESHOLD) wantSign = Math.sign(cx);
     } else if (p < EDGE_P) {
-      wantSign = 1; // top of page: face right
+      wantSign = 1; // top: face right
     } else if (p > 1 - EDGE_P) {
-      wantSign = -1; // bottom of page: face left
+      wantSign = -1; // bottom: face left
     } else if (signedScrollVel > SCROLL_FACE_V) {
       wantSign = 1; // scrolling down: face right
     } else if (signedScrollVel < -SCROLL_FACE_V) {
       wantSign = -1; // scrolling up: face left
     }
-    // a new turn only starts once the previous one has finished — no mid-turn reversals
+    // no mid-turn reversals
     const turnDone = turnT >= 1;
     if (wantSign !== faceSign) flipTimer += dt;
     else flipTimer = Math.max(0, flipTimer - dt * 2);
@@ -633,7 +624,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       flipCool = FLIP_COOLDOWN;
     }
 
-    // ---- orientation: yaw spring (turn through −Z), eased pitch, bank from turning ----
+    // --- ORIENTATION ---
     pitch = ease(
         pitch,
         clamp(Math.atan2(dy, Math.max(0.35, Math.abs(dx))), -PITCH_MAX, PITCH_MAX) *
@@ -644,9 +635,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
 
     const aimStrength = clamp(Math.max(motionW, dragBlend), 0, 1);
     const tilt = REST_TILT * (1 - 0.7 * aimStrength);
-    // Turn animation: a fixed-duration quintic ease (zero velocity AND acceleration at both
-    // ends), so the turn starts and finishes without any jolt. Everything else (arc, bank,
-    // dip, nose loop) is derived from this one smooth progress value.
+    // Quintic ease over TURN_TIME; arc / bank / dip derive from this
     turnT = Math.min(1, turnT + dt / TURN_TIME);
     const e = turnT * turnT * turnT * (turnT * (turnT * 6 - 15) + 10);
     turnP = lerp(turnFrom, turnTo, e);
@@ -655,18 +644,16 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     yaw = -tiltS + turnP * (Math.PI + 2 * tiltS);
     yawVel = ease(yawVel, (yaw - prevYaw) / dt, 25, dt);
 
-    // 0 facing sideways, 1 pointing straight into the screen
+    // 0 sideways, 1 into screen
     const turn = Math.sin(clamp(yaw, 0, Math.PI));
 
-
-    // Bank peaks mid-turn on a smooth bell, belly toward the inside of the arc
+    // Bank peaks mid-turn (bell curve)
     const bell = 16 * turnT * turnT * (1 - turnT) * (1 - turnT);
     bank = ease(bank, faceSign * BANK_MAX * bell, 10, dt);
 
-    // Progress 0 → 1 along the current turn, whichever direction it goes (1 at rest)
-    const w = e;
+    const w = e; // progress along the turn (1 at rest)
     const turnFade = 1 - 0.25 * dragBlend;
-    // Nose down entering the turn, nose up leaving it
+    // Nose down entering, up leaving
     const loopPitch = -TURN_PITCH * Math.sin(w * Math.PI * 2) * turnFade;
 
     setAim(yaw, clamp(pitch + loopPitch, -1.25, 1.25), bank);
@@ -677,7 +664,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     }
     dolphin.quaternion.copy(aimQuat);
 
-    // ---- integrate + soft screen bounds ----
+    // --- INTEGRATE ---
     pos.x += vel.x * dt;
     pos.y += vel.y * dt;
     {
@@ -690,20 +677,20 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       pos.y = clamp(pos.y, -by - 0.5, by + 0.5);
     }
 
-    // ---- dolphin U-turn path: a semicircle through depth, then a glide back to the lane ----
+    // --- U-TURN PATH ---
     if (turnT > 0.8) settleT = Math.min(1, settleT + dt / SETTLE_TIME);
     const settle = smoothstep(settleT, 0, 1);
     const R = TURN_RADIUS_K * HALF_LENGTH * scale;
     const arc = Math.sin(w * Math.PI);
     const zArc = -R * (1 - Math.cos(w * Math.PI)) * (1 - settle) * turnFade;
-    // forward overshoot (the way it was heading), kept inside the screen
     const reach = (HALF_LENGTH * scale * Math.abs(Math.cos(yaw))) / depthK + 0.3;
     const allowed = Math.max(0, halfWidth - reach);
     const xRaw = -faceSign * R * arc * turnFade;
+    // U-turn x overshoot, clamped on-screen
     const xOff = clamp(xRaw, Math.min(0, -allowed - pos.x), Math.max(0, allowed - pos.x));
     applyPose(zArc, xOff, -TURN_DIP * arc * turnFade);
 
-    // ---- aliveness ----
+    // --- ALIVENESS ---
     escapeTimer = Math.max(0, escapeTimer - dt);
     idleTimer -= dt;
     if (
@@ -720,8 +707,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     }
     flick = Math.max(0, flick - dt * 1.4);
 
-    // Tailbeat — same as live pakku.build / original: scroll-speed linked only
-    mixer?.update((steppedTime - prevStep) * (1 + scrollSpeed * 1.6 + turn * 1.0 + dragBlend * Math.min(1.2, swimS * 0.3))); // tail follows the swim
+    // Tailbeat: scroll-linked, plus turn and drag/swim boosts
+    mixer?.update((steppedTime - prevStep) * (1 + scrollSpeed * 1.6 + turn * 1.0 + dragBlend * Math.min(1.2, swimS * 0.3)));
 
     placeHit();
 
