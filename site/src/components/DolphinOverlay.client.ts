@@ -21,19 +21,19 @@ const SPRING_K = 16;
 const SPRING_D = 4.5;
 
 // Wide upright turns — slow yaw flips, gentle tip (late v2)
-const MAX_TURN = 0.7; // rad/s yaw cap — keeps flips from whipping
+const MAX_TURN = 0.45; // rad/s yaw cap — slower arcs, fewer mid-flip hangs
 const MAX_TIP = 1.4;
 const STEER = 0.45;
-const ORIENT_RATE = 5.0;
+const ORIENT_RATE = 3.5;
 const BLEND_RATE = 4.0;
-const FLIP_X = 0.45; // |dx| needed before committing a left/right flip
+const FLIP_X = 1.0; // |dx| needed before committing a left/right flip
 
 // v3 biomechanics seasoning
 const STROUAL = 0.25;
-const BANK_MAX = 0.45;
-const TURN_K = 0.03;
-const ESCAPE_SPEED = 10;
-const ESCAPE_TIME = 0.9;
+const BANK_MAX = 0.22; // subtle lean; was pinning ~26° during slow flips
+const TURN_K = 0.02;
+const ESCAPE_SPEED = 7.5;
+const ESCAPE_TIME = 0.75;
 
 // Light intensities were tuned before three switched to physically based units (r155).
 const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
@@ -205,8 +205,8 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     yaw += THREE.MathUtils.clamp(deltaAngle(yaw, desiredYaw), -MAX_TURN * dtAim, MAX_TURN * dtAim);
     const tipTarget = THREE.MathUtils.clamp(
       Math.atan2(dy, Math.max(0.35, Math.abs(dx))),
-      -0.55,
-      0.55,
+      -0.40,
+      0.40,
     );
     tip += THREE.MathUtils.clamp(tipTarget - tip, -MAX_TIP * dtAim, MAX_TIP * dtAim);
     const side = Math.cos(yaw) >= 0 ? 1 : -1;
