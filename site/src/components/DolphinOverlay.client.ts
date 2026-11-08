@@ -17,8 +17,16 @@ const HIT_PAD = 0.35;
 // Fluid spring toward scroll lane / grab
 const SPRING_K = 18;
 const SPRING_D = 6.5; // ~0.77 damping ratio: a hint of fluid overshoot, no oscillation loop
-const DRAG_SPRING_K = 52; // snappy follow while held
-const DRAG_SPRING_D = 8;
+
+// Dragging is a lure, not a handle: the dolphin swims toward the cursor at its own pace —
+// limited cruise speed, limited turn rate, gentle acceleration — and can't strafe or reverse.
+const DRAG_CRUISE = 5.0; // world units/s top swim speed while chasing
+const DRAG_ARRIVE = 2.2; // slows down in proportion to distance (speed = dist × this, capped)
+const DRAG_TURN_RATE = 3.0; // rad/s the swim direction can rotate
+const DRAG_SPEED_RATE = 2.5; // how quickly speed builds / fades
+const DRAG_FLIP_DIST = 1.2; // cursor must be at least this far behind before he turns around
+const DRAG_PITCH_GAIN = 0.45; // nose tips less while swimming after the cursor…
+const DRAG_PITCH_RATE = 3.5; // …and more slowly, so it never looks like it snaps up/down
 const MAX_SPEED = 16;
 const BLEND_RATE = 12;
 
@@ -31,7 +39,6 @@ const BANK_MAX = 0.95; // dolphins bank hard into a turn, belly toward the insid
 
 // Facing reverse: direction must be held for a moment (hysteresis) before it commits
 const FLIP_THRESHOLD = 0.5; // |unit dir x| needed to count as "wants to face the other way"
-const FLIP_MIN_SPEED = 0.6; // slower than this is drift/settling, never a reason to turn around
 const FLIP_HOLD = 0.2; // seconds the intent must persist
 const FLIP_COOLDOWN = 0.6;
 
@@ -48,7 +55,7 @@ const TURN_DIP = 0.5; // world units the body sinks at the middle of the turn
 const TURN_PITCH = 0.45; // rad: nose down first half of the turn, nose up second half
 const SETTLE_TIME = 0.9; // seconds to glide back onto the lane plane after the turn
 
-const ESCAPE_SPEED = 7.5;
+const ESCAPE_SPEED = 3.5; // gentle startle on release
 const ESCAPE_TIME = 0.75;
 
 // Light intensities were tuned before three switched to physically based units (r155).
@@ -124,6 +131,12 @@ const { clamp, lerp, smoothstep } = THREE.MathUtils;
 // Frame-rate independent exponential ease
 const ease = (cur: number, target: number, rate: number, dt: number) =>
     cur + (target - cur) * (1 - Math.exp(-rate * dt));
+
+const wrapPi = (a: number) => {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+};
 
 // Scratch result for setUnit (avoids per-frame allocation)
 const dirTmp = { x: 1, y: 0 };
@@ -538,17 +551,33 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
 
     // Home is the scroll lane only — interactive solely while dragging
     dragBlend = ease(dragBlend, dragId !== null ? 1 : 0, BLEND_RATE, dt);
-    const tx = lerp(pathX, dragPos.x - dragOffset.x, dragBlend);
-    const ty = lerp(pathY, dragPos.y - dragOffset.y, dragBlend);
 
-    // ---- fluid spring (mass + water); stiffer while dragged. Pure 2D, no 3D feedback. ----
+    // ---- motion: lane spring (mass + water) blended with paced swim steering ----
     escapeEase = ease(escapeEase, escapeTimer > 0 ? 1 : 0, 8, dt);
     const springScale = lerp(1, 0.35, escapeEase);
-    const k = lerp(SPRING_K, DRAG_SPRING_K, dragBlend) * springScale;
-    const damp = lerp(SPRING_D, DRAG_SPRING_D, dragBlend);
-    vel.x += (tx - pos.x) * k * dt;
-    vel.y += (ty - pos.y) * k * dt;
-    vel.multiplyScalar(Math.exp(-damp * dt));
+    const dampL = Math.exp(-SPRING_D * dt);
+    const vlx = (vel.x + (pathX - pos.x) * SPRING_K * springScale * dt) * dampL;
+    const vly = (vel.y + (pathY - pos.y) * SPRING_K * springScale * dt) * dampL;
+    if (dragBlend > 0.001) {
+      // The cursor is a lure. He swims toward it forward-only: the swim direction rotates at a
+      // limited rate, speed builds gradually and drops while he is still turning round.
+      const toX = dragPos.x - dragOffset.x - pos.x;
+      const toY = dragPos.y - dragOffset.y - pos.y;
+      const dist = Math.hypot(toX, toY);
+      const sp0 = vel.length();
+      const curAng = sp0 > 0.15 ? Math.atan2(vel.y, vel.x) : faceSign > 0 ? 0 : Math.PI;
+      const err = wrapPi(Math.atan2(toY, toX) - curAng);
+      const ang = dist > 0.05 ? curAng + clamp(err, -DRAG_TURN_RATE * dt, DRAG_TURN_RATE * dt) : curAng;
+      const align = Math.max(0, Math.cos(err));
+      const spTarget = Math.min(DRAG_CRUISE, dist * DRAG_ARRIVE) * (0.3 + 0.7 * align);
+      const sp = ease(Math.max(sp0, 0.2), spTarget, DRAG_SPEED_RATE, dt);
+      vel.set(
+          lerp(vlx, Math.cos(ang) * sp, dragBlend),
+          lerp(vly, Math.sin(ang) * sp, dragBlend),
+      );
+    } else {
+      vel.set(vlx, vly);
+    }
     clampSpeed();
 
     swimS = ease(swimS, vel.length(), 10, dt);
@@ -568,21 +597,6 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     dx = lerp(dx, dirTmp.x, motionW);
     dy = lerp(dy, dirTmp.y, motionW);
 
-    // 3) dragging: face travel (not cursor−body, which overshoots and flip-flops)
-    if (dragBlend > 0.001) {
-      const toX = tx - pos.x;
-      const toY = ty - pos.y;
-      setUnit(toX, toY, dx, dy);
-      const toW = smoothstep(Math.hypot(toX, toY), 0.05, 0.3);
-      let drx = lerp(dx, dirTmp.x, toW);
-      let dry = lerp(dy, dirTmp.y, toW);
-      setUnit(vel.x, vel.y, drx, dry);
-      const velW = smoothstep(swimS, 0.1, 0.4);
-      drx = lerp(drx, dirTmp.x, velW);
-      dry = lerp(dry, dirTmp.y, velW);
-      dx = lerp(dx, drx, dragBlend);
-      dy = lerp(dy, dry, dragBlend);
-    }
     setUnit(dx, dy, idleX, idleY);
     dx = dirTmp.x;
     dy = dirTmp.y;
@@ -591,7 +605,10 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     flipCool = Math.max(0, flipCool - dt);
     let wantSign = faceSign;
     if (dragBlend > 0.5) {
-      if (swimS > FLIP_MIN_SPEED && Math.abs(dx) > FLIP_THRESHOLD) wantSign = Math.sign(dx);
+      const cx = dragPos.x - dragOffset.x - pos.x;
+      const cy = dragPos.y - dragOffset.y - pos.y;
+      const cd = Math.hypot(cx, cy);
+      if (cd > DRAG_FLIP_DIST && Math.abs(cx) / cd > FLIP_THRESHOLD) wantSign = Math.sign(cx);
     } else if (p < EDGE_P) {
       wantSign = 1; // top of page: face right
     } else if (p > 1 - EDGE_P) {
@@ -618,8 +635,9 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     // ---- orientation: yaw spring (turn through −Z), eased pitch, bank from turning ----
     pitch = ease(
         pitch,
-        clamp(Math.atan2(dy, Math.max(0.35, Math.abs(dx))), -PITCH_MAX, PITCH_MAX),
-        PITCH_RATE,
+        clamp(Math.atan2(dy, Math.max(0.35, Math.abs(dx))), -PITCH_MAX, PITCH_MAX) *
+        lerp(1, DRAG_PITCH_GAIN, dragBlend),
+        lerp(PITCH_RATE, DRAG_PITCH_RATE, dragBlend),
         dt,
     );
 
@@ -639,13 +657,14 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     // 0 facing sideways, 1 pointing straight into the screen
     const turn = Math.sin(clamp(yaw, 0, Math.PI));
 
+
     // Bank peaks mid-turn on a smooth bell, belly toward the inside of the arc
     const bell = 16 * turnT * turnT * (1 - turnT) * (1 - turnT);
     bank = ease(bank, faceSign * BANK_MAX * bell, 10, dt);
 
     // Progress 0 → 1 along the current turn, whichever direction it goes (1 at rest)
     const w = e;
-    const turnFade = 1 - dragBlend; // no arc while held — it must stay under the cursor
+    const turnFade = 1 - 0.25 * dragBlend;
     // Nose down entering the turn, nose up leaving it
     const loopPitch = -TURN_PITCH * Math.sin(w * Math.PI * 2) * turnFade;
 
@@ -701,7 +720,7 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     flick = Math.max(0, flick - dt * 1.4);
 
     // Tailbeat — same as live pakku.build / original: scroll-speed linked only
-    mixer?.update((steppedTime - prevStep) * (1 + scrollSpeed * 1.6 + turn * 1.0)); // tail drives the turn
+    mixer?.update((steppedTime - prevStep) * (1 + scrollSpeed * 1.6 + turn * 1.0 + dragBlend * Math.min(1.2, swimS * 0.3))); // tail follows the swim
 
     placeHit();
 
