@@ -1,88 +1,54 @@
 ---
 import ExternalLink from './ExternalLink.astro';
-
-const docsUrl = 'https://juraj-hrivnak.github.io/Pakku';
-const discordUrl = 'https://discord.com/invite/dtAyqdzTMj';
-const downloadUrl = 'https://github.com/juraj-hrivnak/Pakku/releases';
+import {
+  desktopDownloadPath,
+  discordUrl,
+  docsUrl,
+  installPakkuUrl,
+  pakkuDesktopGithub,
+  pakkuGithub,
+  pakkuJarUrl,
+} from '../lib/links';
 ---
-<nav aria-label="Primary">
-  <div class="wrap nav-inner">
-    <a class="brand" href="/">
+<nav
+  class="site-nav flex h-[var(--nav-h)] w-full items-center justify-between gap-3 border-b border-white/7 bg-black/72 px-[7vw] backdrop-blur-[10px]"
+  aria-label="Primary"
+>
+  <div class="flex min-w-0 items-center gap-2">
+    <div class="lg:hidden">
+      <label for="pakku-drawer" aria-label="Open menu" class="btn btn-square btn-ghost drawer-button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block size-5 stroke-current" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </label>
+    </div>
+    <a class="brand inline-flex items-center gap-2 text-[0.95rem] font-semibold text-base-content no-underline hover:no-underline" href="/">
       <svg width="24" height="24" viewBox="0 0 500 500" aria-hidden="true"><use href="#pakku-glyph"/></svg>
       Pakku
     </a>
+  </div>
 
-    <details class="nav-mobile">
-      <summary class="nav-mobile-btn">Menu</summary>
-      <ul class="nav-mobile-list">
-        <li><a href="#shots">Showcase</a></li>
-        <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
-        <li><ExternalLink href="https://github.com/juraj-hrivnak/Pakku">Pakku on GitHub</ExternalLink></li>
-        <li><ExternalLink href="https://github.com/juraj-hrivnak/PakkuDesktop">Pakku Desktop on GitHub</ExternalLink></li>
-        <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
-        <li><ExternalLink href={downloadUrl}>Download</ExternalLink></li>
+  <ul class="site-nav-links hidden items-center gap-5 text-[0.85rem] lg:flex">
+    <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
+    <li class="dropdown">
+      <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5">
+        GitHub
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <ul tabindex="-1" class="dropdown-content menu menu-sm rounded-box z-1 mt-2 w-44 bg-base-200 p-1.5 shadow">
+        <li><ExternalLink href={pakkuGithub}>Pakku</ExternalLink></li>
+        <li><ExternalLink href={pakkuDesktopGithub}>Pakku Desktop</ExternalLink></li>
       </ul>
-    </details>
+    </li>
+    <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
+  </ul>
 
-    <ul class="nav-links">
-      <li><a href="#shots">Showcase</a></li>
-      <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
-      <li class="nav-drop">
-        <button
-          class="nav-drop-btn"
-          type="button"
-          id="githubMenuBtn"
-          aria-expanded="false"
-          aria-controls="githubMenu"
-        >
-          GitHub
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <ul class="nav-drop-menu" id="githubMenu" hidden>
-          <li><ExternalLink href="https://github.com/juraj-hrivnak/Pakku">Pakku</ExternalLink></li>
-          <li><ExternalLink href="https://github.com/juraj-hrivnak/PakkuDesktop">Pakku Desktop</ExternalLink></li>
-        </ul>
-      </li>
-      <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
+  <div class="dropdown dropdown-end relative z-[35]">
+    <div tabindex="0" role="button" class="pakku-btn pakku-btn--primary">Download</div>
+    <ul tabindex="-1" class="menu menu-sm dropdown-content bg-base-200 rounded-box z-1 mt-2 w-56 p-1.5 shadow">
+      <li><ExternalLink href={installPakkuUrl}>Install Pakku</ExternalLink></li>
+      <li><ExternalLink href={pakkuJarUrl}>Download pakku.jar</ExternalLink></li>
+      <li><a href={desktopDownloadPath}>Download Desktop</a></li>
     </ul>
-
-    <ExternalLink class="btn btn-primary" href={downloadUrl}>Download</ExternalLink>
   </div>
 </nav>
-
-<script>
-  const btn = document.getElementById('githubMenuBtn');
-  const menu = document.getElementById('githubMenu');
-
-  if (btn instanceof HTMLButtonElement && menu instanceof HTMLElement) {
-    const setOpen = (open: boolean) => {
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      menu.hidden = !open;
-      btn.classList.toggle('is-open', open);
-    };
-
-    const close = () => setOpen(false);
-    const isOpen = () => btn.getAttribute('aria-expanded') === 'true';
-
-    const closeIfOutside = (target: EventTarget | null) => {
-      if (!isOpen()) return;
-      if (!(target instanceof Node)) return;
-      if (btn.contains(target) || menu.contains(target)) return;
-      close();
-    };
-
-    btn.addEventListener('click', () => {
-      setOpen(!isOpen());
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (!isOpen()) return;
-      close();
-      btn.focus();
-    });
-
-    document.addEventListener('click', (e) => closeIfOutside(e.target));
-    document.addEventListener('focusin', (e) => closeIfOutside(e.target));
-  }
-</script>

@@ -1,148 +1,281 @@
-/* ==========================================================================
-   Tokens — Pakku Desktop dark palette (PakkuDarkTheme.kt)
-   The yellow theme only overrides the semantic tokens at the bottom of this
-   block, so components never need per-theme rules.
-   ========================================================================== */
-:root {
-  /* Palette */
-  --gray3: #2b2d30;
-  --gray4: #393b40;
-  --gray5: #43454a;
-  --gray9: #868a91;
-  --gray10: #9da0a8;
-  --gray13: #dfe1e5;
-  --white: #fff;
-  --cyan: #0ff;
-  --cyan-bright: #3ff;
-  --on-cyan: #00191a;
-  --highlight: #1bccea;
-  --green: #3ddc97;
-  --yellow: #ffd700;
+@import "tailwindcss";
 
-  /* Type */
-  --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
-  --sans: "Segoe UI", -apple-system, system-ui, sans-serif;
-
-  /* Layout */
-  --nav-h: 50px;
-  --pad: 8vh 7vw;
-  --radius: 6px;
-  --hairline: 1px solid rgb(255 255 255 / 0.1);
-  --shadow: 0 12px 32px rgb(0 0 0 / 0.45);
-
-  /* Semantic (theme-able) */
-  --bg: #000;
-  --fg: var(--gray13);
-  --heading: var(--white);
-  --tagline: rgb(255 255 255 / 0.72);
-  --label: var(--gray10);
-  --hint: var(--gray10);
-  --btn-fg: var(--gray13);
-  --btn-border: var(--gray5);
-  --btn-hover-fg: var(--white);
-  --btn-hover-bg: rgb(0 255 255 / 0.05);
-  --btn-hover-border: var(--cyan);
-  --toggle-bg: var(--yellow);
-  --toggle-border: rgb(0 0 0 / 0.35);
-
-  color-scheme: dark;
+@theme {
+  --font-sans: "Segoe UI", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
 }
 
-:root.yellow {
-  --bg: var(--yellow);
+@plugin "daisyui" {
+  themes: pakku --default, pakku-yellow;
+}
+
+@plugin "daisyui/theme" {
+  name: "pakku";
+  default: true;
+  color-scheme: dark;
+
+  --color-base-100: #000000;
+  --color-base-200: #2b2d30;
+  --color-base-300: #393b40;
+  --color-base-content: #dfe1e5;
+  --color-primary: #00ffff;
+  --color-primary-content: #00191a;
+  --color-secondary: #1bccea;
+  --color-secondary-content: #00191a;
+  --color-accent: #3ddc97;
+  --color-accent-content: #00191a;
+  --color-neutral: #43454a;
+  --color-neutral-content: #dfe1e5;
+  --color-info: #1bccea;
+  --color-info-content: #00191a;
+  --color-success: #3ddc97;
+  --color-success-content: #00191a;
+  --color-warning: #ffd700;
+  --color-warning-content: #101010;
+  --color-error: #ff6b6b;
+  --color-error-content: #ffffff;
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.1875rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "pakku-yellow";
+  color-scheme: light;
+
+  --color-base-100: #ffd700;
+  --color-base-200: #f0c800;
+  --color-base-300: #e0b800;
+  --color-base-content: #101010;
+  --color-primary: #00191a;
+  --color-primary-content: #ffd700;
+  --color-secondary: #101010;
+  --color-secondary-content: #ffd700;
+  --color-accent: #00191a;
+  --color-accent-content: #ffd700;
+  --color-neutral: #101010;
+  --color-neutral-content: #ffd700;
+  --color-info: #00191a;
+  --color-info-content: #ffd700;
+  --color-success: #00191a;
+  --color-success-content: #ffd700;
+  --color-warning: #101010;
+  --color-warning-content: #ffd700;
+  --color-error: #7a0000;
+  --color-error-content: #ffd700;
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.1875rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Site chrome that daisyUI does not cover */
+:root,
+[data-theme="pakku"] {
+  --nav-h: 50px;
+  --heading: #ffffff;
+  --tagline: rgb(255 255 255 / 0.72);
+  --cyan: #00ffff;
+  --cyan-bright: #33ffff;
+  --on-cyan: #00191a;
+  /* pakku-* avoids colliding with daisyUI's own --btn-* internals */
+  --pakku-btn-fg: #dfe1e5;
+  --pakku-btn-border: #43454a;
+  --pakku-btn-hover-fg: #ffffff;
+  --pakku-btn-hover-bg: rgb(0 255 255 / 0.05);
+  --pakku-btn-hover-border: var(--cyan);
+  --label: #9da0a8;
+}
+
+[data-theme="pakku-yellow"] {
   --heading: #101010;
   --tagline: rgb(0 0 0 / 0.72);
+  --pakku-btn-fg: #101010;
+  --pakku-btn-border: rgb(0 0 0 / 0.4);
+  --pakku-btn-hover-fg: #000000;
+  --pakku-btn-hover-bg: rgb(0 0 0 / 0.05);
+  --pakku-btn-hover-border: #000000;
   --label: rgb(0 0 0 / 0.6);
-  --hint: #101010;
-  --btn-fg: #101010;
-  --btn-border: rgb(0 0 0 / 0.4);
-  --btn-hover-fg: #000;
-  --btn-hover-bg: rgb(0 0 0 / 0.05);
-  --btn-hover-border: #000;
-  --toggle-bg: #000;
-  --toggle-border: rgb(255 255 255 / 0.4);
-
-  color-scheme: light;
 }
 
-/* ==========================================================================
-   Base
-   ========================================================================== */
-*,
-::before,
-::after {
-  box-sizing: border-box;
+/*
+  Site CTAs — exact https://pakku.build/ button chrome.
+  Do NOT use daisyUI .btn / .btn-primary here; those fight these styles.
+*/
+.pakku-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  padding: 11px 20px;
+  border: 1px solid var(--pakku-btn-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pakku-btn-fg);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  text-decoration: none;
+  text-wrap: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  outline: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
-* {
-  margin: 0;
+.pakku-btn:hover,
+.pakku-btn:focus-visible {
+  border-color: var(--pakku-btn-hover-border);
+  background: var(--pakku-btn-hover-bg);
+  color: var(--pakku-btn-hover-fg);
+  text-decoration: none;
+}
+
+.pakku-btn:active {
+  border-color: var(--pakku-btn-hover-border);
+  background: var(--pakku-btn-hover-bg);
+  color: var(--pakku-btn-hover-fg);
+  transform: translateY(1px);
+}
+
+.pakku-btn--primary {
+  border-color: #00ffff;
+  background-color: #00ffff;
+  color: #00191a;
+}
+
+.pakku-btn--primary:hover,
+.pakku-btn--primary:focus-visible {
+  border-color: #00ffff;
+  background-color: transparent;
+  color: #00ffff;
+}
+
+.pakku-btn--primary:active {
+  border-color: #00ffff;
+  background-color: rgb(0 255 255 / 0.05);
+  color: #00ffff;
+  transform: translateY(1px);
+}
+
+.pakku-btn.join-item {
+  padding: 8px 14px;
+}
+
+.pakku-btn.join-item:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.pakku-btn.join-item:last-child {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  margin-inline-start: -1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pakku-btn {
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s, transform 0.12s;
+  }
+}
+
+/* daisyUI leftovers used only for icon/menu controls in drawer */
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--pakku-btn-fg);
+  box-shadow: none;
+}
+
+.btn-square {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 0;
   padding: 0;
+  border-radius: 3px;
 }
 
-/* No scroll-behavior: smooth — it fights the sticky scrub timing. */
 html {
-  background: var(--bg);
+  scroll-padding-top: calc(var(--nav-h) + 12px);
+}
+
+.site-nav-links a,
+.site-nav-links [role="button"],
+.foot-links a {
+  color: var(--label);
+  text-decoration: none;
+}
+
+.site-nav-links a:hover,
+.site-nav-links [role="button"]:hover,
+.foot-links a:hover {
+  color: var(--heading);
+  text-decoration: none;
+}
+
+.foot-meta {
+  color: #868a91;
+}
+
+[data-theme="pakku-yellow"] .foot-meta {
+  color: rgb(0 0 0 / 0.55);
+}
+
+[data-theme="pakku-yellow"] .site-nav {
+  background: rgb(255 215 0 / 0.85);
+  border-bottom-color: rgb(0 0 0 / 0.12);
 }
 
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--sans), serif;
+  min-height: 100svh;
+  overflow-x: clip;
+  font-family: var(--font-sans), serif;
   line-height: 1.6;
-}
-
-a {
-  color: var(--highlight);
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 h1,
 h2 {
+  color: var(--heading);
   text-wrap: balance;
 }
 
-p,
 .tagline {
+  color: var(--tagline);
   text-wrap: pretty;
 }
 
-::selection {
-  background: rgb(0 255 255 / 0.22);
+.ext {
+  width: 0.85em;
+  height: 0.85em;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: -0.05em;
+  margin-inline-start: 0.25em;
 }
 
-:focus-visible {
-  outline: 2px solid var(--cyan);
-  outline-offset: 2px;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.wrap {
-  max-width: 820px;
-  margin-inline: auto;
-  padding-inline: 26px;
-}
-
-/* Full-bleed content inside the hero and sections */
-:is(header, section) .wrap {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
+a:has(> .ext),
+.pakku-btn:has(> .ext) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
 }
 
 .skip {
@@ -152,421 +285,294 @@ p,
   z-index: 60;
   padding: 8px 14px;
   border-radius: 0 0 4px 4px;
-  background: var(--cyan);
-  color: var(--on-cyan);
+  background: var(--color-primary);
+  color: var(--color-primary-content);
   font-size: 0.8rem;
   font-weight: 600;
-
-  &:focus {
-    top: 0;
-    text-decoration: none;
-  }
 }
 
-/* ==========================================================================
-   Navigation
-   ========================================================================== */
-nav {
-  position: sticky;
+.skip:focus {
   top: 0;
-  z-index: 40;
-  border-bottom: 1px solid rgb(255 255 255 / 0.07);
-  background: rgb(0 0 0 / 0.72);
-  backdrop-filter: blur(10px);
+  text-decoration: none;
 }
 
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: var(--nav-h);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--fg);
-  font-size: 0.95rem;
-  font-weight: 600;
-
-  &:hover {
-    text-decoration: none;
-  }
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  list-style: none;
-  font-size: 0.85rem;
-}
-
-.nav-links a,
-.nav-drop-btn,
-.nav-drop-menu a,
-.nav-mobile-btn,
-.nav-mobile-list a {
-  color: var(--gray10);
-
-  &:hover {
-    color: var(--white);
-    text-decoration: none;
-  }
-}
-
-.nav-drop {
+/* Desktop download page */
+.desktop-download-page {
   position: relative;
+  z-index: 35;
+  flex: 1;
+}
+
+.desktop-download {
+  width: min(1120px, calc(100% - 14vw));
+  margin-inline: auto;
+  padding-block: clamp(2.5rem, 4vw, 4.5rem) clamp(3rem, 6vw, 5.5rem);
+}
+
+.desktop-download__intro {
+  max-width: 42rem;
+}
+
+.desktop-download__title {
+  margin: 0;
+  font-size: clamp(1.85rem, 1.2rem + 2.2vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.desktop-download__lede {
+  margin: 1rem 0 0;
+  max-width: 40ch;
+  font-size: clamp(1rem, 0.92rem + 0.4vw, 1.15rem);
+  line-height: 1.5;
+}
+
+.desktop-download__tabs {
   display: flex;
-  align-items: center;
-}
-
-.nav-drop-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  cursor: pointer;
-
-  & svg {
-    stroke: currentColor;
-  }
-
-  &.is-open svg {
-    transform: rotate(180deg);
-  }
-}
-
-/* Shared dropdown panel (desktop menu + mobile list) */
-.nav-drop-menu,
-.nav-mobile-list {
-  position: absolute;
-  z-index: 50;
-  padding: 6px;
-  border: 1px solid var(--gray5);
-  border-radius: 4px;
-  background: var(--gray3);
-  box-shadow: var(--shadow);
-  list-style: none;
-
-  & a {
-    display: block;
-    padding: 6px 12px;
-    border-radius: 3px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-
-    &:hover {
-      background: var(--gray4);
-    }
-  }
-}
-
-.nav-drop-menu {
-  top: calc(100% + 8px);
-  left: 50%;
-  min-width: 160px;
-  transform: translateX(-50%);
-}
-
-.nav-mobile {
-  display: none;
-  position: relative;
-}
-
-.nav-mobile-btn {
-  list-style: none;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
-
-  &::-webkit-details-marker {
-    display: none;
-  }
-}
-
-.nav-mobile-list {
-  top: calc(100% + 10px);
-  right: 0;
-  min-width: 220px;
-  padding: 8px;
-
-  & a {
-    padding: 8px 12px;
-    font-size: 0.85rem;
-  }
-}
-
-/* ==========================================================================
-   Buttons
-   ========================================================================== */
-.btn {
-  display: inline-block;
-  padding: 11px 20px;
-  border: 1px solid var(--btn-border);
+  gap: 0;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 2rem;
+  border: 1px solid var(--pakku-btn-border);
   border-radius: 3px;
-  background: transparent;
-  color: var(--btn-fg);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--btn-hover-border);
-    background: var(--btn-hover-bg);
-    color: var(--btn-hover-fg);
-    text-decoration: none;
-  }
+  overflow: hidden;
 }
 
-.btn-primary {
-  border-color: var(--cyan);
+.desktop-download__tab {
+  appearance: none;
+  margin: 0;
+  padding: 0.7rem 1.25rem;
+  border: 0;
+  border-inline-end: 1px solid var(--pakku-btn-border);
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.desktop-download__tab:last-child {
+  border-inline-end: 0;
+}
+
+.desktop-download__tab:hover,
+.desktop-download__tab:focus-visible {
+  color: var(--heading);
+  background: var(--pakku-btn-hover-bg);
+  outline: none;
+}
+
+.desktop-download__tab.is-active {
   background: var(--cyan);
   color: var(--on-cyan);
+}
 
-  &:hover {
-    border-color: var(--cyan-bright);
-    background: var(--cyan-bright);
-    color: var(--on-cyan);
+.desktop-download__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  margin-top: clamp(2rem, 3.5vw, 3rem);
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .desktop-download__grid {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   }
 }
 
-a:has(> .ext),
-.btn:has(> .ext) {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3em;
+.desktop-download__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 1rem 2rem;
+  margin: 0;
 }
 
-.ext {
-  width: 0.85em;
-  height: 0.85em;
-  flex-shrink: 0;
+.desktop-download__meta dt {
+  margin: 0;
+  color: var(--label);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-/* ==========================================================================
-   Hero + sections
-   ========================================================================== */
-header,
-section {
-  padding: var(--pad);
-}
-
-header {
-  display: flex;
-  align-items: center;
-  min-height: calc(100svh - var(--nav-h));
-}
-
-header h1 {
-  margin-inline-start: -0.06em;
-  font-size: clamp(4rem, 16vw, 12rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 0.9;
-  color: var(--heading);
-}
-
-header .tagline {
-  max-width: 36ch;
-  margin-top: 1.25rem;
-  font-size: clamp(1.1rem, 0.55rem + 1.6vw, 1.85rem);
-  line-height: 1.5;
-  color: var(--tagline);
-}
-
-.hero-ctas {
+.desktop-download__meta dd {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 26px;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.25rem 0 0;
+  color: var(--heading);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
-section {
+.desktop-download__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--pakku-btn-border);
+  border-radius: 3px;
+  color: var(--label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.desktop-download__arch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1.5rem;
+}
+
+.desktop-download__arch-label {
+  color: var(--label);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.desktop-download__arch-panel {
+  margin-top: 1.25rem;
+}
+
+.desktop-download__primary {
+  width: 100%;
+  max-width: 22rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: 0.95rem;
+  font-size: 0.95rem;
+}
+
+.desktop-download__size {
+  opacity: 0.72;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.desktop-download__empty {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-height: 100svh;
-  scroll-margin-top: calc(var(--nav-h) + 14px);
+  align-items: flex-start;
+  gap: 0.85rem;
 }
 
-section.right {
-  align-items: flex-end;
-  text-align: right;
+.desktop-download__empty p {
+  margin: 0;
+  color: var(--tagline);
+  font-size: 0.95rem;
 }
 
-section.right h2 {
-  margin-inline-start: auto;
+.desktop-download__alts {
+  margin-top: 1.5rem;
 }
 
-h2 {
-  max-width: 28ch;
-  font-size: clamp(1.65rem, 1.2rem + 2vw, 2.75rem);
+.desktop-download__alts h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+}
+
+.desktop-download__alts ul {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  border-top: 1px solid color-mix(in oklab, var(--pakku-btn-border) 80%, transparent);
+}
+
+.desktop-download__alts li {
+  border-bottom: 1px solid color-mix(in oklab, var(--pakku-btn-border) 80%, transparent);
+}
+
+.desktop-download__alts a {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.1rem;
+  color: var(--heading);
+  text-decoration: none;
+}
+
+.desktop-download__alts a:hover,
+.desktop-download__alts a:focus-visible {
+  color: var(--cyan-bright);
+}
+
+.desktop-download__alts a span:first-child {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.desktop-download__notes {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+  max-width: 38rem;
+}
+
+.desktop-download__notes p {
+  margin: 0;
+  color: var(--label);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.desktop-download__releases {
+  margin: 1.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.desktop-download__releases a {
+  color: var(--label);
+  text-decoration: none;
+}
+
+.desktop-download__releases a:hover,
+.desktop-download__releases a:focus-visible {
   color: var(--heading);
 }
 
-.final {
-  align-items: center;
-  text-align: center;
+.desktop-download__shot {
+  margin: 0;
+  border: 1px solid color-mix(in oklab, var(--pakku-btn-border) 85%, transparent);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #121316;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.35);
 }
 
-.final h2 {
-  max-width: 22ch;
-  margin-inline: auto;
-}
-
-.final .hero-ctas {
-  justify-content: center;
-  gap: 14px;
-  margin-top: 36px;
-}
-
-/* ==========================================================================
-   Showcase gallery — "/" slash: CLI low-left, Desktop high-right
-   ========================================================================== */
-.shots {
+.desktop-download__shot img {
   display: block;
-  position: relative;
-  padding: 0;
-  overflow: visible;
-  text-align: left;
-}
-
-.shots-stage {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: start;
-  column-gap: 2vw;
-  padding: var(--pad);
-  overflow: visible;
-}
-
-.shots-cli,
-.shots-desk {
-  --pane-w: min(36vw, 540px);
-
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.shots-cli {
-  --pane-w: min(40vw, 580px);
-
-  align-items: flex-end;
-  justify-self: end;
-  margin-top: 22vh;
-  margin-inline-end: -2vw;
-}
-
-.shots-desk {
-  --pane-w: min(42vw, 560px);
-
-  align-items: flex-start;
-  justify-self: start;
-  margin-inline-start: -2vw;
-}
-
-/* Above the images at rest; sticks under the nav while the column scrolls */
-.shots h2 {
-  position: sticky;
-  top: calc(var(--nav-h) + 12px);
-  z-index: 2;
-  width: max-content;
-  max-width: 100%;
-  margin-bottom: 14px;
-  pointer-events: none;
-}
-
-.shots-cli h2 {
-  align-self: flex-start;
-  text-align: start;
-}
-
-.shots-desk h2 {
-  align-self: flex-end;
-  text-align: end;
-}
-
-.shots-row,
-.cli-row {
-  display: flex;
-  flex-direction: column;
-  gap: 5vh;
-}
-
-:is(.shots-row, .cli-row) img {
-  display: block;
-  width: var(--pane-w);
+  width: 100%;
   height: auto;
 }
 
-.shots-row img {
-  border: var(--hairline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+[data-theme="pakku-yellow"] .desktop-download__tab.is-active {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
 }
 
-/* ==========================================================================
-   Footer
-   ========================================================================== */
-footer {
-  position: relative;
-  z-index: 32;
-  padding-block: 24px;
-  border-top: 1px solid rgb(255 255 255 / 0.07);
-  background: #000;
+[data-theme="pakku-yellow"] .desktop-download__shot {
+  background: #101010;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.18);
 }
 
-.foot-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  font-size: 0.8rem;
+[data-theme="pakku-yellow"] .desktop-download__alts a:hover,
+[data-theme="pakku-yellow"] .desktop-download__alts a:focus-visible {
+  color: #000;
 }
 
-.foot-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-
-  & a {
-    position: relative;
-    color: var(--gray10);
-
-    &::before {
-      content: "";
-      position: absolute;
-      inset: -12px -8px;
-    }
-
-    &:hover {
-      color: var(--white);
-    }
-  }
-}
-
-.foot-meta {
-  color: var(--gray9);
-  font-size: 0.8rem;
-}
-
-/* ==========================================================================
-   Fixed UI: WebGL canvas, scroll hint, theme toggle
-   ========================================================================== */
+/* Dolphin overlay + scroll hint + theme orb */
 #gl {
   position: fixed;
   inset: 0;
@@ -585,8 +591,7 @@ footer {
   font-size: 0.8rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--hint);
-  opacity: 0.6;
+  opacity: 0.55;
   pointer-events: none;
 }
 
@@ -598,27 +603,43 @@ footer {
   width: 36px;
   height: 36px;
   padding: 0;
-  border: 2px solid var(--toggle-border);
+  border: 2px solid rgb(0 0 0 / 0.35);
   border-radius: 50%;
-  background: var(--toggle-bg);
+  background: #ffd700;
   box-shadow: 0 6px 24px rgb(0 0 0 / 0.4);
   cursor: pointer;
 }
 
-/* ==========================================================================
-   Motion — only when the user hasn't asked for less
-   ========================================================================== */
+[data-theme="pakku-yellow"] .theme-btn {
+  background: #000;
+  border-color: rgb(255 255 255 / 0.4);
+}
+
+/* Showcase slash composition (desktop); stacks on small screens via Tailwind */
+.shots h2 {
+  position: sticky;
+  top: calc(var(--nav-h) + 12px);
+  z-index: 2;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .shots-cli {
+    margin-top: 22vh;
+  }
+
+  .shots-pane {
+    width: min(40vw, 580px);
+  }
+
+  .shots-desk .shots-pane {
+    width: min(42vw, 560px);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .skip {
     transition: top 0.12s;
-  }
-
-  .btn {
-    transition: background 0.12s, border-color 0.12s;
-  }
-
-  .nav-drop-btn svg {
-    transition: transform 0.12s;
   }
 
   .hint {
@@ -627,51 +648,10 @@ footer {
 
   .theme-btn {
     transition: transform 0.12s;
-
-    &:hover {
-      transform: scale(1.08);
-    }
-  }
-}
-
-/* ==========================================================================
-   Mobile — stacked columns
-   ========================================================================== */
-@media (max-width: 720px) {
-  .nav-links {
-    display: none;
   }
 
-  .nav-mobile {
-    display: block;
-  }
-
-  header,
-  section {
-    min-height: 0;
-  }
-
-  .shots {
-    padding: var(--pad);
-  }
-
-  .shots-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6vh;
-    padding: 0;
-  }
-
-  .shots-cli,
-  .shots-desk {
-    --pane-w: 84vw;
-
-    align-items: stretch;
-    justify-self: stretch;
-    width: 100%;
-    margin-top: 0;
-    margin-inline: 0;
+  .theme-btn:hover {
+    transform: scale(1.08);
   }
 }
 
