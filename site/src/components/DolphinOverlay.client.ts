@@ -10,6 +10,9 @@ const HALF_LENGTH = 3;
 const EDGE_MARGIN = 0.3;
 const BOB = 0.06;
 const MAX_WIDTH = 0.8;
+const INFLUENCE = 2.5; // cursor proximity that pulls the dolphin
+const PULL = 0.35;
+const PLAY_OFFSET = INFLUENCE * PULL; // pads the grab rect for cursor play
 
 // Light intensities were tuned before three switched to physically based units (r155).
 const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
@@ -129,6 +132,49 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   scene.add(dolphin);
   let mixer: THREE.AnimationMixer | undefined;
 
+  // Invisible grab surface that tracks the dolphin (canvas stays pointer-events: none).
+  const hitEl = document.getElementById('dolphin-hit');
+  const raycaster = new THREE.Raycaster();
+  const zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const ndc = new THREE.Vector2();
+  const pointer = new THREE.Vector3();
+  let pointerFresh = false;
+  const dragPos = new THREE.Vector3();
+  const dragOffset = new THREE.Vector3();
+  let dragId: number | null = null;
+  let dragBlend = 0;
+  let face = 0;
+  let faceTo = 0;
+  let pitch = 0;
+  let pitchTo = 0;
+  let prevDragX = 0;
+  let prevDragY = 0;
+  let modelReady = false;
+
+  const toWorld = (x: number, y: number, out: THREE.Vector3) => {
+    ndc.set(
+      (x / Math.max(1, innerWidth)) * 2 - 1,
+      -((y / Math.max(1, innerHeight)) * 2 - 1),
+    );
+    raycaster.setFromCamera(ndc, camera);
+    raycaster.ray.intersectPlane(zPlane, out);
+    return out;
+  };
+
+  const placeHit = () => {
+    if (!(hitEl instanceof HTMLElement) || !modelReady) return;
+    const w = Math.max(1, innerWidth);
+    const h = Math.max(1, innerHeight);
+    const halfH = halfWidth / camera.aspect;
+    const hx = HALF_LENGTH * scale * 1.05 + PLAY_OFFSET;
+    const hy = 1.0 * scale + BOB * zoom + PLAY_OFFSET;
+    const pxX = w / (2 * halfWidth);
+    const pxY = h / (2 * halfH);
+    hitEl.style.transform = `translate(${w / 2 + (dolphin.position.x - hx) * pxX}px, ${h / 2 - (dolphin.position.y + hy) * pxY}px)`;
+    hitEl.style.width = `${2 * hx * pxX}px`;
+    hitEl.style.height = `${2 * hy * pxY}px`;
+  };
+
   new GLTFLoader()
     .loadAsync(MODEL_URL)
     .then(({ scene: model, animations }) => {
@@ -145,12 +191,52 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
       material.needsUpdate = true;
 
       dolphin.add(model);
+      modelReady = true;
+      if (hitEl instanceof HTMLElement) hitEl.style.visibility = 'visible';
       if (animations[0]) {
         mixer = new THREE.AnimationMixer(model);
         mixer.clipAction(animations[0]).play();
       }
     })
     .catch((err) => console.error('GLB load failed', err));
+
+  if (hitEl instanceof HTMLElement) {
+    const endDrag = (e: PointerEvent) => {
+      if (e.pointerId !== dragId) return;
+      dragId = null;
+      hitEl.classList.remove('dragging');
+    };
+    hitEl.addEventListener('pointerdown', (e) => {
+      if (dragId !== null || !modelReady) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      toWorld(e.clientX, e.clientY, dragPos);
+      dragOffset.set(dragPos.x - dolphin.position.x, dragPos.y - dolphin.position.y, 0);
+      prevDragX = dragPos.x;
+      prevDragY = dragPos.y;
+      dragId = e.pointerId;
+      hitEl.setPointerCapture(e.pointerId);
+      hitEl.classList.add('dragging');
+      e.preventDefault();
+    }, { signal });
+    hitEl.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== dragId) return;
+      toWorld(e.clientX, e.clientY, dragPos);
+      const halfH = halfWidth / camera.aspect;
+      dragPos.x = THREE.MathUtils.clamp(dragPos.x, -(halfWidth - 0.5), halfWidth - 0.5);
+      dragPos.y = THREE.MathUtils.clamp(dragPos.y, -(halfH - 0.5), halfH - 0.5);
+    }, { passive: true, signal });
+    hitEl.addEventListener('pointerup', endDrag, { signal });
+    hitEl.addEventListener('pointercancel', endDrag, { signal });
+    hitEl.addEventListener('lostpointercapture', endDrag, { signal });
+  }
+
+  addEventListener('pointermove', (e) => {
+    toWorld(e.clientX, e.clientY, pointer);
+    pointerFresh = true;
+  }, { passive: true, signal });
+  addEventListener('pointerout', (e) => {
+    if (!e.relatedTarget) pointerFresh = false;
+  }, { signal });
 
   // The layout is the original one at load-time zoom. Browser zoom is detected
   // through devicePixelRatio and applied on top, so the dolphin, its margin and
@@ -235,18 +321,66 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     smooth += (scroll - smooth) * Math.min(1, dt * 5);
     const velocity = dt > 0 ? Math.abs(smooth - prev) / dt : 0;
     speed += (Math.min(1, velocity * 1.33) - speed) * (1 - Math.exp(-6 * dt));
-    mixer?.update((steppedTime - prevStep) * (1 + speed * 1.6));
 
     const p = smooth;
     const range = Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
+    const pathX = (p * 2 - 1) * range;
+    const pathY = 1.5 - p * 3 + Math.sin(steppedTime * 1.1) * BOB * zoom;
+
+    let targetX = pathX;
+    let targetY = pathY;
+    let excitement = 0;
+    if (pointerFresh && dragBlend < 0.5) {
+      const dx = pointer.x - pathX;
+      const dy = pointer.y - pathY;
+      const t = THREE.MathUtils.clamp(1 - Math.hypot(dx, dy) / INFLUENCE, 0, 1);
+      excitement = t * t;
+      targetX += dx * excitement * PULL;
+      targetY += dy * excitement * PULL;
+    }
+
+    mixer?.update((steppedTime - prevStep) * (1 + speed * 1.6 + excitement * 0.8));
+
+    const grabbing = dragId !== null;
+    // grab snaps in; release eases back onto the scroll path
+    dragBlend += ((grabbing ? 1 : 0) - dragBlend) * (1 - Math.exp(-(grabbing ? 12 : 3.2) * dt));
     dolphin.scale.setScalar(scale);
     dolphin.position.set(
-      (p * 2 - 1) * range,
-      1.5 - p * 3 + Math.sin(steppedTime * 1.1) * BOB * zoom,
+      THREE.MathUtils.lerp(targetX, dragPos.x - dragOffset.x, dragBlend),
+      THREE.MathUtils.lerp(targetY, dragPos.y - dragOffset.y, dragBlend),
       0,
     );
-    dolphin.rotation.y = -0.4 + 0.3 * Math.sin(p * Math.PI * 2);
-    dolphin.rotation.z = -0.08 - 0.3 * p;
+
+    // face/pitch follow scroll or drag intent (not bob/cursor jitter)
+    const scrollVel = dt > 0 ? (smooth - prev) / dt : 0;
+    if (grabbing) {
+      const dvx = dt > 0 ? (dragPos.x - prevDragX) / dt : 0;
+      const dvy = dt > 0 ? (dragPos.y - prevDragY) / dt : 0;
+      if (dvx < -0.2) faceTo = 1;
+      else if (dvx > 0.2) faceTo = 0;
+      if (dvy > 0.2) pitchTo = 1;
+      else if (dvy < -0.2) pitchTo = 0;
+    } else if (dragBlend < 0.05) {
+      if (p < 0.08) faceTo = 0;
+      else if (p > 0.92) faceTo = 1;
+      else if (scrollVel < -0.2) faceTo = 1;
+      else if (scrollVel > 0.2) faceTo = 0;
+
+      if (p < 0.08) pitchTo = 0;
+      else if (p > 0.92 && scrollVel > -0.04) pitchTo = 0.35;
+      else if (scrollVel < -0.15) pitchTo = 1;
+      else if (scrollVel > 0.2) pitchTo = 0;
+      // else keep pitchTo — nose-up holds after a climb until top or scroll-down
+    }
+    prevDragX = dragPos.x;
+    prevDragY = dragPos.y;
+
+    face += (faceTo - face) * (1 - Math.exp(-3.5 * dt));
+    pitch += (pitchTo - pitch) * (1 - Math.exp(-4 * dt));
+    dolphin.rotation.y = -0.4 + 0.3 * Math.sin(p * Math.PI * 2) * (1 - face) + face * Math.PI;
+    dolphin.rotation.z = THREE.MathUtils.lerp(-0.08 - 0.3 * p, 0.55, pitch) * (1 - dragBlend);
+
+    placeHit();
 
     renderer.setRenderTarget(target);
     renderer.render(scene, camera);
@@ -276,6 +410,7 @@ if (canvas instanceof HTMLCanvasElement) {
   const remove = () => {
     canvas.remove();
     hint?.remove();
+    document.getElementById('dolphin-hit')?.remove();
   };
 
   if (reduceMotion.matches) {

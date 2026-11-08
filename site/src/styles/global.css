@@ -217,6 +217,44 @@ html {
   scroll-padding-top: calc(var(--nav-h) + 12px);
 }
 
+.site-nav-end .nav-download {
+  margin-inline-start: 1.25rem;
+}
+
+.nav-download.is-deferred {
+  opacity: 0;
+  pointer-events: none;
+  max-width: 0;
+  margin-inline-start: 0;
+  overflow: hidden;
+}
+
+.nav-download.is-deferred.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  max-width: 10rem;
+  margin-inline-start: 1.25rem;
+  overflow: visible;
+}
+
+.home-main {
+  position: relative;
+}
+
+.home-fold {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 0;
+  border-top: 1px solid color-mix(in oklab, var(--heading) 14%, transparent);
+  pointer-events: none;
+}
+
+[data-theme="pakku-yellow"] .home-fold {
+  border-top-color: color-mix(in oklab, #000 18%, transparent);
+}
+
 .site-nav-links a,
 .site-nav-links [role="button"],
 .foot-links a {
@@ -323,7 +361,6 @@ a:has(> .ext),
 
 .desktop-download__lede {
   margin: 1rem 0 0;
-  max-width: 40ch;
   font-size: clamp(1rem, 0.92rem + 0.4vw, 1.15rem);
   line-height: 1.5;
 }
@@ -595,6 +632,24 @@ a:has(> .ext),
   pointer-events: none;
 }
 
+#dolphin-hit {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 33;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &.dragging {
+    cursor: grabbing;
+  }
+}
+
 .theme-btn {
   position: fixed;
   right: calc(16px + env(safe-area-inset-right, 0px));
@@ -644,6 +699,13 @@ a:has(> .ext),
 
   .hint {
     transition: opacity 0.4s;
+  }
+
+  .nav-download.is-deferred {
+    transition:
+      opacity 0.4s,
+      max-width 0.4s,
+      margin-inline-start 0.4s;
   }
 
   .theme-btn {

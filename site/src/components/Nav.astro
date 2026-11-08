@@ -9,9 +9,14 @@ import {
   pakkuGithub,
   pakkuJarUrl,
 } from '../lib/links';
+
+const path = Astro.url.pathname;
+const isHome = path === '/' || path === '';
+const isDownload =
+  path === '/download' || path === '/download/' || path.startsWith('/download/');
 ---
 <nav
-  class="site-nav flex h-[var(--nav-h)] w-full items-center justify-between gap-3 border-b border-white/7 bg-black/72 px-[7vw] backdrop-blur-[10px]"
+  class="site-nav flex h-[var(--nav-h)] w-full items-center gap-3 border-b border-white/7 bg-black/72 px-[7vw] backdrop-blur-[10px]"
   aria-label="Primary"
 >
   <div class="flex min-w-0 items-center gap-2">
@@ -28,27 +33,77 @@ import {
     </a>
   </div>
 
-  <ul class="site-nav-links hidden items-center gap-5 text-[0.85rem] lg:flex">
-    <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
-    <li class="dropdown">
-      <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5">
-        GitHub
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-      <ul tabindex="-1" class="dropdown-content menu menu-sm rounded-box z-1 mt-2 w-44 bg-base-200 p-1.5 shadow">
-        <li><ExternalLink href={pakkuGithub}>Pakku</ExternalLink></li>
-        <li><ExternalLink href={pakkuDesktopGithub}>Pakku Desktop</ExternalLink></li>
-      </ul>
-    </li>
-    <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
-  </ul>
-
-  <div class="dropdown dropdown-end relative z-[35]">
-    <div tabindex="0" role="button" class="pakku-btn pakku-btn--primary">Download</div>
-    <ul tabindex="-1" class="menu menu-sm dropdown-content bg-base-200 rounded-box z-1 mt-2 w-56 p-1.5 shadow">
-      <li><ExternalLink href={installPakkuUrl}>Install Pakku</ExternalLink></li>
-      <li><ExternalLink href={pakkuJarUrl}>Download pakku.jar</ExternalLink></li>
-      <li><a href={desktopDownloadPath}>Download Desktop</a></li>
+  <div class="site-nav-end ms-auto flex min-w-0 items-center justify-end">
+    <ul class="site-nav-links hidden items-center gap-5 text-[0.85rem] lg:flex">
+      <li><ExternalLink href={docsUrl}>Documentation</ExternalLink></li>
+      <li class="dropdown">
+        <div tabindex="0" role="button" class="inline-flex cursor-pointer items-center gap-1.5">
+          GitHub
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <ul tabindex="-1" class="dropdown-content menu menu-sm rounded-box z-1 mt-2 w-44 bg-base-200 p-1.5 shadow">
+          <li><ExternalLink href={pakkuGithub}>Pakku</ExternalLink></li>
+          <li><ExternalLink href={pakkuDesktopGithub}>Pakku Desktop</ExternalLink></li>
+        </ul>
+      </li>
+      <li><ExternalLink href={discordUrl}>Discord</ExternalLink></li>
     </ul>
+
+    {!isDownload && (
+      <div
+        class:list={['nav-download', 'dropdown', 'dropdown-end', 'relative', 'z-[35]', { 'is-deferred': isHome }]}
+        data-nav-download={isHome ? 'home' : undefined}
+      >
+        <div tabindex="0" role="button" class="pakku-btn pakku-btn--primary">Download</div>
+        <ul tabindex="-1" class="menu menu-sm dropdown-content bg-base-200 rounded-box z-1 mt-2 w-56 p-1.5 shadow">
+          <li><ExternalLink href={installPakkuUrl}>Install Pakku</ExternalLink></li>
+          <li><ExternalLink href={pakkuJarUrl}>Download pakku.jar</ExternalLink></li>
+          <li><a href={desktopDownloadPath}>Download Desktop</a></li>
+        </ul>
+      </div>
+    )}
   </div>
 </nav>
+
+{isHome && (
+  <script>
+    const download = document.querySelector('[data-nav-download="home"]');
+    const fold = document.getElementById('home-fold');
+
+    if (download instanceof HTMLElement) {
+      const placeFold = () => {
+        if (!(fold instanceof HTMLElement)) return;
+        const main = document.getElementById('main');
+        const mainTop =
+          main instanceof HTMLElement
+            ? main.getBoundingClientRect().top + window.scrollY
+            : 0;
+        // First-screen bottom in document space, relative to main.
+        fold.style.top = `${Math.max(0, window.innerHeight - mainTop)}px`;
+      };
+
+      const sync = () => {
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion || !(fold instanceof HTMLElement)) {
+          download.classList.toggle('is-visible', true);
+          return;
+        }
+        // Only once the fold has scrolled off the top (we're below the line).
+        const pastFold = fold.getBoundingClientRect().top <= 0;
+        download.classList.toggle('is-visible', pastFold);
+      };
+
+      placeFold();
+      sync();
+      window.addEventListener('scroll', sync, { passive: true });
+      window.addEventListener(
+        'resize',
+        () => {
+          if (window.scrollY <= 0) placeFold();
+          sync();
+        },
+        { passive: true },
+      );
+    }
+  </script>
+)}
