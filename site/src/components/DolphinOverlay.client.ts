@@ -47,11 +47,11 @@ const FLIP_COOLDOWN = 0.6;
 const EDGE_P = 0.04; // scroll progress within this of an end counts as "at the end"
 const SCROLL_FACE_V = 0.04; // scroll speed (progress/s) needed to count as a direction
 
-// Dolphin U-turn: a banked semicircle through depth (nose sweeps away from the camera),
-// sinking a little and tipping nose-down then nose-up, then gliding back to the lane.
+// Dolphin U-turn: banked arc with a *shallow* depth offset — nose sweeps into −Z for
+// foreshortening. Keep |z| small so perspective doesn't read as a zoom.
 // All visual-only offsets — they never feed back into the steering.
-const TURN_RADIUS_K = 0.7; // arc radius as a fraction of the half body length
-const TURN_DIP = 0.5; // world units the body sinks at the middle of the turn
+const TURN_RADIUS_K = 0.18; // was 0.7 — deep Z shrank the silhouette like a zoom
+const TURN_DIP = 0.18; // subtle sink mid-turn
 const TURN_PITCH = 0.45; // rad: nose down first half of the turn, nose up second half
 const SETTLE_TIME = 0.9; // seconds to glide back onto the lane plane after the turn
 
@@ -295,14 +295,15 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     aimQuat.setFromRotationMatrix(basis);
   };
 
-  // Place the body at depth z while keeping its projected screen position equal to `pos`
+  // Place the body at a shallow depth — natural perspective only (no screen-lock scale-up,
+  // which made the into-screen arc look like a zoom).
   let visXOff = 0; // visual-only turn-arc offsets (never enter the physics)
   let visYOff = 0;
   const applyPose = (z: number, xOff: number, yOff: number) => {
-    depthK = (CAMERA.distance - z) / CAMERA.distance;
+    depthK = 1;
     visXOff = xOff;
     visYOff = yOff;
-    dolphin.position.set((pos.x + xOff) * depthK, (pos.y + yOff) * depthK, z);
+    dolphin.position.set(pos.x + xOff, pos.y + yOff, z);
   };
 
   const clampSpeed = () => {
