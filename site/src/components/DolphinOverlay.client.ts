@@ -11,39 +11,45 @@ const EDGE_MARGIN = 0.3;
 const BOB = 0.06;
 const MAX_WIDTH = 0.8;
 
-// Grab hit pad only — no hover play; interactive solely while dragging
+// Grab hit pad — interactive solely while dragging (no hover play)
 const HIT_PAD = 0.35;
 
-// Fluid spring toward scroll lane / grab (v2)
+// Fluid spring toward scroll lane / grab
 const SPRING_K = 18;
-const SPRING_D = 4.2;
+const SPRING_D = 6.5; // ~0.77 damping ratio: a hint of fluid overshoot, no oscillation loop
 const DRAG_SPRING_K = 52; // snappy follow while held
-const DRAG_SPRING_D = 2.4;
+const DRAG_SPRING_D = 8;
+const MAX_SPEED = 16;
+const BLEND_RATE = 12;
 
-// 3D aim: nose follows direction, world-up kept (no free belly roll)
-const STEER = 0.45;
-const ORIENT_RATE = 6.0;
-const BLEND_RATE = 12.0;
-const AIM_BLEND_RATE = 5.0;
+// Orientation: continuous yaw (turn through −Z), pitch (nose tip) and bank
+const TURN_TIME = 1.15; // seconds for a full turn-around (quintic ease: no jerk at start or end)
+const PITCH_RATE = 7;
+const PITCH_MAX = 0.95;
+const REST_TILT = 0.35; // idle: nose angled slightly toward the camera
+const BANK_MAX = 0.95; // dolphins bank hard into a turn, belly toward the inside of the arc
 
-// Real 3D turns: nose aims into the dive, body swims along that heading through XYZ
-const TURN_INTO = 1.35;
-const SWIM_PUSH = 0.55; // blend velocity onto the nose while turning
-const HOME_Z_K = 5.5; // soft pull back to the lane plane after the dive
-const HOME_Z_D = 3.2;
-const Z_LIMIT = 6.0;
-const ARC_TIME = 0.85;
-const FLIP_STICKY = 0.9;
-const FLIP_COOLDOWN = 1.1;
+// Facing reverse: direction must be held for a moment (hysteresis) before it commits
+const FLIP_THRESHOLD = 0.5; // |unit dir x| needed to count as "wants to face the other way"
+const FLIP_MIN_SPEED = 0.6; // slower than this is drift/settling, never a reason to turn around
+const FLIP_HOLD = 0.2; // seconds the intent must persist
+const FLIP_COOLDOWN = 0.6;
 
-// Biomechanics
-const STROUAL = 0.22;
-const BANK_MAX = 0.5; // bank into 3D turns; not a flat spin
-const TURN_K = 0.045;
+// Facing follows the page: scrolling down / top of page → faces right,
+// scrolling up / bottom of page → faces left. The turn-around happens at the ends.
+const EDGE_P = 0.04; // scroll progress within this of an end counts as "at the end"
+const SCROLL_FACE_V = 0.04; // scroll speed (progress/s) needed to count as a direction
+
+// Dolphin U-turn: a banked semicircle through depth (nose sweeps away from the camera),
+// sinking a little and tipping nose-down then nose-up, then gliding back to the lane.
+// All visual-only offsets — they never feed back into the steering.
+const TURN_RADIUS_K = 0.7; // arc radius as a fraction of the half body length
+const TURN_DIP = 0.5; // world units the body sinks at the middle of the turn
+const TURN_PITCH = 0.45; // rad: nose down first half of the turn, nose up second half
+const SETTLE_TIME = 0.9; // seconds to glide back onto the lane plane after the turn
+
 const ESCAPE_SPEED = 7.5;
 const ESCAPE_TIME = 0.75;
-const SCROLL_TAIL = 0.7; // was *4 — scroll must not thrash the tailbeat
-const DRAG_TAIL_CAP = 0.9; // drag spring is fast — never let that thrash the mixer
 
 // Light intensities were tuned before three switched to physically based units (r155).
 const LIGHT_SCALE = Number(THREE.REVISION) >= 155 ? Math.PI : 1;
@@ -113,12 +119,40 @@ const fragmentShader = `
   }
 `;
 
+const { clamp, lerp, smoothstep } = THREE.MathUtils;
+
+// Frame-rate independent exponential ease
+const ease = (cur: number, target: number, rate: number, dt: number) =>
+    cur + (target - cur) * (1 - Math.exp(-rate * dt));
+
+// Scratch result for setUnit (avoids per-frame allocation)
+const dirTmp = { x: 1, y: 0 };
+const setUnit = (x: number, y: number, fx: number, fy: number) => {
+  const l = Math.hypot(x, y);
+  if (l > 1e-4) {
+    dirTmp.x = x / l;
+    dirTmp.y = y / l;
+  } else {
+    dirTmp.x = fx;
+    dirTmp.y = fy;
+  }
+};
+
 const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   const abort = new AbortController();
   const { signal } = abort;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
   renderer.setClearColor(0x000000, 0);
+
+  let contextLost = false;
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    contextLost = true;
+  }, { signal });
+  canvas.addEventListener('webglcontextrestored', () => {
+    contextLost = false;
+  }, { signal });
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, CAMERA.near, CAMERA.far);
@@ -162,75 +196,105 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   const dolphin = new THREE.Group();
   scene.add(dolphin);
   let mixer: THREE.AnimationMixer | undefined;
+  let model: THREE.Object3D | undefined;
 
-  // ---- pointer interaction ----
+  // ---- layout state (declared up front; updated in resize) ----
+  const baseDpr = devicePixelRatio || 1;
+  let zoom = 1;
+  let scale = 0.8;
+  let halfWidth = 7;
+  let scroll = 0;
+
+  // ---- pointer interaction (drag only) ----
   const hitEl = document.getElementById('dolphin-hit');
+  const hit = hitEl instanceof HTMLElement ? hitEl : null;
+  if (hit) {
+    // Positioned purely by our transform; touch-drag must not become a scroll gesture
+    Object.assign(hit.style, {
+      position: 'fixed',
+      left: '0',
+      top: '0',
+      right: 'auto',
+      bottom: 'auto',
+      touchAction: 'none',
+    });
+  }
   const raycaster = new THREE.Raycaster();
   const zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   const ndc = new THREE.Vector2();
   const dragPos = new THREE.Vector3();
-  const dragOffset = new THREE.Vector3();
+  const dragOffset = new THREE.Vector2();
   let dragId: number | null = null;
   let dragBlend = 0;
   let modelReady = false;
 
-  // ---- fluid spring + 3D aim (nose along dir, belly via world-up) ----
-  const vel = new THREE.Vector3();
-  let excitement = 0;
+  // ---- motion state ----
+  // `pos` is where the dolphin appears ON SCREEN (home-plane coordinates). Real depth is
+  // applied afterwards with perspective compensation, so the screen position, the hit box
+  // and the drag mapping never shift while the body dives.
+  const pos = new THREE.Vector2();
+  const vel = new THREE.Vector2();
+  let depthK = 1; // perspective compensation factor of the current frame
+  let swimS = 0; // smoothed swim speed (raw spring speed is too noisy to steer by)
+  let scrollUp = 0; // smoothed "scrolling up" speed, tips the nose up
+  let escapeEase = 0;
   let escapeTimer = 0;
-  let flick = 0; // 1 → 0: idle barrel-roll on the main (nose) axis
-  let idleTimer = 5; // seconds until the next idle flourish
-  let fClip = 1 / 1.2;
-  let bank = 0;
-  let prevAng = -0.35;
-  let faceSign = 1; // sticky left/right facing — no jitter flips
+  let flick = 0; // 1 → 0: idle barrel-roll on the nose axis
+  let idleTimer = 5;
+
+  // Orientation state — everything continuous, nothing ever snaps
+  let faceSign = 1; // committed facing: +1 right, −1 left
+  let flipTimer = 0;
+  let turnFrom = 0; // turn animation: 0 = facing right, 1 = facing left
+  let turnTo = 0;
+  let turnT = 1; // 0 → 1 over TURN_TIME; 1 = no turn in progress
+  let turnP = 0;
+  let tiltS = REST_TILT;
+  let settleT = 1; // 0 right after a turn starts, 1 once the glide back to the lane is done
   let flipCool = 0;
-  let aimBlend = 0.25;
-  let turnArc = 0; // 1 → 0: dive into screen while reversing facing
+  let yaw = -REST_TILT; // 0 = facing right, π = facing left; in-between = nose into screen
+  let yawVel = 0;
+  let pitch = -0.15;
+  let bank = 0;
 
   const forward = new THREE.Vector3();
-  const aimDir = new THREE.Vector3(1, 0, 0);
   const right = new THREE.Vector3();
   const up = new THREE.Vector3();
   const worldUp = new THREE.Vector3(0, 1, 0);
   const aimQuat = new THREE.Quaternion();
-  const pathEuler = new THREE.Euler();
-  const pathQuat = new THREE.Quaternion();
-  const desiredQuat = new THREE.Quaternion();
   const qRoll = new THREE.Quaternion();
   const qBank = new THREE.Quaternion();
   const basis = new THREE.Matrix4();
   const AXIS_X = new THREE.Vector3(1, 0, 0);
 
-  const ease = (cur: number, target: number, rate: number, dtAim: number) =>
-    cur + (target - cur) * (1 - Math.exp(-rate * dtAim));
-
-  const deltaAngle = (from: number, to: number) => {
-    let d = to - from;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    return d;
-  };
-
-  // Nose along full 3D dir; up from world-up + bank — turns can point into the screen
-  const setAimFromDir = (dx: number, dy: number, dz: number, bankRad: number) => {
-    const len = Math.hypot(dx, dy, dz);
-    if (len < 1e-4) return;
-    forward.set(dx / len, dy / len, dz / len);
-    right.crossVectors(forward, worldUp);
-    if (right.lengthSq() < 1e-8) {
-      // nearly vertical — pick a stable side axis
-      right.set(forward.y > 0 ? 1 : -1, 0, 0);
-      right.crossVectors(forward, right);
-    }
-    right.normalize();
+  // Nose along (yaw, pitch); belly stays toward world-down, plus bank around the nose.
+  // pitch is clamped well below ±90°, so forward is never parallel to world-up.
+  const setAim = (yawA: number, pitchA: number, bankA: number) => {
+    const cp = Math.cos(pitchA);
+    forward.set(Math.cos(yawA) * cp, Math.sin(pitchA), -Math.sin(yawA) * cp);
+    right.crossVectors(forward, worldUp).normalize();
     up.crossVectors(right, forward).normalize();
     right.crossVectors(forward, up).normalize();
-    qBank.setFromAxisAngle(forward, bankRad);
+    qBank.setFromAxisAngle(forward, bankA);
     up.applyQuaternion(qBank);
     right.applyQuaternion(qBank);
     basis.makeBasis(forward, up, right);
     aimQuat.setFromRotationMatrix(basis);
+  };
+
+  // Place the body at depth z while keeping its projected screen position equal to `pos`
+  let visXOff = 0; // visual-only turn-arc offsets (never enter the physics)
+  let visYOff = 0;
+  const applyPose = (z: number, xOff: number, yOff: number) => {
+    depthK = (CAMERA.distance - z) / CAMERA.distance;
+    visXOff = xOff;
+    visYOff = yOff;
+    dolphin.position.set((pos.x + xOff) * depthK, (pos.y + yOff) * depthK, z);
+  };
+
+  const clampSpeed = () => {
+    const sp = vel.length();
+    if (sp > MAX_SPEED) vel.multiplyScalar(MAX_SPEED / sp);
   };
 
   // ---- chirp: synthesized, no audio files ----
@@ -252,6 +316,10 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
         gain.gain.linearRampToValueAtTime(0.12, t + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
         osc.connect(gain).connect(audio.destination);
+        osc.onended = () => {
+          osc.disconnect();
+          gain.disconnect();
+        };
         osc.start(t);
         osc.stop(t + 0.14);
       }
@@ -262,54 +330,67 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
 
   const toWorld = (x: number, y: number, out: THREE.Vector3) => {
     ndc.set(
-      (x / Math.max(1, innerWidth)) * 2 - 1,
-      -((y / Math.max(1, innerHeight)) * 2 - 1),
+        (x / Math.max(1, innerWidth)) * 2 - 1,
+        -((y / Math.max(1, innerHeight)) * 2 - 1),
     );
     raycaster.setFromCamera(ndc, camera);
     raycaster.ray.intersectPlane(zPlane, out);
     return out;
   };
 
+  let lastTransform = '';
+  let lastSize = '';
   const placeHit = () => {
-    if (!(hitEl instanceof HTMLElement) || !modelReady) return;
+    if (!hit || !modelReady) return;
     const w = Math.max(1, innerWidth);
     const h = Math.max(1, innerHeight);
-    const halfH = halfWidth / camera.aspect;
-    const hx = HALF_LENGTH * scale * 1.05 + HIT_PAD;
-    const hy = 1.0 * scale + BOB * zoom + HIT_PAD;
+    const halfH = halfWidth / Math.max(1e-4, camera.aspect);
+    // model part shrinks with perspective while dived; the pad stays constant
+    const hx = (HALF_LENGTH * scale * 1.05) / depthK + HIT_PAD;
+    const hy = (1.0 * scale) / depthK + BOB * zoom + HIT_PAD;
     const pxX = w / (2 * halfWidth);
     const pxY = h / (2 * halfH);
-    hitEl.style.transform = `translate(${w / 2 + (dolphin.position.x - hx) * pxX}px, ${h / 2 - (dolphin.position.y + hy) * pxY}px)`;
-    hitEl.style.width = `${2 * hx * pxX}px`;
-    hitEl.style.height = `${2 * hy * pxY}px`;
+    const x = w / 2 + (pos.x + visXOff - hx) * pxX;
+    const y = h / 2 - (pos.y + visYOff + hy) * pxY;
+    const transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    if (transform !== lastTransform) {
+      hit.style.transform = transform;
+      lastTransform = transform;
+    }
+    const size = `${(2 * hx * pxX).toFixed(1)}|${(2 * hy * pxY).toFixed(1)}`;
+    if (size !== lastSize) {
+      hit.style.width = `${2 * hx * pxX}px`;
+      hit.style.height = `${2 * hy * pxY}px`;
+      lastSize = size;
+    }
   };
 
   new GLTFLoader()
-    .loadAsync(MODEL_URL)
-    .then(({ scene: model, animations }) => {
-      if (signal.aborted) return;
-      let hasColors = false;
-      model.traverse((obj) => {
-        if (!(obj instanceof THREE.Mesh)) return;
-        obj.material = material;
-        obj.frustumCulled = false;
-        hasColors ||= obj.geometry.hasAttribute('color');
-      });
-      material.vertexColors = hasColors;
-      material.needsUpdate = true;
+      .loadAsync(MODEL_URL)
+      .then(({ scene: loaded, animations }) => {
+        if (signal.aborted) return;
+        model = loaded;
+        let hasColors = false;
+        loaded.traverse((obj) => {
+          if (!(obj instanceof THREE.Mesh)) return;
+          obj.material = material;
+          obj.frustumCulled = false;
+          hasColors ||= obj.geometry.hasAttribute('color');
+        });
+        material.vertexColors = hasColors;
+        material.needsUpdate = true;
 
-      dolphin.add(model);
-      modelReady = true;
-      if (hitEl instanceof HTMLElement) hitEl.style.visibility = 'visible';
-      if (animations[0]) {
-        mixer = new THREE.AnimationMixer(model);
-        mixer.clipAction(animations[0]).play();
-        if (animations[0].duration > 0) fClip = 1 / animations[0].duration;
-      }
-    })
-    .catch((err) => console.error('GLB load failed', err));
+        dolphin.add(loaded);
+        modelReady = true;
+        if (hit) hit.style.visibility = 'visible';
+        if (animations[0]) {
+          mixer = new THREE.AnimationMixer(loaded);
+          mixer.clipAction(animations[0]).play();
+        }
+      })
+      .catch((err) => console.error('GLB load failed', err));
 
-  if (hitEl instanceof HTMLElement) {
+  if (hit) {
     const unlockAudio = () => {
       if (audioUnlocked) return;
       audioUnlocked = true;
@@ -322,54 +403,57 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     const endDrag = (e: PointerEvent) => {
       if (e.pointerId !== dragId) return;
       dragId = null;
-      hitEl.classList.remove('dragging');
+      hit.classList.remove('dragging');
       // startle escape: shove away from the grab point, then spring home
-      const awayX = dolphin.position.x - dragPos.x;
-      const awayY = dolphin.position.y - dragPos.y;
-      const len = Math.hypot(awayX, awayY) || 1;
+      let awayX = pos.x - dragPos.x;
+      let awayY = pos.y - dragPos.y;
+      let len = Math.hypot(awayX, awayY);
+      if (len < 1e-3) {
+        // released dead-centre: pick a stable direction instead of doing nothing
+        awayX = faceSign;
+        awayY = 0.3;
+        len = Math.hypot(awayX, awayY);
+      }
       vel.x += (awayX / len) * ESCAPE_SPEED;
       vel.y += (awayY / len) * ESCAPE_SPEED;
+      clampSpeed();
       escapeTimer = ESCAPE_TIME;
-      excitement = 1;
       chirp(2);
     };
-    hitEl.addEventListener('pointerdown', (e) => {
+    hit.addEventListener('pointerdown', (e) => {
       if (dragId !== null || !modelReady) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       unlockAudio();
       toWorld(e.clientX, e.clientY, dragPos);
-      dragOffset.set(dragPos.x - dolphin.position.x, dragPos.y - dolphin.position.y, 0);
+      dragOffset.set(dragPos.x - pos.x, dragPos.y - pos.y);
       dragId = e.pointerId;
-      hitEl.setPointerCapture(e.pointerId);
-      hitEl.classList.add('dragging');
+      hit.setPointerCapture(e.pointerId);
+      hit.classList.add('dragging');
       escapeTimer = 0;
-      excitement = 1;
       chirp(1);
       e.preventDefault();
     }, { signal });
-    hitEl.addEventListener('pointermove', (e) => {
+    hit.addEventListener('pointermove', (e) => {
       if (e.pointerId !== dragId) return;
       toWorld(e.clientX, e.clientY, dragPos);
-      const halfH = halfWidth / camera.aspect;
-      dragPos.x = THREE.MathUtils.clamp(dragPos.x, -(halfWidth - 0.5), halfWidth - 0.5);
-      dragPos.y = THREE.MathUtils.clamp(dragPos.y, -(halfH - 0.5), halfH - 0.5);
+      const halfH = halfWidth / Math.max(1e-4, camera.aspect);
+      const bx = Math.max(0, halfWidth - 0.5);
+      const by = Math.max(0, halfH - 0.5);
+      dragPos.x = clamp(dragPos.x, -bx, bx);
+      dragPos.y = clamp(dragPos.y, -by, by);
     }, { passive: true, signal });
-    hitEl.addEventListener('pointerup', endDrag, { signal });
-    hitEl.addEventListener('pointercancel', endDrag, { signal });
-    hitEl.addEventListener('lostpointercapture', endDrag, { signal });
+    hit.addEventListener('pointerup', endDrag, { signal });
+    hit.addEventListener('pointercancel', endDrag, { signal });
+    hit.addEventListener('lostpointercapture', endDrag, { signal });
   }
-
-  const baseDpr = devicePixelRatio || 1;
-  let zoom = 1;
-  let scale = 0.8;
-  let halfWidth = 7;
-  let scroll = 0;
 
   const readScroll = () => {
     const max = document.documentElement.scrollHeight - innerHeight;
-    scroll = max > 0 ? THREE.MathUtils.clamp(scrollY / max, 0, 1) : 0;
+    scroll = max > 0 ? clamp(scrollY / max, 0, 1) : 0;
     if (hint) hint.style.opacity = scrollY > 40 ? '0' : '0.6';
   };
+
+  const laneRange = () => Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
 
   const resize = () => {
     const w = Math.max(1, innerWidth);
@@ -392,20 +476,21 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     camera.updateProjectionMatrix();
 
     halfWidth = Math.tan(THREE.MathUtils.degToRad(CAMERA.fov / 2)) * CAMERA.distance * aspect;
-    const base = THREE.MathUtils.clamp(aspect * 0.55, 0.35, 0.85);
+    const base = clamp(aspect * 0.55, 0.35, 0.85);
     scale = Math.min(base * zoom, (halfWidth * MAX_WIDTH) / HALF_LENGTH);
+    dolphin.scale.setScalar(scale);
 
     readScroll();
   };
 
   const watchDpr = () => {
     matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener(
-      'change',
-      () => {
-        resize();
-        watchDpr();
-      },
-      { once: true, signal },
+        'change',
+        () => {
+          resize();
+          watchDpr();
+        },
+        { once: true, signal },
     );
   };
 
@@ -415,14 +500,14 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   watchDpr();
 
   // Snap onto the scroll-lane start pose (p=0 → left, y=1.5) — never rise from (0,0,0)
+  let smooth = 0;
   {
-    const range0 = Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
-    dolphin.position.set(-range0, 1.5, 0);
-    dolphin.scale.setScalar(scale);
+    pos.set(-laneRange(), 1.5);
+    applyPose(0, 0, 0);
+    smooth = scroll; // catch up via the spring if the page loaded mid-scroll
   }
 
   const clock = new THREE.Clock();
-  let smooth = scroll;
   let scrollSpeed = 0;
   let animTime = 0;
   let steppedTime = 0;
@@ -431,167 +516,192 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
   const frame = () => {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(clock.getDelta(), 0.05);
+    if (contextLost || dt <= 0) return;
 
     animTime += dt;
     const prevStep = steppedTime;
     steppedTime = Math.floor(animTime * ANIM_FPS) / ANIM_FPS;
 
-    // ---- scroll lane (v1/v2 choreography) ----
+    // ---- scroll lane ----
     const prevSmooth = smooth;
-    smooth += (scroll - smooth) * Math.min(1, dt * 5);
-    // signed: <0 = scroll up (lane rises), >0 = scroll down — drives nose tip
-    const signedScrollVel = dt > 0 ? (smooth - prevSmooth) / dt : 0;
-    scrollSpeed += (Math.min(1, Math.abs(signedScrollVel) * 1.33) - scrollSpeed) * (1 - Math.exp(-6 * dt));
+    smooth = ease(smooth, scroll, 5, dt);
+    // signed: <0 = scroll up (lane rises), >0 = scroll down
+    const signedScrollVel = (smooth - prevSmooth) / dt;
+    scrollSpeed = ease(scrollSpeed, Math.min(1, Math.abs(signedScrollVel) * 1.33), 6, dt);
+    scrollUp = ease(scrollUp, Math.max(0, -signedScrollVel), 8, dt);
 
     const p = smooth;
-    const range = Math.max(0, halfWidth - HALF_LENGTH * scale - EDGE_MARGIN * zoom);
+    const range = laneRange();
     const pathX = (p * 2 - 1) * range;
-    const pathY = 1.5 - p * 3 + Math.sin(steppedTime * 1.1) * BOB * zoom;
+    // Same vertical lane as live pakku.build: p=0 → y=1.5, p=1 → y=-1.5
+    const pathY = 1.5 - p * 3 + Math.sin(animTime * 1.1) * BOB * zoom;
 
-    // Home is the scroll lane only — no hover pull / glance / greet
+    // Home is the scroll lane only — interactive solely while dragging
     dragBlend = ease(dragBlend, dragId !== null ? 1 : 0, BLEND_RATE, dt);
-    const tx = THREE.MathUtils.lerp(pathX, dragPos.x - dragOffset.x, dragBlend);
-    const ty = THREE.MathUtils.lerp(pathY, dragPos.y - dragOffset.y, dragBlend);
+    const tx = lerp(pathX, dragPos.x - dragOffset.x, dragBlend);
+    const ty = lerp(pathY, dragPos.y - dragOffset.y, dragBlend);
 
-    // ---- fluid spring (mass + water); stiffer while dragged ----
-    const springScale = escapeTimer > 0 ? 0.35 : 1;
-    const k = THREE.MathUtils.lerp(SPRING_K, DRAG_SPRING_K, dragBlend) * springScale;
-    const damp = THREE.MathUtils.lerp(SPRING_D, DRAG_SPRING_D, dragBlend);
-    vel.x += (tx - dolphin.position.x) * k * dt;
-    vel.y += (ty - dolphin.position.y) * k * dt;
-    // XY damp only — Z comes from swimming along the nose
-    const vzKeep = vel.z;
-    vel.z = 0;
+    // ---- fluid spring (mass + water); stiffer while dragged. Pure 2D, no 3D feedback. ----
+    escapeEase = ease(escapeEase, escapeTimer > 0 ? 1 : 0, 8, dt);
+    const springScale = lerp(1, 0.35, escapeEase);
+    const k = lerp(SPRING_K, DRAG_SPRING_K, dragBlend) * springScale;
+    const damp = lerp(SPRING_D, DRAG_SPRING_D, dragBlend);
+    vel.x += (tx - pos.x) * k * dt;
+    vel.y += (ty - pos.y) * k * dt;
     vel.multiplyScalar(Math.exp(-damp * dt));
-    vel.z = vzKeep;
+    clampSpeed();
 
-    // ---- 3D orientation: nose along swim / look dir, turns dive into −Z ----
-    pathEuler.set(0, -0.35, -0.06 - 0.1 * p);
-    pathQuat.setFromEuler(pathEuler);
+    swimS = ease(swimS, vel.length(), 10, dt);
 
-    const swim = Math.hypot(vel.x, vel.y);
-    let rawX = aimDir.x;
-    let rawY = aimDir.y;
-    let wantAim = 0.2;
+    // ---- desired heading: blend of unit vectors, every weight is smooth ----
+    // 1) idle: keep facing, tip slightly with the lane (nose up when scrolling up)
+    const idleTipY = lerp(-0.15 - 0.1 * p, 0.45, smoothstep(scrollUp, 0.04, 0.15));
+    setUnit(faceSign, idleTipY, faceSign, 0);
+    const idleX = dirTmp.x;
+    const idleY = dirTmp.y;
+    let dx = idleX;
+    let dy = idleY;
 
-    if (dragBlend > 0.25) {
-      // Drag only: face travel (not cursor−body — that overshoots and flip-flops)
-      if (swim > 0.18) {
-        rawX = vel.x;
-        rawY = vel.y;
-      } else {
-        rawX = tx - dolphin.position.x;
-        rawY = ty - dolphin.position.y;
-      }
-      wantAim = Math.max(0.7, dragBlend);
-    } else if (swim > 0.12) {
-      rawX = vel.x;
-      rawY = vel.y;
-      if (signedScrollVel < -0.12) rawY += 1.1 * Math.abs(signedScrollVel);
-      wantAim = THREE.MathUtils.clamp(0.35 + swim * 0.35, 0.35, 0.95);
-    } else {
-      rawX = Math.max(0.4, range * 0.15);
-      rawY = signedScrollVel < -0.08 ? 0.45 : -0.15 - 0.1 * p;
-      wantAim = 0.3;
+    // 2) swimming: face travel direction
+    const motionW = smoothstep(swimS, 0.1, 0.5);
+    setUnit(vel.x, vel.y + 1.1 * scrollUp, idleX, idleY);
+    dx = lerp(dx, dirTmp.x, motionW);
+    dy = lerp(dy, dirTmp.y, motionW);
+
+    // 3) dragging: face travel (not cursor−body, which overshoots and flip-flops)
+    if (dragBlend > 0.001) {
+      const toX = tx - pos.x;
+      const toY = ty - pos.y;
+      setUnit(toX, toY, dx, dy);
+      const toW = smoothstep(Math.hypot(toX, toY), 0.05, 0.3);
+      let drx = lerp(dx, dirTmp.x, toW);
+      let dry = lerp(dy, dirTmp.y, toW);
+      setUnit(vel.x, vel.y, drx, dry);
+      const velW = smoothstep(swimS, 0.1, 0.4);
+      drx = lerp(drx, dirTmp.x, velW);
+      dry = lerp(dry, dirTmp.y, velW);
+      dx = lerp(dx, drx, dragBlend);
+      dy = lerp(dy, dry, dragBlend);
     }
+    setUnit(dx, dy, idleX, idleY);
+    dx = dirTmp.x;
+    dy = dirTmp.y;
 
-    // Sticky facing: one committed reverse + into-screen arc, then cooldown
+    // ---- facing: scroll direction / page ends decide it (held = drag direction) ----
     flipCool = Math.max(0, flipCool - dt);
-    turnArc = Math.max(0, turnArc - dt / ARC_TIME);
-    if (
-      Math.abs(rawX) > FLIP_STICKY &&
-      Math.sign(rawX) !== faceSign &&
-      turnArc <= 0.02 &&
-      flipCool <= 0
-    ) {
-      faceSign = Math.sign(rawX) || faceSign;
-      turnArc = 1;
+    let wantSign = faceSign;
+    if (dragBlend > 0.5) {
+      if (swimS > FLIP_MIN_SPEED && Math.abs(dx) > FLIP_THRESHOLD) wantSign = Math.sign(dx);
+    } else if (p < EDGE_P) {
+      wantSign = 1; // top of page: face right
+    } else if (p > 1 - EDGE_P) {
+      wantSign = -1; // bottom of page: face left
+    } else if (signedScrollVel > SCROLL_FACE_V) {
+      wantSign = 1; // scrolling down: face right
+    } else if (signedScrollVel < -SCROLL_FACE_V) {
+      wantSign = -1; // scrolling up: face left
+    }
+    // a new turn only starts once the previous one has finished — no mid-turn reversals
+    const turnDone = turnT >= 1;
+    if (wantSign !== faceSign) flipTimer += dt;
+    else flipTimer = Math.max(0, flipTimer - dt * 2);
+    if (flipTimer >= FLIP_HOLD && flipCool <= 0 && turnDone) {
+      faceSign = wantSign;
+      turnFrom = turnP;
+      turnTo = faceSign < 0 ? 1 : 0;
+      turnT = 0;
+      settleT = 0;
+      flipTimer = 0;
       flipCool = FLIP_COOLDOWN;
     }
 
-    // Keep horizontal facing stable; tip from rawY; into −Z only during a committed arc
-    const dirX = faceSign * Math.max(0.35, Math.abs(rawX));
-    const dirY = rawY;
-    const ang = Math.atan2(dirY, dirX);
-    const turnRate = THREE.MathUtils.clamp(
-      deltaAngle(prevAng, ang) / Math.max(dt, 1e-4),
-      -2.5,
-      2.5,
-    );
-    prevAng = ang;
-
-    // Peak into-screen at mid-arc so the turn reads as going away, then coming back
-    const arcWave = turnArc > 0 ? Math.sin(turnArc * Math.PI) : 0;
-    const turnAmount = THREE.MathUtils.clamp(
-      Math.max(arcWave, Math.abs(turnRate) / 3.5 * (1 - dragBlend * 0.7)),
-      0,
-      1,
+    // ---- orientation: yaw spring (turn through −Z), eased pitch, bank from turning ----
+    pitch = ease(
+        pitch,
+        clamp(Math.atan2(dy, Math.max(0.35, Math.abs(dx))), -PITCH_MAX, PITCH_MAX),
+        PITCH_RATE,
+        dt,
     );
 
-    const into = turnAmount * TURN_INTO;
-    aimDir.set(dirX, dirY, -into);
-    if (aimDir.lengthSq() > 1e-6) aimDir.normalize();
-    else aimDir.set(faceSign, 0, 0);
+    const aimStrength = clamp(Math.max(motionW, dragBlend), 0, 1);
+    const tilt = REST_TILT * (1 - 0.7 * aimStrength);
+    // Turn animation: a fixed-duration quintic ease (zero velocity AND acceleration at both
+    // ends), so the turn starts and finishes without any jolt. Everything else (arc, bank,
+    // dip, nose loop) is derived from this one smooth progress value.
+    turnT = Math.min(1, turnT + dt / TURN_TIME);
+    const e = turnT * turnT * turnT * (turnT * (turnT * 6 - 15) + 10);
+    turnP = lerp(turnFrom, turnTo, e);
+    tiltS = ease(tiltS, tilt, 4, dt);
+    const prevYaw = yaw;
+    yaw = -tiltS + turnP * (Math.PI + 2 * tiltS);
+    yawVel = ease(yawVel, (yaw - prevYaw) / dt, 25, dt);
 
-    const bankTarget = THREE.MathUtils.clamp(
-      turnRate * Math.max(swim, 0.6) * TURN_K,
-      -BANK_MAX,
-      BANK_MAX,
-    );
-    bank = ease(bank, bankTarget, 5, dt);
+    // 0 facing sideways, 1 pointing straight into the screen
+    const turn = Math.sin(clamp(yaw, 0, Math.PI));
 
-    setAimFromDir(aimDir.x, aimDir.y, aimDir.z, bank);
-    aimBlend = ease(aimBlend, wantAim, AIM_BLEND_RATE, dt);
-    desiredQuat.copy(pathQuat).slerp(aimQuat, aimBlend);
+    // Bank peaks mid-turn on a smooth bell, belly toward the inside of the arc
+    const bell = 16 * turnT * turnT * (1 - turnT) * (1 - turnT);
+    bank = ease(bank, faceSign * BANK_MAX * bell, 10, dt);
+
+    // Progress 0 → 1 along the current turn, whichever direction it goes (1 at rest)
+    const w = e;
+    const turnFade = 1 - dragBlend; // no arc while held — it must stay under the cursor
+    // Nose down entering the turn, nose up leaving it
+    const loopPitch = -TURN_PITCH * Math.sin(w * Math.PI * 2) * turnFade;
+
+    setAim(yaw, clamp(pitch + loopPitch, -1.25, 1.25), bank);
     if (flick > 0) {
-      qRoll.setFromAxisAngle(AXIS_X, (1 - flick) * Math.PI * 2);
-      desiredQuat.multiply(qRoll);
+      const a = smoothstep(1 - flick, 0, 1) * Math.PI * 2;
+      qRoll.setFromAxisAngle(AXIS_X, a);
+      aimQuat.multiply(qRoll);
     }
-    const orientRate = dragBlend > 0.3 ? ORIENT_RATE * 1.35 : ORIENT_RATE;
-    dolphin.quaternion.slerp(desiredQuat, 1 - Math.exp(-orientRate * dt));
+    dolphin.quaternion.copy(aimQuat);
 
-    // Swim in 3D along the nose — turns that point into −Z actually carry the body there
-    forward.set(1, 0, 0).applyQuaternion(dolphin.quaternion);
-    const push = Math.max(swim, turnAmount * 7);
-    if (turnAmount > 0.04 || escapeTimer > 0) {
-      const blend = escapeTimer > 0 ? STEER : SWIM_PUSH * Math.max(turnAmount, 0.35);
-      vel.x += (forward.x * push - vel.x) * blend;
-      vel.y += (forward.y * push - vel.y) * blend;
-      vel.z += (forward.z * push - vel.z) * blend;
+    // ---- integrate + soft screen bounds ----
+    pos.x += vel.x * dt;
+    pos.y += vel.y * dt;
+    {
+      const halfH = halfWidth / Math.max(1e-4, camera.aspect);
+      const bx = Math.max(0, halfWidth - 0.5);
+      const by = Math.max(0, halfH - 0.5);
+      if (Math.abs(pos.x) > bx) vel.x += (Math.sign(pos.x) * bx - pos.x) * 18 * dt;
+      if (Math.abs(pos.y) > by) vel.y += (Math.sign(pos.y) * by - pos.y) * 18 * dt;
+      pos.x = clamp(pos.x, -bx - 0.5, bx + 0.5);
+      pos.y = clamp(pos.y, -by - 0.5, by + 0.5);
     }
-    // Soft home to the lane plane so a dive doesn't leave him stuck in the distance
-    vel.z += (0 - dolphin.position.z) * HOME_Z_K * (1 - turnAmount * 0.85) * dt;
-    vel.z *= Math.exp(-HOME_Z_D * dt);
 
-    dolphin.position.x += vel.x * dt;
-    dolphin.position.y += vel.y * dt;
-    dolphin.position.z = THREE.MathUtils.clamp(dolphin.position.z + vel.z * dt, -Z_LIMIT, 0.5);
-    dolphin.scale.setScalar(scale);
+    // ---- dolphin U-turn path: a semicircle through depth, then a glide back to the lane ----
+    if (turnT > 0.8) settleT = Math.min(1, settleT + dt / SETTLE_TIME);
+    const settle = smoothstep(settleT, 0, 1);
+    const R = TURN_RADIUS_K * HALF_LENGTH * scale;
+    const arc = Math.sin(w * Math.PI);
+    const zArc = -R * (1 - Math.cos(w * Math.PI)) * (1 - settle) * turnFade;
+    // forward overshoot (the way it was heading), kept inside the screen
+    const reach = (HALF_LENGTH * scale * Math.abs(Math.cos(yaw))) / depthK + 0.3;
+    const allowed = Math.max(0, halfWidth - reach);
+    const xRaw = -faceSign * R * arc * turnFade;
+    const xOff = clamp(xRaw, Math.min(0, -allowed - pos.x), Math.max(0, allowed - pos.x));
+    applyPose(zArc, xOff, -TURN_DIP * arc * turnFade);
 
     // ---- aliveness ----
     escapeTimer = Math.max(0, escapeTimer - dt);
-    excitement = Math.max(
-      excitement * (1 - dt * 1.2),
-      Math.min(1, swim * 0.35),
-      escapeTimer > 0 ? 1 : 0,
-    );
     idleTimer -= dt;
-    if (dragId === null && dragBlend < 0.15 && idleTimer <= 0 && swim < 0.55 && escapeTimer <= 0) {
+    if (
+        dragId === null &&
+        dragBlend < 0.15 &&
+        idleTimer <= 0 &&
+        swimS < 0.55 &&
+        escapeTimer <= 0 &&
+        turn < 0.05 &&
+        Math.abs(yawVel) < 0.3
+    ) {
       idleTimer = 5 + Math.random() * 6;
       flick = 1;
     }
     flick = Math.max(0, flick - dt * 1.4);
 
-    // Strouhal tailbeat — calm while dragged (spring speed must not drive the mixer)
-    const A = 0.6 * scale;
-    let swimSpeed = Math.max(swim, scrollSpeed * SCROLL_TAIL);
-    if (dragBlend > 0.15 || dragId !== null) {
-      swimSpeed = Math.min(swimSpeed, DRAG_TAIL_CAP);
-    }
-    const fBase = (STROUAL * Math.max(0.75, swimSpeed)) / (2 * Math.max(0.1, A));
-    const fExcite = dragBlend > 0.15 ? 0 : excitement * 0.2;
-    const f = Math.min(fBase * (1 + fExcite), dragBlend > 0.15 ? fClip * 1.05 : fClip * 2.2);
-    mixer?.update((steppedTime - prevStep) * (f / fClip));
+    // Tailbeat — same as live pakku.build / original: scroll-speed linked only
+    mixer?.update((steppedTime - prevStep) * (1 + scrollSpeed * 1.6 + turn * 1.0)); // tail drives the turn
 
     placeHit();
 
@@ -606,12 +716,19 @@ const start = (canvas: HTMLCanvasElement, hint: HTMLElement | null) => {
     abort.abort();
     cancelAnimationFrame(raf);
     mixer?.stopAllAction();
+    if (model) {
+      mixer?.uncacheRoot(model);
+      model.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) obj.geometry.dispose();
+      });
+    }
     quad.geometry.dispose();
     post.dispose();
     material.dispose();
     depthTexture.dispose();
     target.dispose();
     renderer.dispose();
+    void audio?.close().catch(() => {});
   };
 };
 
@@ -631,7 +748,7 @@ if (canvas instanceof HTMLCanvasElement) {
   } else {
     let stop: (() => void) | undefined;
     const boot = () => {
-      if (reduceMotion.matches) return;
+      if (reduceMotion.matches || stop) return;
       stop = start(canvas, hint);
     };
     if ('requestIdleCallback' in window) requestIdleCallback(boot, { timeout: 1500 });
