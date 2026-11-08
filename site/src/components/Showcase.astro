@@ -3,46 +3,126 @@ import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 
 interface Props {
-  homeDark: ImageMetadata;
-  overviewDark: ImageMetadata;
-  filesFetchDark: ImageMetadata;
-  gitLogDark: ImageMetadata;
-  gitCommitDark: ImageMetadata;
-  filesSyncDark: ImageMetadata;
   screenshotLs: ImageMetadata;
   screenshotExport: ImageMetadata;
+  overview: ImageMetadata;
+  filesFetch: ImageMetadata;
+  filesSync: ImageMetadata;
+  gitLog: ImageMetadata;
 }
 
-const {
-  homeDark,
-  overviewDark,
-  filesFetchDark,
-  gitLogDark,
-  gitCommitDark,
-  filesSyncDark,
-  screenshotLs,
-  screenshotExport,
-} = Astro.props;
+const { screenshotLs, screenshotExport, overview, filesFetch, filesSync, gitLog } = Astro.props;
+
+interface PaneData {
+  img?: ImageMetadata;
+  ph?: string;
+  cap: string;
+}
+interface Feature {
+  label: string;
+  desc: string;
+  cli?: PaneData[];
+  desk?: PaneData[];
+}
+
+/* generalized two-column showcase: sides are data; a feature may live on one
+   side only (common sense: CI/CD runs on the CLI, not in the app). Only the
+   side labels are pinned - the feature texts are NOT pinned: they sit in the
+   gaps between the screenshots, alternating left / right / left ...
+   "ph" = screenshot still to be produced (skeleton placeholder) */
+const cols: { key: 'cli' | 'desk'; label: string; size: string }[] = [
+  { key: 'cli', label: 'CLI', size: '(max-width: 720px) 84vw, min(40vw, 580px)' },
+  { key: 'desk', label: 'Desktop', size: '(max-width: 720px) 84vw, min(42vw, 560px)' },
+];
+
+const features: Feature[] = [
+  {
+    label: 'Platform integrations',
+    desc: 'CurseForge, Modrinth, GitHub. Distribute to both CurseForge, Modrinth from one instance. Every project is pinned in pakku-lock.json, so every build is reproducible.',
+    cli: [{ img: screenshotLs, cap: 'ls - every project and its source' }],
+    desk: [{ img: overview, cap: 'modpack overview - projects, sources, dependency tree' }],
+  },
+  {
+    label: 'Dev environment',
+    desc: 'Fetch downloads every project file into the modpack folder; sync pushes your local edits back.',
+    cli: [{ ph: 'cli-fetch', cap: 'fetch / sync' }],
+    desk: [{ img: filesFetch, cap: 'Files view — fetch every project file' }],
+  },
+  {
+    label: 'Overrides',
+    desc: 'Override platform data, pin per-project update strategies, and bundle extra files into client and server exports.',
+    cli: [{ ph: 'cli-overrides', cap: 'cfg - overrides' }],
+    desk: [{ img: filesSync, cap: 'sync client and server files back' }],
+  },
+  {
+    label: 'Git-friendly & built for teams',
+    desc: 'Review every change, commit, and share one repository with your team.',
+    cli: [{ ph: 'cli-git', cap: 'every change is a commit' }],
+    desk: [{ img: gitLog, cap: 'history, changes tree, commit dialog' }],
+  },
+  {
+    label: 'CI/CD',
+    desc: 'Pair Pakku with headlessmc to test (CI), then automatically build it and release (CD).',
+    cli: [
+      { img: screenshotExport, cap: 'export - CurseForge, Modrinth and server packs' },
+      { ph: 'gh-workflow-run', cap: 'GitHub Actions - on every push' },
+    ],
+  },
+];
+
+type Block =
+  | { kind: 'pane'; feat: number; label: string; p: PaneData }
+  | { kind: 'note'; feat: number; label: string; desc: string };
+
+const left: Block[] = [];
+const right: Block[] = [];
+features.forEach((f, i) => {
+  (f.cli ?? []).forEach((p) => left.push({ kind: 'pane', feat: i, label: f.label, p }));
+  (f.desk ?? []).forEach((p) => right.push({ kind: 'pane', feat: i, label: f.label, p }));
+  // feature text goes into the gap after this feature's pane, alternating sides
+  (i % 2 === 0 ? left : right).push({ kind: 'note', feat: i, label: f.label, desc: f.desc });
+});
 ---
-<section class="shots px-0 py-0 md:px-[7vw] md:py-[4vh]" aria-label="CLI and Desktop showcase">
-  <div class="shots-stage flex flex-col items-center gap-[6vh] px-[7vw] py-[8vh] md:grid md:grid-cols-2 md:items-start md:gap-x-[2vw] md:px-0 md:py-[8vh]">
-    <figure class="shots-cli flex w-full min-w-0 flex-col items-stretch md:items-end md:justify-self-end md:me-[-2vw]">
-      <h2 class="mb-3 w-max max-w-full self-start text-2xl font-bold tracking-tight md:text-3xl">CLI</h2>
-      <div class="cli-row flex flex-col gap-[5vh]" id="cliRow">
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box shadow-lg md:w-[min(40vw,580px)]" src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box shadow-lg md:w-[min(40vw,580px)]" src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
-      </div>
-    </figure>
-    <figure class="shots-desk flex w-full min-w-0 flex-col items-stretch md:items-start md:justify-self-start md:ms-[-2vw]">
-      <h2 class="mb-3 w-max max-w-full self-start text-2xl font-bold tracking-tight md:self-end md:text-end md:text-3xl">Desktop</h2>
-      <div class="shots-row flex flex-col gap-[5vh]" id="shotsRow">
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={homeDark} alt="Pakku Desktop home screen" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="eager" decoding="async" fetchpriority="high" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={overviewDark} alt="Pakku Desktop modpack overview" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={filesFetchDark} alt="Pakku Desktop fetching projects" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={gitLogDark} alt="Pakku Desktop git history" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={gitCommitDark} alt="Pakku Desktop commit dialog" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={filesSyncDark} alt="Pakku Desktop syncing files" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-      </div>
-    </figure>
+<section class="shots" aria-label="Showcase" data-showcase>
+  <div class="shots-stage">
+    {cols.map((col) => {
+      const blocks = col.key === 'cli' ? left : right;
+      return (
+        <div class={`shots-col shots-${col.key}`}>
+          <div class="shots-h"><span class="badge badge-sm">{col.label}</span></div>
+          {blocks.map((b) =>
+            b.kind === 'pane' ? (
+              <figure class="shots-item" data-feat={b.feat}>
+                {b.p.img ? (
+                  <Image class="shots-pane" src={b.p.img} alt={`${col.label} — ${b.label}: ${b.p.cap}`}
+                    widths={col.key === 'cli' ? [580, 780, 1560, 2080] : [560, 840, 1400, 1920]} sizes={col.size}
+                    loading={b.feat === 0 ? 'eager' : 'lazy'} decoding="async"
+                    fetchpriority={b.feat === 0 ? 'high' : undefined} />
+                ) : (
+                  <div class="shots-pane pane ph" style={`--ar:${col.key === 'cli' ? '2080/878' : '16/9'}`}
+                    role="img" aria-label={`Placeholder screenshot: ${b.p.ph}.png`}>
+                    <span class="mono">needed · {b.p.ph}.png</span>
+                  </div>
+                )}
+              </figure>
+            ) : (
+              <div class="shots-item shots-note" data-feat={b.feat}>
+                <h3>{b.label}</h3>
+                <p>{b.desc}</p>
+              </div>
+            ),
+          )}
+        </div>
+      );
+    })}
   </div>
 </section>
+
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Screenshot preview">
+  <button class="lightbox-x" id="lightboxClose" type="button" aria-label="Close preview">×</button>
+  <img class="lightbox-img" id="lightboxImg" alt="" />
+</div>
+
+<script>
+  import './Showcase.client.ts';
+</script>

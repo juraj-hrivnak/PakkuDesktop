@@ -96,6 +96,9 @@
   --pakku-btn-hover-bg: rgb(0 255 255 / 0.05);
   --pakku-btn-hover-border: var(--cyan);
   --label: #9da0a8;
+  --glow: rgb(0 255 255 / 0.32);
+  --pane-border: rgb(255 255 255 / 0.12);
+  --pane-bg: #000000;
 }
 
 [data-theme="pakku-yellow"] {
@@ -107,6 +110,9 @@
   --pakku-btn-hover-bg: rgb(0 0 0 / 0.05);
   --pakku-btn-hover-border: #000000;
   --label: rgb(0 0 0 / 0.6);
+  --glow: rgb(0 0 0 / 0.25);
+  --pane-border: rgb(0 0 0 / 0.35);
+  --pane-bg: #101010;
 }
 
 /*
@@ -278,8 +284,8 @@ html {
 }
 
 [data-theme="pakku-yellow"] .site-nav {
-  background: rgb(255 215 0 / 0.85);
-  border-bottom-color: rgb(0 0 0 / 0.12);
+  background: rgb(255 215 0 / 0.96);
+  border-bottom-color: rgb(0 0 0 / 0.18);
 }
 
 body {
@@ -670,48 +676,297 @@ a:has(> .ext),
   border-color: rgb(255 255 255 / 0.4);
 }
 
-/* Showcase slash composition (desktop); stacks on small screens via Tailwind */
-.shots h2 {
-  position: sticky;
-  top: calc(var(--nav-h) + 12px);
-  z-index: 2;
-  pointer-events: none;
+/* ============ showcase: original two-column CLI/Desktop wall, improved ============
+   Sticky headings are solid chips so they stay readable over the screenshots
+   in both themes; panes dim until they reach the middle of the viewport. */
+.shots {
+  padding: 0 0 clamp(3rem, 8vh, 5rem);
+  scroll-margin-top: calc(var(--nav-h) + 8px);
+}
+
+.shots-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6vh;
+  padding: 8vh 7vw;
+}
+
+@media (min-width: 768px) {
+  .shots-stage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 2vw;
+    padding: 8vh 7vw;
+  }
+}
+
+.shots-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5vh;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
   .shots-cli {
     margin-top: 22vh;
+    align-items: flex-start;
   }
 
-  .shots-pane {
-    width: min(40vw, 580px);
-  }
-
-  .shots-desk .shots-pane {
-    width: min(42vw, 560px);
+  .shots-desk {
+    align-items: flex-end;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .skip {
-    transition: top 0.12s;
+/* sticky column headers — plain pinned text, no background box;
+   a soft text-shadow keeps it legible while screenshots scroll beneath */
+.shots-h {
+  position: sticky;
+  top: calc(var(--nav-h) + 12px);
+  z-index: 2;
+  width: fit-content;
+  max-width: min(100%, 36ch);
+  margin: 0 0 1vh;
+  pointer-events: none;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.65);
+}
+
+[data-theme="pakku-yellow"] .shots-h {
+  text-shadow: 0 1px 12px rgb(255 215 0 / 0.9);
+}
+
+/* feature texts: NOT pinned — they sit in the gaps between the screenshots,
+   alternating left / right / left ... */
+.shots-note {
+  max-width: 36ch;
+  margin-block: 1vh;
+}
+
+.shots-cli .shots-note {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.shots-desk .shots-note {
+  align-self: flex-end;
+  text-align: right;
+}
+
+.shots-note h3 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.2rem, 0.95rem + 1vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--heading);
+  text-wrap: balance;
+}
+
+.shots-note p {
+  margin: 0;
+  color: var(--tagline);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.shots-item {
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .shots-item {
+    width: 100%;
+    max-width: 580px;
   }
 
-  .hint {
-    transition: opacity 0.4s;
+  .shots-desk .shots-item {
+    max-width: 560px;
   }
+}
 
-  .theme-btn {
-    transition: transform 0.12s;
-  }
+.shots-stage {
+  perspective: 1200px;
+}
 
-  .theme-btn:hover {
-    transform: scale(1.08);
+.shots-pane {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--pane-border);
+  border-radius: var(--radius-box);
+  background: var(--pane-bg);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.35);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+[data-theme="pakku-yellow"] .shots-pane {
+  box-shadow: 0 14px 36px rgb(0 0 0 / 0.22);
+}
+
+/* skeleton placeholder for screenshots that are still to be produced */
+.pane.ph {
+  display: flex;
+  aspect-ratio: var(--ar);
+  border: 1px dashed var(--pakku-btn-border);
+  background:
+    linear-gradient(var(--color-base-300) 0 0) 7% 22% / 38% 8px no-repeat,
+    linear-gradient(var(--color-base-300) 0 0) 7% 38% / 62% 8px no-repeat,
+    linear-gradient(var(--color-base-300) 0 0) 7% 54% / 48% 8px no-repeat,
+    linear-gradient(var(--color-base-300) 0 0) 7% 70% / 70% 8px no-repeat,
+    var(--pane-bg);
+}
+
+.pane.ph span {
+  margin: auto 0 8px auto;
+  padding-inline-end: 10px;
+  font-size: 0.66rem;
+  color: var(--label);
+}
+
+/* daisyUI badge (used in the pinned headers) */
+.badge {
+  --badge-bg: var(--badge-color, var(--color-base-100));
+  --badge-fg: var(--color-base-content);
+  --size: calc(var(--size-selector, 0.25rem) * 6);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: fit-content;
+  height: var(--size);
+  padding-inline: calc(var(--size) / 2 - 1px);
+  border: 1px solid var(--badge-color, var(--color-base-200));
+  border-radius: var(--radius-selector);
+  background-color: var(--badge-bg);
+  color: var(--badge-fg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.badge-sm {
+  --size: calc(var(--size-selector, 0.25rem) * 5);
+  font-size: 0.75rem;
+}
+
+.badge:not(.badge-sm) {
+  --badge-color: var(--color-primary);
+  --badge-fg: var(--color-primary-content);
+}
+
+/* scroll-driven highlight: the active pair pops forward in 3D space —
+   no border or outline change, just scale + depth tilt */
+.shots-item.is-active .shots-pane {
+  transform: scale(1.05) translateZ(26px);
+}
+
+.shots-cli .shots-item.is-active .shots-pane {
+  transform: scale(1.05) translateZ(26px) rotateY(3deg);
+}
+
+.shots-desk .shots-item.is-active .shots-pane {
+  transform: scale(1.05) translateZ(26px) rotateY(-3deg);
+}
+
+@media (max-width: 767px) {
+  .shots-item.is-active .shots-pane,
+  .shots-cli .shots-item.is-active .shots-pane,
+  .shots-desk .shots-item.is-active .shots-pane {
+    transform: scale(1.02);
   }
+}
+
+/* no dimming — the active pane only changes size (3D pop above) */
+.shots-pane { cursor: zoom-in; }
+
+/* lightbox: click a screenshot to view it, click again to zoom, click away or X to close */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vmin;
+  background: rgb(0 0 0 / 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.lightbox.open { opacity: 1; }
+.lightbox.closing { opacity: 0; }
+.lightbox[hidden] { display: none; }
+
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 6px;
+  box-shadow: 0 30px 90px rgb(0 0 0 / 0.6);
+  cursor: zoom-in;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.2s ease;
+}
+
+.lightbox.open .lightbox-img {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.lightbox.zoomed {
+  display: block;
+  overflow: auto;
+  padding: 0;
+}
+
+.lightbox.zoomed .lightbox-img {
+  display: block;
+  margin: 4vmin auto;
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+  cursor: zoom-out;
+}
+
+.lightbox-x {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 71;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--pane-border);
+  border-radius: 50%;
+  background: var(--color-base-200);
+  color: var(--heading);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightbox-x:hover,
+.lightbox-x:focus-visible {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shots-cli {
-    margin-top: 0;
-  }
+  .lightbox, .lightbox-img { transition: none !important; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skip { transition: top 0.12s; }
+  .hint { transition: opacity 0.4s; }
+  .theme-btn { transition: transform 0.12s; }
+  .theme-btn:hover { transform: scale(1.08); }
 }
