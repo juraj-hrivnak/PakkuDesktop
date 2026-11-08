@@ -4,18 +4,28 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
     "dev": "astro dev",
+    "prebuild": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "fetch-desktop-release": "node --experimental-strip-types scripts/fetch-desktop-release.ts",
+    "test:e2e": "node --experimental-strip-types scripts/run-e2e.ts",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.0",
+    "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.4.2",
+    "daisyui": "^5.7.50",
+    "tailwindcss": "^4.3.3",
     "three": "0.128.0"
   },
   "devDependencies": {
-    "@types/three": "0.128.0"
+    "@playwright/test": "^1.64.1",
+    "@types/three": "0.128.0",
+    "playwright": "^1.64.1",
+    "playwright-core": "^1.64.1"
   }
 }
-

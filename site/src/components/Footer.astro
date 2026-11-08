@@ -1,14 +1,15 @@
 ---
 import ExternalLink from './ExternalLink.astro';
+import { docsUrl, pakkuDesktopGithub, pakkuGithub } from '../lib/links';
 ---
-<footer>
-  <div class="wrap foot-inner">
-    <div class="foot-links">
-      <ExternalLink href="https://github.com/juraj-hrivnak/Pakku">Pakku on GitHub</ExternalLink>
-      <ExternalLink href="https://github.com/juraj-hrivnak/PakkuDesktop">Pakku Desktop on GitHub</ExternalLink>
-      <ExternalLink href="https://juraj-hrivnak.github.io/Pakku">Docs</ExternalLink>
-      <ExternalLink href="https://github.com/juraj-hrivnak/Pakku/blob/main/CHANGELOG.md">Changelog</ExternalLink>
+<footer class="site-footer border-t border-white/7 bg-base-100 px-[7vw] py-6">
+  <div class="flex flex-col gap-5 text-[0.8rem] sm:flex-row sm:items-center sm:justify-between">
+    <div class="foot-links flex flex-wrap gap-x-[18px] gap-y-2">
+      <ExternalLink href={pakkuGithub}>Pakku on GitHub</ExternalLink>
+      <ExternalLink href={pakkuDesktopGithub}>Pakku Desktop on GitHub</ExternalLink>
+      <ExternalLink href={docsUrl}>Docs</ExternalLink>
+      <ExternalLink href={`${pakkuGithub}/blob/main/CHANGELOG.md`}>Changelog</ExternalLink>
     </div>
-    <div class="foot-meta">© 2026 Juraj Hrivnák</div>
+    <p class="foot-meta m-0 text-[0.8rem]">© 2026 Juraj Hrivnák</p>
   </div>
 </footer>

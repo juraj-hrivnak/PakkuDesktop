@@ -1,13 +1,15 @@
 ---
 import ExternalLink from './ExternalLink.astro';
+import { desktopDownloadPath, discordUrl, installPakkuUrl, pakkuJarUrl } from '../lib/links';
 ---
-<section class="final">
-  <div class="wrap">
-    <h2>Pakku is free and open source under the EUPL.</h2>
-    <div class="hero-ctas">
-      <ExternalLink class="btn btn-primary" href="https://github.com/juraj-hrivnak/Pakku/releases">Download Pakku</ExternalLink>
-      <ExternalLink class="btn" href="https://juraj-hrivnak.github.io/Pakku">Documentation</ExternalLink>
-      <ExternalLink class="btn" href="https://discord.com/invite/dtAyqdzTMj">Discord</ExternalLink>
-    </div>
+<section class="flex min-h-[70svh] flex-col items-center justify-center px-[7vw] py-[8vh] text-center md:min-h-svh">
+  <h2 class="max-w-[22ch] text-[clamp(1.5rem,1.1rem+2vw,2.6rem)] font-bold leading-tight tracking-tight">
+    Pakku is free and open source under the EUPL.
+  </h2>
+  <div class="relative z-[35] mt-9 flex flex-wrap items-center justify-center gap-3">
+    <ExternalLink class="pakku-btn pakku-btn--primary" href={installPakkuUrl}>Install Pakku</ExternalLink>
+    <ExternalLink class="pakku-btn" href={pakkuJarUrl}>Download pakku.jar</ExternalLink>
+    <a class="pakku-btn" href={desktopDownloadPath}>Download Desktop</a>
+    <ExternalLink class="pakku-btn" href={discordUrl}>Discord</ExternalLink>
   </div>
 </section>

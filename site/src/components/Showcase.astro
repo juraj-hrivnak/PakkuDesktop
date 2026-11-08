@@ -24,24 +24,24 @@ const {
   screenshotExport,
 } = Astro.props;
 ---
-<section class="shots" id="shots" aria-label="CLI and Desktop showcase">
-  <div class="shots-stage">
-    <figure class="shots-cli">
-      <h2>CLI</h2>
-      <div class="cli-row" id="cliRow">
-        <Image src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
-        <Image src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
+<section class="shots px-0 py-0 md:px-[7vw] md:py-[4vh]" aria-label="CLI and Desktop showcase">
+  <div class="shots-stage flex flex-col items-center gap-[6vh] px-[7vw] py-[8vh] md:grid md:grid-cols-2 md:items-start md:gap-x-[2vw] md:px-0 md:py-[8vh]">
+    <figure class="shots-cli flex w-full min-w-0 flex-col items-stretch md:items-end md:justify-self-end md:me-[-2vw]">
+      <h2 class="mb-3 w-max max-w-full self-start text-2xl font-bold tracking-tight md:text-3xl">CLI</h2>
+      <div class="cli-row flex flex-col gap-[5vh]" id="cliRow">
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box shadow-lg md:w-[min(40vw,580px)]" src={screenshotLs} alt="pakku ls listing the modpack projects in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box shadow-lg md:w-[min(40vw,580px)]" src={screenshotExport} alt="pakku export building the distribution packages in a terminal" widths={[580, 780]} sizes="(max-width: 720px) 84vw, min(40vw, 580px)" loading="lazy" decoding="async" />
       </div>
     </figure>
-    <figure class="shots-desk">
-      <h2>Desktop</h2>
-      <div class="shots-row" id="shotsRow">
-        <Image src={homeDark} alt="Pakku Desktop home screen" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="eager" decoding="async" fetchpriority="high" />
-        <Image src={overviewDark} alt="Pakku Desktop modpack overview" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image src={filesFetchDark} alt="Pakku Desktop fetching projects" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image src={gitLogDark} alt="Pakku Desktop git history" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image src={gitCommitDark} alt="Pakku Desktop commit dialog" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
-        <Image src={filesSyncDark} alt="Pakku Desktop syncing files" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+    <figure class="shots-desk flex w-full min-w-0 flex-col items-stretch md:items-start md:justify-self-start md:ms-[-2vw]">
+      <h2 class="mb-3 w-max max-w-full self-start text-2xl font-bold tracking-tight md:self-end md:text-end md:text-3xl">Desktop</h2>
+      <div class="shots-row flex flex-col gap-[5vh]" id="shotsRow">
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={homeDark} alt="Pakku Desktop home screen" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="eager" decoding="async" fetchpriority="high" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={overviewDark} alt="Pakku Desktop modpack overview" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={filesFetchDark} alt="Pakku Desktop fetching projects" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={gitLogDark} alt="Pakku Desktop git history" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={gitCommitDark} alt="Pakku Desktop commit dialog" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
+        <Image class="shots-pane block h-auto w-[84vw] rounded-box border border-base-content/10 shadow-lg md:w-[min(42vw,560px)]" src={filesSyncDark} alt="Pakku Desktop syncing files" widths={[560, 840]} sizes="(max-width: 720px) 84vw, min(42vw, 560px)" loading="lazy" decoding="async" />
       </div>
     </figure>
   </div>

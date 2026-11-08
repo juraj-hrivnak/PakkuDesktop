@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import PakkuGlyph from '../components/PakkuGlyph.astro';
 import Nav from '../components/Nav.astro';
+import SiteDrawer from '../components/SiteDrawer.astro';
 import Footer from '../components/Footer.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
 import DolphinOverlay from '../components/DolphinOverlay.astro';
@@ -9,6 +10,8 @@ import DolphinOverlay from '../components/DolphinOverlay.astro';
 interface Props {
   title?: string;
   description?: string;
+  path?: string;
+  showDolphin?: boolean;
 }
 
 const title = Astro.props.title ?? 'Pakku · The package manager for Minecraft modpacks';
@@ -17,11 +20,13 @@ const description = Astro.props.description
 const ogDescription = 'A multiplatform modpack manager for Minecraft: Java Edition. Add projects from CurseForge, Modrinth or GitHub with automatic dependency resolution, and export to CurseForge, Modrinth and server packs. Version control and CI/CD included.';
 const twitterDescription = 'A multiplatform modpack manager for Minecraft: Java Edition. CurseForge, Modrinth, GitHub, server packs — with version control and CI/CD included.';
 const siteUrl = Astro.site?.href ?? 'https://pakku.build/';
+const pageUrl = new URL(Astro.props.path ?? '/', siteUrl).href;
 const ogImage = new URL('/og.png', siteUrl).href;
 const ogImageAlt = 'Pakku Desktop home screen';
+const showDolphin = Astro.props.showDolphin ?? true;
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="pakku">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -30,13 +35,13 @@ const ogImageAlt = 'Pakku Desktop home screen';
 <meta name="description" content={description} />
 <meta name="robots" content="index, follow" />
 
-<link rel="canonical" href={siteUrl} />
+<link rel="canonical" href={pageUrl} />
 
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Pakku" />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={ogDescription} />
-<meta property="og:url" content={siteUrl} />
+<meta property="og:url" content={pageUrl} />
 <meta property="og:image" content={ogImage} />
 <meta property="og:image:alt" content={ogImageAlt} />
 
@@ -59,7 +64,7 @@ const ogImageAlt = 'Pakku Desktop home screen';
   "softwareVersion": "1.5.0",
   "isAccessibleForFree": true,
   "license": "https://spdx.org/licenses/EUPL-1.2-or-later.html",
-  "downloadUrl": "https://github.com/juraj-hrivnak/Pakku/releases",
+  "downloadUrl": "https://github.com/juraj-hrivnak/Pakku/releases/latest/download/pakku.jar",
   "url": "https://github.com/juraj-hrivnak/Pakku",
   "author": { "@type": "Person", "name": "Juraj Hrivnák" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
@@ -72,19 +77,24 @@ const ogImageAlt = 'Pakku Desktop home screen';
 }
 </script>
 </head>
-<body>
-<DolphinOverlay />
-
+<body class="bg-base-100 text-base-content font-sans">
+{showDolphin && <DolphinOverlay />}
 <a class="skip" href="#main">Skip to content</a>
-
 <PakkuGlyph />
 <span id="new-tab" class="sr-only">Opens in a new tab</span>
-<Nav />
 
-<slot />
+<div class="drawer">
+  <input id="pakku-drawer" type="checkbox" class="drawer-toggle lg:hidden" />
+  <div class="drawer-content flex min-h-svh flex-col">
+    <div class="sticky top-0 z-40">
+      <Nav />
+    </div>
+    <slot />
+    <Footer />
+  </div>
+  <SiteDrawer />
+</div>
 
-<Footer />
 <ThemeToggle />
 </body>
 </html>
-

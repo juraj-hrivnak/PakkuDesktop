@@ -67,3 +67,7 @@ bin/
 site/node_modules/
 site/dist/
 site/.astro/
+site/test-results/
+site/playwright-report/
+site/blob-report/
+site/playwright/.cache/

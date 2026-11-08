@@ -1,11 +1,20 @@
-<button class="theme-btn" id="themeBtn" type="button" aria-pressed="false" aria-label="Toggle yellow background" title="Toggle yellow background"></button>
+<button
+  class="theme-btn"
+  id="themeBtn"
+  type="button"
+  aria-pressed="false"
+  aria-label="Toggle yellow background"
+  title="Toggle yellow background"
+></button>
 
 <script>
   const btn = document.getElementById('themeBtn');
   if (btn instanceof HTMLButtonElement) {
     btn.addEventListener('click', () => {
-      const on = document.documentElement.classList.toggle('yellow');
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const root = document.documentElement;
+      const next = root.getAttribute('data-theme') === 'pakku-yellow' ? 'pakku' : 'pakku-yellow';
+      root.setAttribute('data-theme', next);
+      btn.setAttribute('aria-pressed', next === 'pakku-yellow' ? 'true' : 'false');
     });
   }
 </script>

@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DesktopDownload from '../../components/DesktopDownload.astro';
+import homeDark from '../../../images/home-dark-v1.0.0-alpha.11.png';
+---
+<BaseLayout
+  title="Download Pakku Desktop"
+  description="Download Pakku Desktop for Windows, macOS, and Linux."
+  path="/download/"
+  showDolphin={false}
+>
+  <main id="main" class="desktop-download-page">
+    <DesktopDownload screenshot={homeDark} />
+  </main>
+</BaseLayout>
