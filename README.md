@@ -40,7 +40,7 @@ Prebuilt binaries are published on the [releases page](https://github.com/juraj-
 
 ## Features
 
-### From the Pakku engine, shared with the CLI
+### Shared with Pakku
 
 - **Project operations.** Add, update, and remove projects from CurseForge, Modrinth, or both simultaneously, with automatic dependency resolution and safe-removal dependency checking.
 - **Development environment.** Fetch project files into your modpack folder and sync local changes back into the modpack.
